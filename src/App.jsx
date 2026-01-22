@@ -158,7 +158,6 @@ function App() {
                 };
 
                 setGoogleUser(completeUserData);
-                handleSuccessfulLogin(tokenResponse.access_token);
             } catch (error) {
                 console.error('Error fetching user info:', error);
             }
@@ -199,7 +198,6 @@ function App() {
                 };
 
                 setGoogleUser(completeUserData);
-                handleSuccessfulLogin(tokenResponse.access_token);
             } catch (error) {
                 console.error('Error during login:', error);
                 alert('Login failed. Please try again.');
@@ -218,20 +216,7 @@ function App() {
         setSubscriptionStatus('none');
     };
 
-    const handleSuccessfulLogin = async (accessToken) => {
-        setImportLoading(true);
-        try {
-            const calendars = await fetchCalendarList(accessToken);
-            const primaryCalendar = calendars.find(c => c.primary) || calendars[0];
-            if (primaryCalendar) {
-                await importFromCalendar(primaryCalendar.id, accessToken);
-            }
-        } catch (error) {
-            console.error('Login flow error:', error);
-        } finally {
-            setImportLoading(false);
-        }
-    };
+
 
     const fetchCalendarList = async (accessToken) => {
         try {
@@ -301,9 +286,8 @@ function App() {
             );
             const data = await response.json();
 
-            if (data.items) {
-                await importTasksFromGoogle(data.items);
-            }
+            // Calendar events are fetched but NOT converted to tasks
+            // They will only be visible in the Calendar tab
             setIsImportModalOpen(false);
         } catch (error) {
             console.error('Error importing events:', error);
@@ -578,7 +562,6 @@ function App() {
                     user={googleUser}
                     setUser={setGoogleUser}
                     tasks={tasks}
-                    onImportEvents={importTasksFromGoogle}
                     onSyncClick={handleSyncClick}
                 />
             )}

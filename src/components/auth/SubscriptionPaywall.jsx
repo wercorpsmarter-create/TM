@@ -68,7 +68,9 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                         onClick={onLogin}
                         disabled={loading}
                         style={{
-                            background: 'rgba(255, 255, 255, 0.1)',
+                            background: '#000000',
+                            color: '#ffffff',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
                             marginTop: '1rem'
                         }}
                     >

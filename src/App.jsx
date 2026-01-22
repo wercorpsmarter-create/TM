@@ -166,6 +166,48 @@ function App() {
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
     });
 
+    // Separate login for existing users - validates subscription
+    const loginExistingUser = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            try {
+                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const userInfo = await userInfoResponse.json();
+
+                // Check if user exists in database
+                const existingUser = await api.getUser(userInfo.id);
+
+                if (!existingUser) {
+                    alert('No account found. Please sign up first by starting a free trial.');
+                    return;
+                }
+
+                // Check if user has a valid subscription
+                if (existingUser.subscription_status === 'none' || !existingUser.subscription_status) {
+                    alert('Your account does not have an active subscription. Please start a free trial.');
+                    return;
+                }
+
+                // User is valid - proceed with login
+                const completeUserData = {
+                    ...tokenResponse,
+                    email: userInfo.email,
+                    name: userInfo.name,
+                    picture: userInfo.picture,
+                    id: userInfo.id
+                };
+
+                setGoogleUser(completeUserData);
+                handleSuccessfulLogin(tokenResponse.access_token);
+            } catch (error) {
+                console.error('Error during login:', error);
+                alert('Login failed. Please try again.');
+            }
+        },
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+    });
+
     const logout = () => {
         setGoogleUser(null);
         setCalendarList([]);
@@ -425,7 +467,7 @@ function App() {
 
     // Show subscription paywall first (before login)
     if (subscriptionStatus === 'none') {
-        return <SubscriptionPaywall onSubscribe={handleSubscribe} />;
+        return <SubscriptionPaywall onSubscribe={handleSubscribe} onLogin={loginExistingUser} />;
     }
 
     // Then require Google login

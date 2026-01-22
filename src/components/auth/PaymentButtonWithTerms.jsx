@@ -200,7 +200,7 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                             <span style={{ marginLeft: '0.75rem', fontSize: '0.95rem', color: '#333' }}>
                                 I agree to the{' '}
                                 <a
-                                    href="https://taskmastercorp.org/terms"
+                                    href="https://privacy-policy-4xck.vercel.app/terms.html"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{

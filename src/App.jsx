@@ -629,11 +629,11 @@ function App() {
             <div style={{ marginTop: '3rem', textAlign: 'center', opacity: 0.3, fontSize: '0.75rem', color: 'white' }}>
                 Task Master • Glassmorphism Edit
                 <div style={{ marginTop: '0.5rem' }}>
-                    <a href="https://taskmastercorp.org/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                    <a href="https://privacy-policy-4xck.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
                         Privacy Policy
                     </a>
                     {' • '}
-                    <a href="https://taskmastercorp.org/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                    <a href="https://privacy-policy-4xck.vercel.app/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
                         Terms of Service
                     </a>
                 </div>

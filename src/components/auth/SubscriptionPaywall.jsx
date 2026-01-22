@@ -68,11 +68,11 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                     <p className="login-footer">
                         Secure payment processing by Stripe
                         <br />
-                        <a href="https://taskmastercorp.org/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
+                        <a href="https://privacy-policy-4xck.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
                             Privacy Policy
                         </a>
                         {' • '}
-                        <a href="https://taskmastercorp.org/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
+                        <a href="https://privacy-policy-4xck.vercel.app/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
                             Terms of Service
                         </a>
                     </p>

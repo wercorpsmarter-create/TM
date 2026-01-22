@@ -264,21 +264,18 @@ function App() {
     };
 
     const handleSubscribe = async () => {
+        // Mock payment flow for local development
         try {
-            const response = await fetch('http://localhost:5174/api/create-checkout-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            const data = await response.json();
-            if (data.url) {
-                window.location.href = data.url;
-            } else {
-                console.error('Failed to create checkout session:', data.error);
-                alert('Connection to payment server failed. Please ensure the dev server on port 5174 is running.');
-            }
+            // Simulate delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Redirect to success URL
+            const url = new URL(window.location.href);
+            url.searchParams.set('success', 'true');
+            window.location.href = url.toString();
         } catch (error) {
-            console.error('Subscription redirect error:', error);
-            alert('Error connecting to subscription service.');
+            console.error('Subscription error:', error);
+            alert('Error simulating subscription.');
         }
     };
 

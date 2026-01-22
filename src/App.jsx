@@ -22,9 +22,6 @@ import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
 import Privacy from './Privacy';
 import Terms from './Terms';
-import Privacy from './Privacy';
-import Terms from './Terms';
-import { api } from './utils/api';
 import './styles/main.css';
 
 // Helper to get YYYY-MM-DD in LOCAL time

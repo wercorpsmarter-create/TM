@@ -128,3 +128,5 @@ export const api = {
         return data.layout;
     },
 };
+
+export default api;

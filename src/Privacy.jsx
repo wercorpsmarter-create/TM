@@ -1,82 +1,112 @@
 import React from 'react';
 
-export default function PrivacyPage() {
+const Privacy = () => {
+    const containerStyle = {
+        maxWidth: '800px',
+        margin: '0 auto',
+        padding: '40px 20px',
+        fontFamily: 'sans-serif',
+        color: 'white',
+        lineHeight: '1.6',
+        textAlign: 'left'
+    };
+
+    const handleBack = () => {
+        window.history.pushState({}, '', '/');
+        window.location.reload();
+    };
+
     return (
-        <div className="max-w-4xl mx-auto py-12 px-6 text-gray-800">
-            <h1 className="text-3xl font-bold mb-4">Privacy Policy</h1>
-            <p className="text-gray-600 mb-8">Last Updated: January 22, 2026</p>
+        <div style={containerStyle}>
+            <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Privacy Policy</h1>
+            <p style={{ color: '#999', marginBottom: '2rem' }}>Last Updated: January 22, 2026</p>
 
-            <div className="space-y-8 leading-relaxed">
+            <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>1. Introduction</h2>
+                <p>Task Master (hereinafter referred to as "the Company") recognizes the importance of protecting personal information and will observe the Act on the Protection of Personal Information (Japanese Law) and other relevant laws and regulations. We strive to handle personal information appropriately in accordance with this Privacy Policy.</p>
+            </section>
 
-                {/* 1. Introduction */}
-                <section>
-                    <h2 className="text-xl font-bold mb-2 border-b pb-1">1. Introduction</h2>
-                    <p>
-                        Task Master (hereinafter referred to as "the Company") recognizes the importance of protecting personal information and will observe the Act on the Protection of Personal Information (Japanese Law) and other relevant laws and regulations. We strive to handle personal information appropriately in accordance with this Privacy Policy.
-                    </p>
-                </section>
+            <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>2. Information We Collect</h2>
+                <p style={{ marginBottom: '0.5rem' }}>We collect the following personal information from users:</p>
+                <ul style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
+                    <li style={{ marginBottom: '0.5rem' }}><strong>Account Information:</strong> Name, email address, and Google account details.</li>
+                    <li style={{ marginBottom: '0.5rem' }}><strong>Payment Information:</strong> Credit card information processed securely by Stripe (we do not store raw credit card numbers).</li>
+                    <li style={{ marginBottom: '0.5rem' }}><strong>Usage Data:</strong> Tasks, habits, goals, calendar events, and service usage patterns.</li>
+                    <li style={{ marginBottom: '0.5rem' }}><strong>Google Calendar Data:</strong> Calendar events from your Google Calendar (read-only access).</li>
+                </ul>
+            </section>
 
-                {/* 2. Information We Collect */}
-                <section>
-                    <h2 className="text-xl font-bold mb-2 border-b pb-1">2. Information We Collect</h2>
-                    <p>We collect the following personal information from users:</p>
-                    <ul className="list-disc pl-5 mt-2 space-y-1">
-                        <li><strong>Account Information:</strong> Name, email address, and password.</li>
-                        <li><strong>Payment Information:</strong> Credit card information and billing address (processed securely by Stripe; we do not store raw credit card numbers).</li>
-                        <li><strong>Usage Data:</strong> Logs, device information, and information about how you use our service (tasks created, schedules, etc.).</li>
-                    </ul>
-                </section>
+            <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>3. Purpose of Use</h2>
+                <p style={{ marginBottom: '0.5rem' }}>We use the collected information for the following purposes:</p>
+                <ul style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
+                    <li style={{ marginBottom: '0.5rem' }}>To provide and operate the Task Master service.</li>
+                    <li style={{ marginBottom: '0.5rem' }}>To sync and display your Google Calendar events.</li>
+                    <li style={{ marginBottom: '0.5rem' }}>To process payments for subscription fees.</li>
+                    <li style={{ marginBottom: '0.5rem' }}>To respond to user inquiries and support requests.</li>
+                    <li style={{ marginBottom: '0.5rem' }}>To send important notifications regarding the service.</li>
+                    <li style={{ marginBottom: '0.5rem' }}>To prevent fraud and ensure service security.</li>
+                </ul>
+            </section>
 
-                {/* 3. Purpose of Use */}
-                <section>
-                    <h2 className="text-xl font-bold mb-2 border-b pb-1">3. Purpose of Use</h2>
-                    <p>We use the collected information for the following purposes:</p>
-                    <ul className="list-disc pl-5 mt-2 space-y-1">
-                        <li>To provide and operate the Task Master service.</li>
-                        <li>To process payments for subscription fees.</li>
-                        <li>To respond to user inquiries and support requests.</li>
-                        <li>To send important notifications regarding the service (maintenance, updates, etc.).</li>
-                        <li>To prevent fraud and ensure the security of the service.</li>
-                    </ul>
-                </section>
+            <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>4. Third-Party Provision</h2>
+                <p style={{ marginBottom: '0.5rem' }}>We do not provide personal information to third parties without consent, except in the following cases:</p>
+                <ul style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
+                    <li style={{ marginBottom: '0.5rem' }}><strong>Service Providers:</strong> Stripe for payments, Google for authentication and calendar access.</li>
+                    <li style={{ marginBottom: '0.5rem' }}><strong>Legal Compliance:</strong> When required by law or necessary to cooperate with government agencies.</li>
+                    <li style={{ marginBottom: '0.5rem' }}><strong>Business Transfer:</strong> In the event of a merger, acquisition, or sale of assets.</li>
+                </ul>
+            </section>
 
-                {/* 4. Third-Party Provision */}
-                <section>
-                    <h2 className="text-xl font-bold mb-2 border-b pb-1">4. Third-Party Provision</h2>
-                    <p>
-                        We do not provide personal information to third parties without the user's consent, except in the following cases:
-                    </p>
-                    <ul className="list-disc pl-5 mt-2 space-y-1">
-                        <li><strong>Service Providers:</strong> We share data with trusted third-party service providers necessary for operation (e.g., Stripe for payments, Vercel for hosting, Google for authentication).</li>
-                        <li><strong>Legal Compliance:</strong> When required by law or necessary to cooperate with government agencies.</li>
-                        <li><strong>Business Transfer:</strong> In the event of a merger, acquisition, or sale of assets.</li>
-                    </ul>
-                </section>
+            <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>5. Security Measures</h2>
+                <p>We take appropriate security measures to prevent unauthorized access, loss, alteration, or leakage of personal information. However, please note that no method of transmission over the Internet is 100% secure.</p>
+            </section>
 
-                {/* 5. Security Measures */}
-                <section>
-                    <h2 className="text-xl font-bold mb-2 border-b pb-1">5. Security Measures</h2>
-                    <p>
-                        We take appropriate security measures to prevent access, loss, alteration, or leakage of personal information. However, please note that no method of transmission over the Internet is 100% secure.
-                    </p>
-                </section>
+            <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>6. Disclosure, Correction, and Deletion</h2>
+                <p>Users may request the disclosure, correction, or deletion of their personal information held by the Company. Upon receiving such a request, we will verify the user's identity and respond promptly in accordance with applicable laws.</p>
+            </section>
 
-                {/* 6. User Rights (Japan Law Compliance) */}
-                <section>
-                    <h2 className="text-xl font-bold mb-2 border-b pb-1">6. Disclosure, Correction, and Deletion</h2>
-                    <p>
-                        Users may request the disclosure, correction, or deletion of their personal information held by the Company. Upon receiving such a request, we will verify the user's identity and respond promptly in accordance with applicable laws.
-                    </p>
-                </section>
+            <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>7. Google API Services User Data Policy</h2>
+                <p>
+                    Task Master's use of information received from Google APIs will adhere to the{' '}
+                    <a
+                        href="https://developers.google.com/terms/api-services-user-data-policy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--primary)', textDecoration: 'underline' }}
+                    >
+                        Google API Services User Data Policy
+                    </a>, including the Limited Use requirements.
+                </p>
+            </section>
 
-                {/* 7. Contact Us */}
-                <section className="mt-8 border-t pt-4">
-                    <h3 className="font-bold">Contact Us</h3>
-                    <p>For inquiries regarding this Privacy Policy, please contact:</p>
-                    <p className="mt-2 text-blue-600">[INSERT YOUR EMAIL ADDRESS HERE]</p>
-                </section>
-
-            </div>
+            <section style={{ marginTop: '3rem', borderTop: '2px solid rgba(255,255,255,0.2)', paddingTop: '20px' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Contact Us</h3>
+                <p>Email: <a href="mailto:yuma.yoshida.tmc@gmail.com" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>yuma.yoshida.tmc@gmail.com</a></p>
+                <button
+                    onClick={handleBack}
+                    style={{
+                        marginTop: '20px',
+                        padding: '10px 20px',
+                        cursor: 'pointer',
+                        background: 'var(--glass-bg)',
+                        border: '1px solid var(--glass-border)',
+                        color: 'white',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: '0.9rem',
+                        fontWeight: 500
+                    }}
+                >
+                    Back to App
+                </button>
+            </section>
         </div>
     );
-}
+};
+
+export default Privacy;

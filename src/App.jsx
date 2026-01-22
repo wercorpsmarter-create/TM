@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Calendar as CalendarIcon, Download, RefreshCcw, LogOut, X } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import api from './utils/api';
 import TopSection from './components/layout/TopSection';
 import WeeklyBreakdown from './components/layout/WeeklyBreakdown';
 import CalendarTab from './components/layout/CalendarTab';
@@ -73,6 +74,19 @@ function App() {
             loadUserData();
         }
     }, [googleUser]);
+
+    // Handle browser back/forward navigation
+    useEffect(() => {
+        const handlePopState = () => {
+            const path = window.location.pathname;
+            if (path === '/privacy') setActiveTab('privacy');
+            else if (path === '/terms') setActiveTab('terms');
+            else setActiveTab('dashboard');
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
 
     const loadUserData = async () => {
         if (!googleUser?.email || !googleUser?.id) return;
@@ -625,7 +639,7 @@ function App() {
                 Task Master • Glassmorphism Edit
                 <div style={{ marginTop: '0.5rem' }}>
                     <button
-                        onClick={() => setActiveTab('privacy')}
+                        onClick={() => { window.history.pushState({}, '', '/privacy'); setActiveTab('privacy'); }}
                         style={{
                             background: 'none',
                             border: 'none',
@@ -640,7 +654,7 @@ function App() {
                     </button>
                     {' • '}
                     <button
-                        onClick={() => setActiveTab('terms')}
+                        onClick={() => { window.history.pushState({}, '', '/terms'); setActiveTab('terms'); }}
                         style={{
                             background: 'none',
                             border: 'none',

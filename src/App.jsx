@@ -1,16 +1,3 @@
-// 1. Logic to detect the page based on the URL
-const getInitialTab = () => {
-    const path = window.location.pathname;
-    if (path === '/privacy') return 'privacy';
-    if (path === '/terms') return 'terms';
-    return 'dashboard';
-};
-
-const [activeTab, setActiveTab] = useState(getInitialTab());
-
-// 2. Add these specific "Return" triggers before your subscription check
-if (activeTab === 'privacy') return <Privacy />;
-if (activeTab === 'terms') return <Terms />;
 import React, { useState, useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Calendar as CalendarIcon, Download, RefreshCcw, LogOut, X } from 'lucide-react';

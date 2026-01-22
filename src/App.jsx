@@ -45,7 +45,14 @@ const getTargetDate = (dayName) => {
 };
 
 function App() {
-    const [activeTab, setActiveTab] = useState('dashboard');
+    // FIXED: This now checks the URL bar before deciding which tab to show
+    const [activeTab, setActiveTab] = useState(() => {
+        const path = window.location.pathname;
+        if (path === '/privacy') return 'privacy';
+        if (path === '/terms') return 'terms';
+        return 'dashboard';
+    });
+
     const [tasks, setTasks] = useState([]);
     const [habits, setHabits] = useState([]);
     const [goals, setGoals] = useState([]);
@@ -60,7 +67,6 @@ function App() {
     const [calendarList, setCalendarList] = useState([]);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importLoading, setImportLoading] = useState(false);
-
     // Load user data from database when logged in
     useEffect(() => {
         if (googleUser?.email) {

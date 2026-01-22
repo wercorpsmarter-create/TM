@@ -7,6 +7,8 @@ import WeeklyBreakdown from './components/layout/WeeklyBreakdown';
 import CalendarTab from './components/layout/CalendarTab';
 import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
+import Privacy from './Privacy';
+import Terms from './Terms';
 import { api } from './utils/api';
 import './styles/main.css';
 
@@ -557,14 +559,18 @@ function App() {
                         onToggleTask={toggleTask}
                     />
                 </>
-            ) : (
+            ) : activeTab === 'calendar' ? (
                 <CalendarTab
                     user={googleUser}
                     setUser={setGoogleUser}
                     tasks={tasks}
                     onSyncClick={handleSyncClick}
                 />
-            )}
+            ) : activeTab === 'privacy' ? (
+                <Privacy />
+            ) : activeTab === 'terms' ? (
+                <Terms />
+            ) : null}
 
             {/* Unified Import Modal */}
             {isImportModalOpen && (
@@ -594,6 +600,7 @@ function App() {
                         </div>
                         {importLoading && (
                             <div style={{ marginTop: '1.5rem', textAlign: 'center', color: 'var(--primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+
                                 <RefreshCcw size={16} className="spin" /> Syncing...
                             </div>
                         )}
@@ -612,13 +619,35 @@ function App() {
             <div style={{ marginTop: '3rem', textAlign: 'center', opacity: 0.3, fontSize: '0.75rem', color: 'white' }}>
                 Task Master • Glassmorphism Edit
                 <div style={{ marginTop: '0.5rem' }}>
-                    <a href="https://privacy-policy-4xck.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                    <button
+                        onClick={() => setActiveTab('privacy')}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'inherit',
+                            textDecoration: 'underline',
+                            cursor: 'pointer',
+                            fontSize: 'inherit',
+                            padding: 0
+                        }}
+                    >
                         Privacy Policy
-                    </a>
+                    </button>
                     {' • '}
-                    <a href="https://privacy-policy-4xck.vercel.app/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                    <button
+                        onClick={() => setActiveTab('terms')}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'inherit',
+                            textDecoration: 'underline',
+                            cursor: 'pointer',
+                            fontSize: 'inherit',
+                            padding: 0
+                        }}
+                    >
                         Terms of Service
-                    </a>
+                    </button>
                 </div>
             </div>
 

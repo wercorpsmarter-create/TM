@@ -41,7 +41,7 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                 onClick={handleOpenModal}
                 style={{
                     width: '100%',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
                     color: 'white',
                     padding: '1rem',
                     borderRadius: '12px',
@@ -50,15 +50,15 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                     fontWeight: '600',
                     cursor: 'pointer',
                     transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                    boxShadow: '0 4px 15px rgba(96, 165, 250, 0.4)',
                 }}
                 onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(96, 165, 250, 0.6)';
                 }}
                 onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(96, 165, 250, 0.4)';
                 }}
             >
                 Start My Free Trial →
@@ -194,7 +194,7 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                                     width: '1.25rem',
                                     height: '1.25rem',
                                     cursor: 'pointer',
-                                    accentColor: '#667eea',
+                                    accentColor: '#60a5fa',
                                 }}
                             />
                             <span style={{ marginLeft: '0.75rem', fontSize: '0.95rem', color: '#333' }}>
@@ -204,7 +204,7 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{
-                                        color: '#667eea',
+                                        color: '#60a5fa',
                                         textDecoration: 'underline',
                                         fontWeight: '600',
                                     }}
@@ -250,7 +250,7 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                                     padding: '0.875rem',
                                     border: 'none',
                                     background: isChecked
-                                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                                        ? 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)'
                                         : '#e0e0e0',
                                     color: isChecked ? 'white' : '#999',
                                     borderRadius: '10px',
@@ -258,18 +258,18 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                                     fontWeight: '600',
                                     cursor: isChecked ? 'pointer' : 'not-allowed',
                                     transition: 'all 0.2s',
-                                    boxShadow: isChecked ? '0 4px 15px rgba(102, 126, 234, 0.4)' : 'none',
+                                    boxShadow: isChecked ? '0 4px 15px rgba(96, 165, 250, 0.4)' : 'none',
                                 }}
                                 onMouseEnter={(e) => {
                                     if (isChecked) {
                                         e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+                                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(96, 165, 250, 0.6)';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (isChecked) {
                                         e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(96, 165, 250, 0.4)';
                                     }
                                 }}
                             >

@@ -37,6 +37,10 @@ const LoginScreen = ({ onLogin }) => {
                     </button>
                     <p className="login-footer">
                         Secure authentication powered by Google OAuth
+                        <br />
+                        <a href="http://localhost:5174/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
+                            Privacy Policy
+                        </a>
                     </p>
                 </div>
             </div>

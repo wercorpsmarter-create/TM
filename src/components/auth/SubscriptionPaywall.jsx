@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Zap, Clock, ArrowRight, Loader2 } from 'lucide-react';
+import PaymentButtonWithTerms from './PaymentButtonWithTerms';
 
 const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
     const [loading, setLoading] = useState(false);
@@ -48,20 +49,7 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                 </div>
 
                 <div className="login-actions">
-                    <button
-                        className="login-btn primary-gradient"
-                        onClick={handleStartTrial}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <Loader2 size={18} className="spin" />
-                        ) : (
-                            <>
-                                <span>Start My Free Trial</span>
-                                <ArrowRight size={18} />
-                            </>
-                        )}
-                    </button>
+                    <PaymentButtonWithTerms onCheckout={handleStartTrial} />
 
                     <button
                         className="login-btn"
@@ -80,8 +68,12 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                     <p className="login-footer">
                         Secure payment processing by Stripe
                         <br />
-                        <a href="http://localhost:5174/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
+                        <a href="https://taskmastercorp.org/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
                             Privacy Policy
+                        </a>
+                        {' • '}
+                        <a href="https://taskmastercorp.org/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
+                            Terms of Service
                         </a>
                     </p>
                 </div>

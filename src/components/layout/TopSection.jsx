@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { RefreshCcw, Settings2, Check, Plus, Trash2, Pencil, CheckCircle2, GripVertical } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -75,107 +75,6 @@ const LiveClock = () => {
     );
 };
 
-const AnalogClock = () => {
-    const [date, setDate] = useState(new Date());
-
-    useEffect(() => {
-        const timer = setInterval(() => setDate(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    const seconds = date.getSeconds();
-    const minutes = date.getMinutes();
-    const hours = date.getHours();
-
-    const secondDeg = (seconds / 60) * 360;
-    const minuteDeg = ((minutes + seconds / 60) / 60) * 360;
-    const hourDeg = ((hours % 12 + minutes / 60) / 12) * 360;
-
-    return (
-        <div style={{ height: '100%', minHeight: '300px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'transparent' }}>
-            <svg width="300" height="300" viewBox="0 0 100 100" style={{ filter: 'drop-shadow(0px 10px 15px rgba(0,0,0,0.05))' }}>
-                <defs>
-                    {/* Shadow for the hands and markers to give them 3D depth like the image */}
-                    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur in="SourceAlpha" stdDeviation="0.5" />
-                        <feOffset dx="0.2" dy="0.5" result="offsetblur" />
-                        <feComponentTransfer>
-                            <feFuncA type="linear" slope="0.3" />
-                        </feComponentTransfer>
-                        <feMerge>
-                            <feMergeNode />
-                            <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                    </filter>
-                    
-                    {/* Glassy Gradient for Face */}
-                    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#ffffff" />
-                        <stop offset="100%" stopColor="#f1f5f9" />
-                    </linearGradient>
-                </defs>
-
-                {/* Clock Face: Clean White Glass */}
-                <circle cx="50" cy="50" r="48" fill="url(#glassGradient)" stroke="#cbd5e1" strokeWidth="0.5" />
-
-                {/* Hour Markers */}
-                {[...Array(12)].map((_, i) => {
-                    const rotation = i * 30;
-                    const isTwelve = i === 0;
-
-                    return (
-                        <g key={i} transform={`rotate(${rotation} 50 50)`} filter="url(#dropShadow)">
-                            {isTwelve ? (
-                                // Double Bar for 12 o'clock
-                                <>
-                                    <rect x="47.5" y="6" width="2" height="12" fill="#94a3b8" rx="0.5" />
-                                    <rect x="50.5" y="6" width="2" height="12" fill="#94a3b8" rx="0.5" />
-                                </>
-                            ) : (
-                                // Single Bar for other hours
-                                <rect x="49" y="6" width="2" height="12" fill="#94a3b8" rx="0.5" />
-                            )}
-                        </g>
-                    );
-                })}
-
-                {/* Hands Container (Centered) */}
-                <g filter="url(#dropShadow)">
-                    {/* Hour Hand: Slate Gray, Thicker */}
-                    <rect
-                        x="48.5" y="25"
-                        width="3" height="25"
-                        fill="#64748b"
-                        rx="1"
-                        transform={`rotate(${hourDeg} 50 50)`}
-                    />
-
-                    {/* Minute Hand: Slate Gray, Long and Thin */}
-                    <rect
-                        x="49" y="12"
-                        width="2" height="38"
-                        fill="#64748b"
-                        rx="1"
-                        transform={`rotate(${minuteDeg} 50 50)`}
-                    />
-
-                    {/* Second Hand: Lighter Silver/Gray */}
-                    <line
-                        x1="50" y1="60"
-                        x2="50" y2="10"
-                        stroke="#cbd5e1"
-                        strokeWidth="0.8"
-                        strokeLinecap="round"
-                        transform={`rotate(${secondDeg} 50 50)`}
-                    />
-                    
-                    {/* Center Cap: Metallic Silver */}
-                    <circle cx="50" cy="50" r="2.5" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.5" />
-                </g>
-            </svg>
-        </div>
-    );
-};
 
 export default function TopSection({
     tasks,
@@ -445,13 +344,6 @@ export default function TopSection({
                         <LiveClock />
                     </SortableWidget>
                 );
-            case 'analog':
-                return (
-                    <SortableWidget id="analog" key="analog" isCustomizing={isCustomizing}>
-                        <div className="card-title">Analog Time</div>
-                        <AnalogClock />
-                    </SortableWidget>
-                );
             default:
                 return null;
         }
@@ -485,8 +377,7 @@ export default function TopSection({
                         { id: 'activity', label: 'Activity Score' },
                         { id: 'habits', label: 'Habits' },
                         { id: 'efficiency', label: 'Efficiency' }, 
-                        { id: 'clock', label: 'Digital Clock' },
-                        { id: 'analog', label: 'Analog Clock' }
+                        { id: 'clock', label: 'Digital Clock' }
                     ].map(w => (
                         <button
                             key={w.id}

@@ -356,7 +356,7 @@ export default function TopSection({
                                     {habits.map(habit => (
                                         <tr key={habit.id}>
                                             <td style={{ fontWeight: 600 }}>{habit.name}</td>
-                                            {habit.history.map((done, idx) => (
+                                            {(Array.isArray(habit.history) ? habit.history : Array(7).fill(false)).map((done, idx) => (
                                                 <td key={idx}>
                                                     <input
                                                         type="checkbox"

@@ -115,7 +115,7 @@ export const api = {
             id: Date.now().toString(),
             userId,
             name,
-            history: {},
+            history: Array(7).fill(false),
             createdAt: new Date().toISOString()
         };
         habits.push(newHabit);
@@ -166,14 +166,13 @@ export const api = {
     },
 
     async deleteGoal(id) {
-        // Since we don't have IDs in the frontend state for goals (just strings), 
-        // this might need adjustment, but for now we follow the existing pattern
         await delay(200);
+        let goals = getStore('prohub-data-goals');
+        // Filter out by ID if possible, otherwise we might need a better system if IDs aren't available
+        // Assuming ID is passed correctly (which it isn't currently from App.jsx, but let's fix the backend first)
+        const filtered = goals.filter(g => g.id !== id);
+        setStore('prohub-data-goals', filtered);
         return { success: true };
-        // Note: The App.jsx implementation for deleteGoal seems to rely on index,
-        // but calls api.deleteGoal(id). We might need to handle this carefully if we had real IDs.
-        // For local storage, if we update App.jsx to use IDs it would be better.
-        // But to keep App.jsx identical:
     },
 
     // Layout operations

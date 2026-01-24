@@ -75,6 +75,10 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                         <a href="/terms" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
                             Terms of Service
                         </a>
+                        {' • '}
+                        <a href="/tokusho" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
+                            特定商取引法に基づく表記
+                        </a>
                     </p>
                 </div>
             </div>

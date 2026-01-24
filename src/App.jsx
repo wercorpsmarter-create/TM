@@ -10,6 +10,7 @@ import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
 import Privacy from './Privacy';
 import Terms from './Terms';
+import Tokusho from './Tokusho';
 import './styles/main.css';
 
 // Helper to get YYYY-MM-DD in LOCAL time
@@ -51,6 +52,7 @@ function App() {
         const path = window.location.pathname;
         if (path === '/privacy') return 'privacy';
         if (path === '/terms') return 'terms';
+        if (path === '/tokusho') return 'tokusho';
         return 'dashboard';
     });
 
@@ -135,6 +137,7 @@ function App() {
             const path = window.location.pathname;
             if (path === '/privacy') setActiveTab('privacy');
             else if (path === '/terms') setActiveTab('terms');
+            else if (path === '/tokusho') setActiveTab('tokusho');
             else setActiveTab('dashboard');
         };
 
@@ -543,6 +546,7 @@ function App() {
     // Public Routes (No Login/Subscription Required)
     if (activeTab === 'privacy') return <Privacy />;
     if (activeTab === 'terms') return <Terms />;
+    if (activeTab === 'tokusho') return <Tokusho />;
 
     // Show subscription paywall first (before login)
     if (subscriptionStatus === 'none') {
@@ -743,6 +747,21 @@ function App() {
                         }}
                     >
                         Terms of Service
+                    </button>
+                    {' • '}
+                    <button
+                        onClick={() => { window.history.pushState({}, '', '/tokusho'); setActiveTab('tokusho'); }}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'inherit',
+                            textDecoration: 'underline',
+                            cursor: 'pointer',
+                            fontSize: 'inherit',
+                            padding: 0
+                        }}
+                    >
+                        特定商取引法に基づく表記
                     </button>
                 </div>
             </div>

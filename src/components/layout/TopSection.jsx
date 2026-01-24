@@ -312,6 +312,48 @@ export default function TopSection({
                     )}
                 </button>
             </div>
+
+            {isCustomizing && (
+                <div style={{
+                    display: 'flex',
+                    gap: '0.5rem',
+                    justifyContent: 'flex-end',
+                    marginBottom: '1rem',
+                    flexWrap: 'wrap'
+                }}>
+                    {[
+                        { id: 'goals', label: 'Weekly Goals' },
+                        { id: 'activity', label: 'Activity Score' },
+                        { id: 'habits', label: 'Habits' },
+                        { id: 'efficiency', label: 'Efficiency' }
+                    ].map(w => (
+                        <button
+                            key={w.id}
+                            onClick={() => {
+                                if (layout.includes(w.id)) {
+                                    setLayout(layout.filter(l => l !== w.id));
+                                } else {
+                                    setLayout([...layout, w.id]);
+                                }
+                            }}
+                            style={{
+                                padding: '0.4rem 0.8rem',
+                                borderRadius: '12px',
+                                border: `1px solid ${layout.includes(w.id) ? 'var(--primary)' : 'rgba(255,255,255,0.2)'}`,
+                                background: layout.includes(w.id) ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                color: layout.includes(w.id) ? 'white' : 'var(--text-muted)',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {w.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             <div className={`top-section ${isCustomizing ? 'customizing-overlap' : ''}`}>
                 <DndContext
                     sensors={sensors}

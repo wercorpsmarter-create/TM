@@ -75,6 +75,78 @@ const LiveClock = () => {
     );
 };
 
+const AnalogClock = () => {
+    const [date, setDate] = useState(new Date());
+
+    React.useEffect(() => {
+        const timer = setInterval(() => setDate(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const seconds = date.getSeconds();
+    const minutes = date.getMinutes();
+    const hours = date.getHours();
+
+    const secondDeg = (seconds / 60) * 360;
+    const minuteDeg = ((minutes + seconds / 60) / 60) * 360;
+    const hourDeg = ((hours % 12 + minutes / 60) / 12) * 360;
+
+    return (
+        <div style={{ height: '150px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <svg width="140" height="140" viewBox="0 0 100 100">
+                {/* Clock Face */}
+                <circle cx="50" cy="50" r="48" fill="none" stroke="var(--text-muted)" strokeWidth="2" opacity="0.2" />
+
+                {/* Hour Markers */}
+                {[...Array(12)].map((_, i) => (
+                    <line
+                        key={i}
+                        x1="50" y1="10"
+                        x2="50" y2="15"
+                        stroke="var(--text-muted)"
+                        strokeWidth="2"
+                        transform={`rotate(${i * 30} 50 50)`}
+                        opacity="0.5"
+                    />
+                ))}
+
+                {/* Hour Hand */}
+                <line
+                    x1="50" y1="50"
+                    x2="50" y2="25"
+                    stroke="var(--text-main)"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    transform={`rotate(${hourDeg} 50 50)`}
+                />
+
+                {/* Minute Hand */}
+                <line
+                    x1="50" y1="50"
+                    x2="50" y2="15"
+                    stroke="var(--text-main)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    transform={`rotate(${minuteDeg} 50 50)`}
+                />
+
+                {/* Second Hand */}
+                <line
+                    x1="50" y1="50"
+                    x2="50" y2="10"
+                    stroke="#ef4444"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    transform={`rotate(${secondDeg} 50 50)`}
+                />
+
+                {/* Center Dot */}
+                <circle cx="50" cy="50" r="3" fill="var(--text-main)" />
+            </svg>
+        </div>
+    );
+};
+
 export default function TopSection({
     tasks,
     habits,
@@ -343,6 +415,13 @@ export default function TopSection({
                         <LiveClock />
                     </SortableWidget>
                 );
+            case 'analog':
+                return (
+                    <SortableWidget id="analog" key="analog" isCustomizing={isCustomizing}>
+                        <div className="card-title">Analog Time</div>
+                        <AnalogClock />
+                    </SortableWidget>
+                );
             default:
                 return null;
         }
@@ -376,7 +455,9 @@ export default function TopSection({
                         { id: 'activity', label: 'Activity Score' },
                         { id: 'habits', label: 'Habits' },
                         { id: 'efficiency', label: 'Efficiency' },
-                        { id: 'clock', label: 'Time & Date' }
+                        { id: 'efficiency', label: 'Efficiency' },
+                        { id: 'clock', label: 'Digital Clock' },
+                        { id: 'analog', label: 'Analog Clock' }
                     ].map(w => (
                         <button
                             key={w.id}

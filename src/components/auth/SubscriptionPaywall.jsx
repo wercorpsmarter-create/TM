@@ -22,7 +22,7 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                     <div className="logo-container">
                         <ShieldCheck size={48} className="logo-icon active-icon" />
                     </div>
-                    <h1>Unlock Task Master Pro</h1>
+                    <h1>Unlock Task Master</h1>
                     <p className="subtitle">Start your 14-day free trial today</p>
                 </div>
 
@@ -31,21 +31,21 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                         <Zap size={20} className="feature-icon" />
                         <div>
                             <h4>Unlimited Power</h4>
-                            <p>Manage infinite tasks and habits</p>
+                            <p>Manage your tasks and habits</p>
                         </div>
                     </div>
                     <div className="feature-item">
                         <Clock size={20} className="feature-icon" />
                         <div>
-                            <h4>Smart Scheduling</h4>
-                            <p>AI-driven calendar synchronization</p>
+                            <h4>Google Calendar Sync</h4>
+                            <p>Sync your tasks and habits to your Google Calendar</p>
                         </div>
                     </div>
                 </div>
 
                 <div className="trial-details">
                     <div className="trial-badge">14 DAYS FREE</div>
-                    <p>After your trial, it's just $19.00/month. Cancel anytime.</p>
+                    <p>After your trial, it's just $6.00/month. Cancel anytime.</p>
                 </div>
 
                 <div className="login-actions">

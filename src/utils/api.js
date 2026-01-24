@@ -43,7 +43,7 @@ export const api = {
         } else {
             // Create new
             user = {
-                id: googleId, // Use googleId as userId for simplicity in local mode
+                id: googleId,
                 googleId,
                 email,
                 name,
@@ -175,18 +175,20 @@ export const api = {
         return { success: true };
     },
 
-    // Layout operations
+    // Layout operations (persisted per userId; never cleared on logout)
     async getLayout(userId) {
         await delay(200);
         const layouts = getStore('prohub-data-layouts');
-        const layout = layouts.find(l => l.userId === userId);
-        return layout ? layout.layout : ['goals', 'activity'];
+        if (!Array.isArray(layouts)) return ['goals', 'activity'];
+        const layout = layouts.find(l => l && l.userId === userId);
+        return layout && Array.isArray(layout.layout) ? layout.layout : ['goals', 'activity'];
     },
 
     async saveLayout(userId, layout) {
         await delay(200);
         let layouts = getStore('prohub-data-layouts');
-        const idx = layouts.findIndex(l => l.userId === userId);
+        if (!Array.isArray(layouts)) layouts = [];
+        const idx = layouts.findIndex(l => l && l.userId === userId);
         if (idx !== -1) {
             layouts[idx] = { userId, layout };
         } else {

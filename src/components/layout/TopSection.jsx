@@ -199,9 +199,9 @@ export default function TopSection({
 
                         <ul className="goals-list" style={{ marginBottom: isEditingGoals ? '3rem' : '1.5rem' }}>
                             {goals.map((g, i) => (
-                                <li key={i} className="goal-item-row">
+                                <li key={typeof g === 'object' && g?.id != null ? g.id : i} className="goal-item-row">
                                     <span className="goal-num">{i + 1}</span>
-                                    <span style={{ flex: 1 }}>{g}</span>
+                                    <span style={{ flex: 1 }}>{typeof g === 'string' ? g : (g?.text ?? '')}</span>
                                     {isEditingGoals && (
                                         <button onClick={() => onDeleteGoal(i)} className="btn-delete-small">
                                             <Trash2 size={12} />

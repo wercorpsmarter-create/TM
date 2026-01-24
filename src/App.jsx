@@ -218,15 +218,15 @@ function App() {
 
     // Update subscription status in database
     useEffect(() => {
-        if (userId && subscriptionStatus !== 'none') {
+        if (userId && subscriptionStatus !== 'none' && googleUser?.id) {
             api.createOrUpdateUser(
                 googleUser.email,
                 googleUser.name || googleUser.email.split('@')[0],
-                googleUser.email,
+                googleUser.id,
                 subscriptionStatus
             ).catch(console.error);
         }
-    }, [subscriptionStatus, userId]);
+    }, [subscriptionStatus, userId, googleUser?.id, googleUser?.email, googleUser?.name]);
 
     const login = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
@@ -296,7 +296,16 @@ function App() {
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
     });
 
-    const logout = () => {
+    const logout = async () => {
+        // Persist layout (and any pending writes) before clearing session.
+        // Never clear prohub-data-* localStorage — tasks, habits, goals, layouts stay per user.
+        if (userId && dashboardLayout.length > 0) {
+            try {
+                await api.saveLayout(userId, dashboardLayout);
+            } catch (e) {
+                console.error('Error saving layout on logout:', e);
+            }
+        }
         setGoogleUser(null);
         setCalendarList([]);
         setUserId(null);
@@ -450,22 +459,21 @@ function App() {
         if (!text.trim() || !userId) return;
 
         try {
-            await api.createGoal(userId, text, goals.length);
-            setGoals([...goals, text]);
+            const newGoal = await api.createGoal(userId, text, goals.length);
+            setGoals([...goals, newGoal]);
         } catch (error) {
             console.error('Error adding goal:', error);
         }
     };
 
     const deleteGoal = async (idx) => {
+        if (!userId) return;
+        const goal = goals[idx];
+        if (!goal) return;
+        const goalId = typeof goal === 'object' && goal.id != null ? goal.id : null;
         try {
-            // Note: We need to fetch the actual goal ID from the database
-            // For now, we'll reload goals after deletion
-            const goalsData = await api.getGoals(userId);
-            if (goalsData[idx]) {
-                // This is a simplified approach - in production you'd want to track goal IDs
-                setGoals(goals.filter((_, i) => i !== idx));
-            }
+            if (goalId) await api.deleteGoal(goalId);
+            setGoals(goals.filter((_, i) => i !== idx));
         } catch (error) {
             console.error('Error deleting goal:', error);
         }

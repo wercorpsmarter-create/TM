@@ -180,7 +180,7 @@ export const api = {
         await delay(200);
         const layouts = getStore('prohub-data-layouts');
         const layout = layouts.find(l => l.userId === userId);
-        return layout ? layout.layout : ['clock', 'goals', 'activity', 'habits', 'efficiency'];
+        return layout ? layout.layout : ['goals', 'activity'];
     },
 
     async saveLayout(userId, layout) {

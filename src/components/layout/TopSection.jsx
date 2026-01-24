@@ -331,7 +331,17 @@ export default function TopSection({
                                     </Pie>
                                 </PieChart>
                             </ResponsiveContainer>
-                            <div className="Weekly Overview-pct">
+                            <div className="weekly-overview-pct" style={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                fontSize: '1.5rem',
+                                fontWeight: 900,
+                                zIndex: 5,
+                                color: 'var(--text-main)',
+                                pointerEvents: 'none'
+                            }}>
                                 {isNaN(Math.round((completedCount / totalCount) * 100)) ? 0 : Math.round((completedCount / totalCount) * 100)}%
                             </div>
                         </div>

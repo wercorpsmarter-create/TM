@@ -306,10 +306,10 @@ export default function TopSection({
                         )}
                     </SortableWidget>
                 );
-            case 'efficiency':
+            case 'Weekly Overview':
                 return (
-                    <SortableWidget id="efficiency" key="efficiency" isCustomizing={isCustomizing}>
-                        <div className="card-title">Efficiency</div>
+                    <SortableWidget id="Weekly Overview" key="Weekly Overview" isCustomizing={isCustomizing}>
+                        <div className="card-title">Weekly Overview</div>
                         <div style={{ height: '150px', position: 'relative' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -331,7 +331,7 @@ export default function TopSection({
                                     </Pie>
                                 </PieChart>
                             </ResponsiveContainer>
-                            <div className="efficiency-pct">
+                            <div className="Weekly Overview-pct">
                                 {isNaN(Math.round((completedCount / totalCount) * 100)) ? 0 : Math.round((completedCount / totalCount) * 100)}%
                             </div>
                         </div>
@@ -376,7 +376,7 @@ export default function TopSection({
                         { id: 'goals', label: 'Weekly Goals' },
                         { id: 'activity', label: 'Activity Score' },
                         { id: 'habits', label: 'Habits' },
-                        { id: 'efficiency', label: 'Efficiency' }, 
+                        { id: 'Weekly Overview', label: 'Weekly Overview' }, 
                         { id: 'clock', label: 'Digital Clock' }
                     ].map(w => (
                         <button

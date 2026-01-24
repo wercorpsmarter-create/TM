@@ -65,14 +65,14 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                         <span>Already have an account? Login</span>
                     </button>
 
-                    <p className="login-footer">
+                    <p className="login-footer" style={{ color: '#9ca3af' }}>
                         Secure payment processing by Stripe
                         <br />
-                        <a href="https://privacy-policy-4xck.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
+                        <a href="/privacy" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
                             Privacy Policy
                         </a>
                         {' • '}
-                        <a href="https://privacy-policy-4xck.vercel.app/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
+                        <a href="/terms" style={{ color: 'inherit', textDecoration: 'underline', fontSize: '0.7rem', opacity: 0.7 }}>
                             Terms of Service
                         </a>
                     </p>

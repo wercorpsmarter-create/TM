@@ -98,7 +98,7 @@ const Terms = () => {
 
             <section style={{ marginTop: '3rem', borderTop: '2px solid rgba(255,255,255,0.2)', paddingTop: '20px' }}>
                 <h3 style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Contact Us</h3>
-                <p>Email: <a href="mailto:yuma.yoshida.tmc@gmail.com" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>yuma.yoshida.tmc@gmail.com</a></p>
+                <p>Email: <a href="mailto:wer.corp.smarter@gmail.com" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>wer.corp.smarter@gmail.com</a></p>
                 <button
                     onClick={handleBack}
                     style={{

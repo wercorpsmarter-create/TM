@@ -32,6 +32,49 @@ const SortableWidget = ({ id, children, isCustomizing }) => {
     );
 };
 
+const LiveClock = () => {
+    const [date, setDate] = useState(new Date());
+
+    // Update time every second
+    React.useEffect(() => {
+        const timer = setInterval(() => setDate(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '150px',
+            textAlign: 'center',
+            padding: '1rem'
+        }}>
+            <div style={{
+                fontSize: '2.5rem',
+                fontWeight: '900',
+                fontVariantNumeric: 'tabular-nums',
+                lineHeight: 1,
+                marginBottom: '0.5rem',
+                color: 'var(--text-main)',
+                letterSpacing: '-0.02em'
+            }}>
+                {date.toLocaleTimeString()}
+            </div>
+            <div style={{
+                fontSize: '0.85rem',
+                color: 'var(--text-muted)',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+            }}>
+                {date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
+        </div>
+    );
+};
+
 export default function TopSection({
     tasks,
     habits,
@@ -293,6 +336,13 @@ export default function TopSection({
                         </div>
                     </SortableWidget>
                 );
+            case 'clock':
+                return (
+                    <SortableWidget id="clock" key="clock" isCustomizing={isCustomizing}>
+                        <div className="card-title">Local Time</div>
+                        <LiveClock />
+                    </SortableWidget>
+                );
             default:
                 return null;
         }
@@ -325,7 +375,8 @@ export default function TopSection({
                         { id: 'goals', label: 'Weekly Goals' },
                         { id: 'activity', label: 'Activity Score' },
                         { id: 'habits', label: 'Habits' },
-                        { id: 'efficiency', label: 'Efficiency' }
+                        { id: 'efficiency', label: 'Efficiency' },
+                        { id: 'clock', label: 'Time & Date' }
                     ].map(w => (
                         <button
                             key={w.id}

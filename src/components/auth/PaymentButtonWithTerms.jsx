@@ -14,10 +14,16 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
         setIsChecked(false);
     };
 
+    const [shake, setShake] = useState(false);
+
     const handleContinue = () => {
         if (isChecked) {
             handleCloseModal();
             onCheckout();
+        } else {
+            setShake(true);
+            setTimeout(() => setShake(false), 500);
+            // Optional: alert('Please agree to the terms to continue.');
         }
     };
 
@@ -97,7 +103,8 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                             width: '100%',
                             padding: '2rem',
                             position: 'relative',
-                            animation: 'slideUp 0.3s ease-out',
+                            animation: shake ? 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both' : 'slideUp 0.3s ease-out',
+                            transform: shake ? 'translate3d(0, 0, 0)' : 'none',
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -244,7 +251,6 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                             </button>
                             <button
                                 onClick={handleContinue}
-                                disabled={!isChecked}
                                 style={{
                                     flex: 1,
                                     padding: '0.875rem',
@@ -256,7 +262,7 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                                     borderRadius: '10px',
                                     fontSize: '1rem',
                                     fontWeight: '600',
-                                    cursor: isChecked ? 'pointer' : 'not-allowed',
+                                    cursor: 'pointer',
                                     transition: 'all 0.2s',
                                     boxShadow: isChecked ? '0 4px 15px rgba(96, 165, 250, 0.4)' : 'none',
                                 }}
@@ -292,6 +298,12 @@ export default function PaymentButtonWithTerms({ onCheckout }) {
                 opacity: 1;
                 transform: translateY(0);
               }
+            }
+            @keyframes shake {
+              10%, 90% { transform: translate3d(-1px, 0, 0); }
+              20%, 80% { transform: translate3d(2px, 0, 0); }
+              30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+              40%, 60% { transform: translate3d(4px, 0, 0); }
             }
           `}</style>
                 </div>

@@ -85,7 +85,7 @@ export default function TopSection({
         const dayTasks = tasks.filter(t => t.date === columnDateStr);
         const dayCompleted = dayTasks.filter(t => t.status === 'Completed').length;
         const score = dayTasks.length > 0 ? (dayCompleted / dayTasks.length) * 100 : 0;
-        return { name: day, progress: score };
+        return { name: day, progress: isNaN(score) ? 0 : score };
     });
 
     // Overall Progress (Donut)
@@ -288,7 +288,7 @@ export default function TopSection({
                                 </PieChart>
                             </ResponsiveContainer>
                             <div className="efficiency-pct">
-                                {Math.round((completedCount / totalCount) * 100)}%
+                                {isNaN(Math.round((completedCount / totalCount) * 100)) ? 0 : Math.round((completedCount / totalCount) * 100)}%
                             </div>
                         </div>
                     </SortableWidget>

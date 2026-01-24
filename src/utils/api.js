@@ -37,7 +37,7 @@ export const api = {
                 ...users[existingIndex],
                 name,
                 googleId,
-                subscriptionStatus
+                subscription_status: subscriptionStatus
             };
             user = users[existingIndex];
         } else {
@@ -47,7 +47,7 @@ export const api = {
                 googleId,
                 email,
                 name,
-                subscriptionStatus,
+                subscription_status: subscriptionStatus,
                 createdAt: new Date().toISOString()
             };
             users.push(user);

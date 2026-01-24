@@ -59,7 +59,61 @@ function App() {
     const [goals, setGoals] = useState([]);
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity', 'habits', 'efficiency']);
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
-    const [subscriptionStatus, setSubscriptionStatus] = useState('none');
+    const [subscriptionStatus, setSubscriptionStatus] = useState(() => {
+        // Check local storage primarily
+        try {
+            const storedUser = localStorage.getItem('prohub-google-user-v2');
+            if (storedUser && storedUser !== 'null') return 'checking';
+        } catch (e) {
+            console.error('Error checking local storage:', e);
+        }
+
+        // If query params exist, we enter "checking" state to verify them
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('session_id') || urlParams.get('success') === 'true') {
+            return 'checking';
+        }
+
+        return 'none';
+    });
+
+    // Verify Payment Session on Mount
+    useEffect(() => {
+        const verifyPayment = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+
+            if (sessionId) {
+                try {
+                    const res = await fetch('/api/verify_payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: sessionId })
+                    });
+                    const data = await res.json();
+                    if (data.verified) {
+                        setSubscriptionStatus('trialing');
+                    } else {
+                        console.error('Payment verification failed:', data);
+                        setSubscriptionStatus('none');
+                    }
+
+                    // Always clean up URL to prevent reload loops
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (err) {
+                    console.error('Verification error:', err);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    setSubscriptionStatus('none');
+                }
+            } else {
+                setSubscriptionStatus('none');
+            }
+        };
+
+        if (subscriptionStatus === 'checking') {
+            verifyPayment();
+        }
+    }, [subscriptionStatus]);
     const [userId, setUserId] = useState(null);
     const [dataLoading, setDataLoading] = useState(false);
     const [lastCleanupDate, setLastCleanupDate] = useState('');
@@ -73,7 +127,7 @@ function App() {
         if (googleUser?.email) {
             loadUserData();
         }
-    }, [googleUser]);
+    }, [googleUser, subscriptionStatus]);
 
     // Handle browser back/forward navigation
     useEffect(() => {
@@ -89,13 +143,18 @@ function App() {
     }, []);
 
     const loadUserData = async () => {
-        if (!googleUser?.email || !googleUser?.id) return;
+        if (!googleUser?.email || !googleUser.id) return;
 
         setDataLoading(true);
         try {
             // Create or get user from database
             const googleId = googleUser.id; // Use Google's user ID
             let user = await api.getUser(googleId);
+
+            // CRITICAL FIX: If we just subscribed (status is 'trialing'), and the DB user 
+            // has 'none' or doesn't exist, we must ensure we SAVE 'trialing' to the DB 
+            // and use it, rather than letting the DB overwrite our success state.
+            const isJustSubscribed = subscriptionStatus === 'trialing';
 
             if (!user) {
                 user = await api.createOrUpdateUser(
@@ -104,9 +163,18 @@ function App() {
                     googleId,
                     subscriptionStatus
                 );
+            } else if (isJustSubscribed && (user.subscription_status === 'none' || !user.subscription_status)) {
+                // Upgrade the existing user to trialing
+                user = await api.createOrUpdateUser(
+                    user.email,
+                    user.name || googleUser.name,
+                    googleId,
+                    'trialing'
+                );
             }
 
             setUserId(user.id);
+            // Only set from user if we didn't just forced it to trialing
             setSubscriptionStatus(user.subscription_status || 'none');
 
             // Load all user data
@@ -210,6 +278,7 @@ function App() {
                 }
 
                 // User is valid - proceed with login
+                setSubscriptionStatus(existingUser.subscription_status);
                 const completeUserData = {
                     ...tokenResponse,
                     email: userInfo.email,
@@ -263,30 +332,26 @@ function App() {
         }
     };
 
-    const handleSubscribe = async () => {
-        // Mock payment flow for local development
-        try {
-            // Simulate delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
+    const handleSubscribe = () => {
+        // TODO: Replace this with your actual Stripe Payment Link
+        // Important: In your Stripe Dashboard, set the "Success URL" to: 
+        // https://your-domain.vercel.app/?success=true
+        const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/test_5kQ6oH9QedmedHpgtEcQU00';
 
-            // Redirect to success URL
+        if (STRIPE_CHECKOUT_URL === 'INSERT_YOUR_STRIPE_LINK_HERE') {
+            alert("Please configure your Stripe Payment Link in App.jsx (Line ~286)");
+            console.log("Mocking success for testing...");
+            // Fallback for testing until link is added
             const url = new URL(window.location.href);
             url.searchParams.set('success', 'true');
             window.location.href = url.toString();
-        } catch (error) {
-            console.error('Subscription error:', error);
-            alert('Error simulating subscription.');
+            return;
         }
+
+        window.location.href = STRIPE_CHECKOUT_URL;
     };
 
-    // Check for subscription success on load
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('success') === 'true') {
-            setSubscriptionStatus('trialing');
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-    }, []);
+    // URL parameter handled in initial state to prevent race conditions
 
     const importFromCalendar = async (calendarId, accessToken = googleUser?.access_token) => {
         if (!accessToken) return;
@@ -474,11 +539,14 @@ function App() {
 
     // Then require Google login
     if (!googleUser) {
-        return <LoginScreen onLogin={login} />;
+        return <LoginScreen
+            onLogin={login}
+            isPostPayment={subscriptionStatus === 'trialing'}
+        />;
     }
 
 
-    if (dataLoading) {
+    if (dataLoading || subscriptionStatus === 'checking') {
         return (
             <div style={{
                 minHeight: '100vh',

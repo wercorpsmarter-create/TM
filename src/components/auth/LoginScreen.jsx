@@ -1,7 +1,7 @@
 import React from 'react';
-import { Calendar, Shield, Zap, ArrowRight } from 'lucide-react';
+import { Calendar, Shield, Zap, ArrowRight, CheckCircle } from 'lucide-react';
 
-const LoginScreen = ({ onLogin }) => {
+const LoginScreen = ({ onLogin, isPostPayment }) => {
     return (
         <div className="login-screen">
             <div className="login-content glass-card">
@@ -9,8 +9,12 @@ const LoginScreen = ({ onLogin }) => {
                     <div className="logo-container">
                         <Calendar size={48} className="logo-icon" />
                     </div>
-                    <h1>Task Master</h1>
-                    <p className="subtitle">Master Your Productivity Journey</p>
+                    <h1>{isPostPayment ? 'Payment Successful!' : 'Task Master'}</h1>
+                    <p className="subtitle">
+                        {isPostPayment
+                            ? 'Please sign in to finalize your account setup'
+                            : 'Master Your Productivity Journey'}
+                    </p>
                 </div>
 
                 <div className="features-grid">
@@ -32,7 +36,7 @@ const LoginScreen = ({ onLogin }) => {
 
                 <div className="login-actions">
                     <button className="login-btn" onClick={onLogin}>
-                        <span>Get Started with Google</span>
+                        <span>{isPostPayment ? 'Activate My Account' : 'Get Started with Google'}</span>
                         <ArrowRight size={18} />
                     </button>
                     <p className="login-footer">

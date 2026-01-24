@@ -179,8 +179,6 @@ const AnalogClock = () => {
     );
 };
 
-export default AnalogClock;
-
 export default function TopSection({
     tasks,
     habits,

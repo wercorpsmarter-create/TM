@@ -92,30 +92,40 @@ const AnalogClock = () => {
     const hourDeg = ((hours % 12 + minutes / 60) / 12) * 360;
 
     return (
-        <div style={{ height: '150px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <svg width="140" height="140" viewBox="0 0 100 100">
-                {/* Clock Face */}
-                <circle cx="50" cy="50" r="48" fill="none" stroke="var(--text-muted)" strokeWidth="2" opacity="0.2" />
+        <div style={{ height: '100%', minHeight: '160px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <svg width="150" height="150" viewBox="0 0 100 100" style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }}>
+                <defs>
+                    <linearGradient id="clockFaceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#f8fafc" />
+                        <stop offset="100%" stopColor="#cbd5e1" />
+                    </linearGradient>
+                </defs>
 
-                {/* Hour Markers */}
+                {/* Clock Face with Gradient */}
+                <circle cx="50" cy="50" r="48" fill="url(#clockFaceGradient)" stroke="#e2e8f0" strokeWidth="0.5" />
+
+                {/* Hour Markers - Clean & Modern */}
                 {[...Array(12)].map((_, i) => (
                     <line
                         key={i}
-                        x1="50" y1="10"
-                        x2="50" y2="15"
-                        stroke="var(--text-muted)"
-                        strokeWidth="2"
+                        x1="50" y1="6"
+                        x2="50" y2={i % 3 === 0 ? "14" : "10"}
+                        stroke="#334155"
+                        strokeWidth={i % 3 === 0 ? "2" : "1"}
                         transform={`rotate(${i * 30} 50 50)`}
-                        opacity="0.5"
+                        strokeLinecap="round"
+                        opacity="0.8"
                     />
                 ))}
+
+                {/* Hands Shadow for Depth */}
 
                 {/* Hour Hand */}
                 <line
                     x1="50" y1="50"
-                    x2="50" y2="25"
-                    stroke="var(--text-main)"
-                    strokeWidth="4"
+                    x2="50" y2="24"
+                    stroke="#1e293b"
+                    strokeWidth="3.5"
                     strokeLinecap="round"
                     transform={`rotate(${hourDeg} 50 50)`}
                 />
@@ -123,25 +133,26 @@ const AnalogClock = () => {
                 {/* Minute Hand */}
                 <line
                     x1="50" y1="50"
-                    x2="50" y2="15"
-                    stroke="var(--text-main)"
-                    strokeWidth="3"
+                    x2="50" y2="14"
+                    stroke="#334155"
+                    strokeWidth="2.5"
                     strokeLinecap="round"
                     transform={`rotate(${minuteDeg} 50 50)`}
                 />
 
-                {/* Second Hand */}
+                {/* Second Hand - Sleek Dark Red */}
                 <line
-                    x1="50" y1="50"
+                    x1="50" y1="60"
                     x2="50" y2="10"
                     stroke="#ef4444"
-                    strokeWidth="1.5"
+                    strokeWidth="1"
                     strokeLinecap="round"
                     transform={`rotate(${secondDeg} 50 50)`}
+                    opacity="0.9"
                 />
 
-                {/* Center Dot */}
-                <circle cx="50" cy="50" r="3" fill="var(--text-main)" />
+                {/* Center Pin - Metallic look */}
+                <circle cx="50" cy="50" r="2" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" />
             </svg>
         </div>
     );

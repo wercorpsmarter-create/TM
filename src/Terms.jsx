@@ -4,11 +4,16 @@ const Terms = () => {
     const containerStyle = {
         maxWidth: '800px',
         margin: '0 auto',
-        padding: '40px 20px',
+        padding: '40px 40px',
         fontFamily: 'sans-serif',
-        color: 'white',
+        color: '#0f172a', // Black text
         lineHeight: '1.6',
-        textAlign: 'left'
+        textAlign: 'left',
+        background: 'white',
+        borderRadius: '16px',
+        marginTop: '2rem',
+        marginBottom: '2rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
     };
 
     const handleBack = () => {
@@ -22,12 +27,12 @@ const Terms = () => {
             <p style={{ color: '#999', marginBottom: '2rem' }}>Last Updated: January 22, 2026</p>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 1: Introduction</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 1: Introduction</h2>
                 <p>These Terms of Service (hereinafter referred to as the "Terms") set forth the terms and conditions for the use of the task management service "Task Master" (hereinafter referred to as the "Service") provided by Task Master (hereinafter referred to as the "Company"). Users agree to these Terms by using the Service.</p>
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 2: Service and Fees</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 2: Service and Fees</h2>
                 <ol style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
                     <li style={{ marginBottom: '0.75rem' }}>The Service is a monthly subscription. Users shall pay the usage fees via the designated payment method (e.g., Stripe).</li>
                     <li style={{ marginBottom: '0.75rem' }}><strong>No Refunds:</strong> Usage fees paid are <strong>non-refundable</strong> for any reason whatsoever. No pro-rated refunds will be issued.</li>
@@ -36,7 +41,7 @@ const Terms = () => {
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 3: User Accounts</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 3: User Accounts</h2>
                 <ol style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
                     <li style={{ marginBottom: '0.75rem' }}>Users must register with accurate information and maintain the confidentiality of their account credentials.</li>
                     <li style={{ marginBottom: '0.75rem' }}>Users are responsible for all activities that occur under their account.</li>
@@ -45,7 +50,7 @@ const Terms = () => {
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 4: Prohibited Acts</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 4: Prohibited Acts</h2>
                 <p style={{ marginBottom: '0.5rem' }}>Users shall not engage in the following acts:</p>
                 <ul style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
                     <li style={{ marginBottom: '0.5rem' }}>Illegal acts or criminal activity</li>
@@ -59,12 +64,12 @@ const Terms = () => {
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 5: Suspension and Termination</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 5: Suspension and Termination</h2>
                 <p>The Company may suspend or terminate a User's account without prior notice for violation of these Terms, provision of false registration information, failure to pay fees, or any other reason the Company deems appropriate. No refunds will be issued upon termination.</p>
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 6: Disclaimer and Limitation of Liability</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 6: Disclaimer and Limitation of Liability</h2>
                 <ol style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
                     <li style={{ marginBottom: '0.75rem' }}><strong>Service Availability:</strong> The Company does not guarantee that the Service will be available at all times without interruption or error.</li>
                     <li style={{ marginBottom: '0.75rem' }}><strong>Data Loss:</strong> The Company shall not be liable for any loss or alteration of data stored by the User. Users are responsible for backing up their own data.</li>
@@ -74,17 +79,17 @@ const Terms = () => {
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 7: Intellectual Property</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 7: Intellectual Property</h2>
                 <p>All intellectual property rights in the Service, including but not limited to software, design, trademarks, and content, belong to the Company or its licensors. Users are granted a limited, non-exclusive, non-transferable license to use the Service.</p>
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 8: Changes to Terms</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 8: Changes to Terms</h2>
                 <p>The Company may modify these Terms at any time. Users will be notified of significant changes via email or through the Service. Continued use of the Service after such changes constitutes acceptance of the modified Terms.</p>
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '10px', marginBottom: '1rem' }}>Article 9: Governing Law and Jurisdiction</h2>
+                <h2 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '1rem' }}>Article 9: Governing Law and Jurisdiction</h2>
                 <ol style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
                     <li style={{ marginBottom: '0.75rem' }}>These Terms shall be interpreted in accordance with the laws of <strong>Japan</strong>.</li>
                     <li style={{ marginBottom: '0.75rem' }}>In the event of any dispute, the <strong>Tokyo District Court</strong> shall be the exclusive agreed court of the first instance.</li>
@@ -100,12 +105,10 @@ const Terms = () => {
                         marginTop: '20px',
                         padding: '10px 20px',
                         cursor: 'pointer',
-                        background: 'var(--glass-bg)',
-                        border: '1px solid var(--glass-border)',
+                        fontWeight: 500,
+                        background: '#0f172a', // Dark button against white bg
                         color: 'white',
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: '0.9rem',
-                        fontWeight: 500
+                        border: 'none',
                     }}
                 >
                     Back to App

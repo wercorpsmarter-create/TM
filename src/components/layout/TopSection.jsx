@@ -75,8 +75,6 @@ const LiveClock = () => {
     );
 };
 
-import React, { useState, useEffect } from 'react';
-
 const AnalogClock = () => {
     const [date, setDate] = useState(new Date());
 

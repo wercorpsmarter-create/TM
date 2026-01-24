@@ -75,10 +75,12 @@ const LiveClock = () => {
     );
 };
 
+import React, { useState, useEffect } from 'react';
+
 const AnalogClock = () => {
     const [date, setDate] = useState(new Date());
 
-    React.useEffect(() => {
+    useEffect(() => {
         const timer = setInterval(() => setDate(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
@@ -92,71 +94,92 @@ const AnalogClock = () => {
     const hourDeg = ((hours % 12 + minutes / 60) / 12) * 360;
 
     return (
-        <div style={{ height: '100%', minHeight: '160px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <svg width="150" height="150" viewBox="0 0 100 100" style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }}>
+        <div style={{ height: '100%', minHeight: '300px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'transparent' }}>
+            <svg width="300" height="300" viewBox="0 0 100 100" style={{ filter: 'drop-shadow(0px 10px 15px rgba(0,0,0,0.05))' }}>
                 <defs>
-                    <linearGradient id="clockFaceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#f8fafc" />
-                        <stop offset="100%" stopColor="#cbd5e1" />
+                    {/* Shadow for the hands and markers to give them 3D depth like the image */}
+                    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur in="SourceAlpha" stdDeviation="0.5" />
+                        <feOffset dx="0.2" dy="0.5" result="offsetblur" />
+                        <feComponentTransfer>
+                            <feFuncA type="linear" slope="0.3" />
+                        </feComponentTransfer>
+                        <feMerge>
+                            <feMergeNode />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                    
+                    {/* Glassy Gradient for Face */}
+                    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#ffffff" />
+                        <stop offset="100%" stopColor="#f1f5f9" />
                     </linearGradient>
                 </defs>
 
-                {/* Clock Face with Gradient */}
-                <circle cx="50" cy="50" r="48" fill="url(#clockFaceGradient)" stroke="#e2e8f0" strokeWidth="0.5" />
+                {/* Clock Face: Clean White Glass */}
+                <circle cx="50" cy="50" r="48" fill="url(#glassGradient)" stroke="#cbd5e1" strokeWidth="0.5" />
 
-                {/* Hour Markers - Clean & Modern */}
-                {[...Array(12)].map((_, i) => (
-                    <line
-                        key={i}
-                        x1="50" y1="6"
-                        x2="50" y2={i % 3 === 0 ? "14" : "10"}
-                        stroke="#334155"
-                        strokeWidth={i % 3 === 0 ? "2" : "1"}
-                        transform={`rotate(${i * 30} 50 50)`}
-                        strokeLinecap="round"
-                        opacity="0.8"
+                {/* Hour Markers */}
+                {[...Array(12)].map((_, i) => {
+                    const rotation = i * 30;
+                    const isTwelve = i === 0;
+
+                    return (
+                        <g key={i} transform={`rotate(${rotation} 50 50)`} filter="url(#dropShadow)">
+                            {isTwelve ? (
+                                // Double Bar for 12 o'clock
+                                <>
+                                    <rect x="47.5" y="6" width="2" height="12" fill="#94a3b8" rx="0.5" />
+                                    <rect x="50.5" y="6" width="2" height="12" fill="#94a3b8" rx="0.5" />
+                                </>
+                            ) : (
+                                // Single Bar for other hours
+                                <rect x="49" y="6" width="2" height="12" fill="#94a3b8" rx="0.5" />
+                            )}
+                        </g>
+                    );
+                })}
+
+                {/* Hands Container (Centered) */}
+                <g filter="url(#dropShadow)">
+                    {/* Hour Hand: Slate Gray, Thicker */}
+                    <rect
+                        x="48.5" y="25"
+                        width="3" height="25"
+                        fill="#64748b"
+                        rx="1"
+                        transform={`rotate(${hourDeg} 50 50)`}
                     />
-                ))}
 
-                {/* Hands Shadow for Depth */}
+                    {/* Minute Hand: Slate Gray, Long and Thin */}
+                    <rect
+                        x="49" y="12"
+                        width="2" height="38"
+                        fill="#64748b"
+                        rx="1"
+                        transform={`rotate(${minuteDeg} 50 50)`}
+                    />
 
-                {/* Hour Hand */}
-                <line
-                    x1="50" y1="50"
-                    x2="50" y2="24"
-                    stroke="#1e293b"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                    transform={`rotate(${hourDeg} 50 50)`}
-                />
-
-                {/* Minute Hand */}
-                <line
-                    x1="50" y1="50"
-                    x2="50" y2="14"
-                    stroke="#334155"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    transform={`rotate(${minuteDeg} 50 50)`}
-                />
-
-                {/* Second Hand - Sleek Dark Red */}
-                <line
-                    x1="50" y1="60"
-                    x2="50" y2="10"
-                    stroke="#ef4444"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    transform={`rotate(${secondDeg} 50 50)`}
-                    opacity="0.9"
-                />
-
-                {/* Center Pin - Metallic look */}
-                <circle cx="50" cy="50" r="2" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" />
+                    {/* Second Hand: Lighter Silver/Gray */}
+                    <line
+                        x1="50" y1="60"
+                        x2="50" y2="10"
+                        stroke="#cbd5e1"
+                        strokeWidth="0.8"
+                        strokeLinecap="round"
+                        transform={`rotate(${secondDeg} 50 50)`}
+                    />
+                    
+                    {/* Center Cap: Metallic Silver */}
+                    <circle cx="50" cy="50" r="2.5" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.5" />
+                </g>
             </svg>
         </div>
     );
 };
+
+export default AnalogClock;
 
 export default function TopSection({
     tasks,
@@ -465,8 +488,7 @@ export default function TopSection({
                         { id: 'goals', label: 'Weekly Goals' },
                         { id: 'activity', label: 'Activity Score' },
                         { id: 'habits', label: 'Habits' },
-                        { id: 'efficiency', label: 'Efficiency' },
-                        { id: 'efficiency', label: 'Efficiency' },
+                        { id: 'efficiency', label: 'Efficiency' }, 
                         { id: 'clock', label: 'Digital Clock' },
                         { id: 'analog', label: 'Analog Clock' }
                     ].map(w => (

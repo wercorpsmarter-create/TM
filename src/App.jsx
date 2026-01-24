@@ -57,7 +57,7 @@ function App() {
     const [tasks, setTasks] = useState([]);
     const [habits, setHabits] = useState([]);
     const [goals, setGoals] = useState([]);
-    const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity', 'habits', 'efficiency']);
+    const [dashboardLayout, setDashboardLayout] = useState(['clock', 'goals', 'activity', 'habits', 'efficiency']);
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
     const [subscriptionStatus, setSubscriptionStatus] = useState(() => {
         // Check local storage primarily

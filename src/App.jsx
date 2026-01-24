@@ -532,6 +532,10 @@ function App() {
     };
 
 
+    // Public Routes (No Login/Subscription Required)
+    if (activeTab === 'privacy') return <Privacy />;
+    if (activeTab === 'terms') return <Terms />;
+
     // Show subscription paywall first (before login)
     if (subscriptionStatus === 'none') {
         return <SubscriptionPaywall onSubscribe={handleSubscribe} onLogin={loginExistingUser} />;

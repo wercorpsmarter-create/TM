@@ -2,6 +2,8 @@ import React from 'react';
 import { Calendar, Shield, Zap, ArrowRight, CheckCircle } from 'lucide-react';
 
 const LoginScreen = ({ onLogin, isPostPayment }) => {
+    const [agreed, setAgreed] = React.useState(false);
+
     return (
         <div className="login-screen">
             <div className="login-content glass-card">
@@ -40,14 +42,8 @@ const LoginScreen = ({ onLogin, isPostPayment }) => {
                             type="checkbox"
                             id="terms-check"
                             style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                            onChange={(e) => {
-                                const btn = document.getElementById('google-login-btn');
-                                if (btn) {
-                                    btn.disabled = !e.target.checked;
-                                    btn.style.opacity = e.target.checked ? '1' : '0.5';
-                                    btn.style.pointerEvents = e.target.checked ? 'auto' : 'none';
-                                }
-                            }}
+                            checked={agreed}
+                            onChange={(e) => setAgreed(e.target.checked)}
                         />
                         <label htmlFor="terms-check" style={{ fontSize: '0.9rem', color: '#666' }}>
                             I agree to the <a href="/terms" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms</a> and <a href="/privacy" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</a>
@@ -55,11 +51,14 @@ const LoginScreen = ({ onLogin, isPostPayment }) => {
                     </div>
 
                     <button
-                        id="google-login-btn"
                         className="login-btn"
                         onClick={onLogin}
-                        disabled={true}
-                        style={{ opacity: 0.5, pointerEvents: 'none', transition: 'all 0.3s' }}
+                        disabled={!agreed}
+                        style={{
+                            opacity: agreed ? 1 : 0.5,
+                            pointerEvents: agreed ? 'auto' : 'none',
+                            transition: 'all 0.3s'
+                        }}
                     >
                         <span>Sign in with Google</span>
                         <ArrowRight size={18} />

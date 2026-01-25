@@ -95,6 +95,8 @@ function App() {
                     const data = await res.json();
                     if (data.verified) {
                         setSubscriptionStatus('trialing');
+                        // PERSIST INTENT: Save that they just paid, so if OAuth redirects/reloads, we remember.
+                        localStorage.setItem('prohub-signup-intent', 'trialing');
                     } else {
                         console.error('Payment verification failed:', data);
                         setSubscriptionStatus('none');
@@ -154,17 +156,17 @@ function App() {
             const googleId = googleUser.id; // Use Google's user ID
             let user = await api.getUser(googleId);
 
-            // CRITICAL FIX: If we just subscribed (status is 'trialing'), and the DB user 
-            // has 'none' or doesn't exist, we must ensure we SAVE 'trialing' to the DB 
-            // and use it, rather than letting the DB overwrite our success state.
-            const isJustSubscribed = subscriptionStatus === 'trialing';
+            // CHECK SIGNUP INTENT: Did they just pay?
+            const storedIntent = localStorage.getItem('prohub-signup-intent');
+            // We consider them "just subscribed" if React state says so OR local storage says so
+            const isJustSubscribed = subscriptionStatus === 'trialing' || storedIntent === 'trialing';
 
             if (!user) {
                 user = await api.createOrUpdateUser(
                     googleUser.email,
                     googleUser.name || googleUser.email.split('@')[0],
                     googleId,
-                    subscriptionStatus
+                    isJustSubscribed ? 'trialing' : subscriptionStatus // If creating new, use 'trialing' if intent exists
                 );
             } else if (isJustSubscribed && (user.subscription_status === 'none' || !user.subscription_status)) {
                 // Upgrade the existing user to trialing
@@ -174,6 +176,11 @@ function App() {
                     googleId,
                     'trialing'
                 );
+            }
+
+            // CONSUME INTENT: Once used, clear it so we don't upgrade them forever accidentally
+            if (storedIntent) {
+                localStorage.removeItem('prohub-signup-intent');
             }
 
             setUserId(user.id);
@@ -316,6 +323,7 @@ function App() {
         setHabits([]);
         setGoals([]);
         setSubscriptionStatus('none');
+        localStorage.removeItem('prohub-signup-intent');
     };
 
 

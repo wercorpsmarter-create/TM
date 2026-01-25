@@ -68,6 +68,14 @@ function App() {
             return 'checking';
         }
 
+        // SIGNUP INTENT: Check if they just paid
+        try {
+            const intent = localStorage.getItem('prohub-signup-intent');
+            if (intent === 'trialing') return 'trialing';
+        } catch (e) {
+            console.error('Error checking intent:', e);
+        }
+
         // Check local storage primarily
         try {
             const storedUser = localStorage.getItem('prohub-google-user-v2');

@@ -564,17 +564,15 @@ function App() {
     if (activeTab === 'terms') return <Terms />;
     if (activeTab === 'tokusho') return <Tokusho />;
 
-    // Show subscription paywall first (before login)
-    if (subscriptionStatus === 'none') {
-        return <SubscriptionPaywall onSubscribe={handleSubscribe} onLogin={loginExistingUser} />;
+    // 1. Require Google Login FIRST (Auth)
+    if (!googleUser) {
+        return <LoginScreen onLogin={login} isPostPayment={false} />;
     }
 
-    // Then require Google login
-    if (!googleUser) {
-        return <LoginScreen
-            onLogin={login}
-            isPostPayment={subscriptionStatus === 'trialing'}
-        />;
+    // 2. Require Subscription SECOND (Payment)
+    // If we have a user but no subscription, show the Paywall
+    if (subscriptionStatus === 'none') {
+        return <SubscriptionPaywall onSubscribe={handleSubscribe} onLogin={login} />;
     }
 
 

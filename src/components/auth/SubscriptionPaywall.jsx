@@ -51,19 +51,7 @@ const SubscriptionPaywall = ({ onSubscribe, onLogin }) => {
                 <div className="login-actions">
                     <PaymentButtonWithTerms onCheckout={handleStartTrial} />
 
-                    <button
-                        className="login-btn"
-                        onClick={onLogin}
-                        disabled={loading}
-                        style={{
-                            background: '#000000',
-                            color: '#ffffff',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            marginTop: '1rem'
-                        }}
-                    >
-                        <span>Already have an account? Login</span>
-                    </button>
+
 
                     <p className="login-footer" style={{ color: '#9ca3af' }}>
                         Secure payment processing by Stripe

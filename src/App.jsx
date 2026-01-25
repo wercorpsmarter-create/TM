@@ -62,18 +62,18 @@ function App() {
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity']);
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
     const [subscriptionStatus, setSubscriptionStatus] = useState(() => {
-        // Check local storage primarily
-        try {
-            const storedUser = localStorage.getItem('prohub-google-user-v2');
-            if (storedUser && storedUser !== 'null') return 'checking';
-        } catch (e) {
-            console.error('Error checking local storage:', e);
-        }
-
         // If query params exist, we enter "checking" state to verify them
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('session_id') || urlParams.get('success') === 'true') {
             return 'checking';
+        }
+
+        // Check local storage primarily
+        try {
+            const storedUser = localStorage.getItem('prohub-google-user-v2');
+            if (storedUser && storedUser !== 'null') return 'restoring';
+        } catch (e) {
+            console.error('Error checking local storage:', e);
         }
 
         return 'none';
@@ -562,7 +562,7 @@ function App() {
     }
 
 
-    if (dataLoading || subscriptionStatus === 'checking') {
+    if (dataLoading || subscriptionStatus === 'checking' || subscriptionStatus === 'restoring') {
         return (
             <div style={{
                 minHeight: '100vh',

@@ -174,7 +174,7 @@ function App() {
                     googleUser.email,
                     googleUser.name || googleUser.email.split('@')[0],
                     googleId,
-                    isJustSubscribed ? 'trialing' : subscriptionStatus // If creating new, use 'trialing' if intent exists
+                    'trialing' // Auto-grant trial access since paywall is removed
                 );
             } else if (isJustSubscribed && (user.subscription_status === 'none' || !user.subscription_status)) {
                 // Upgrade the existing user to trialing
@@ -569,11 +569,8 @@ function App() {
         return <LoginScreen onLogin={login} isPostPayment={false} />;
     }
 
-    // 2. Require Subscription SECOND (Payment)
-    // If we have a user but no subscription, show the Paywall
-    if (subscriptionStatus === 'none') {
-        return <SubscriptionPaywall onSubscribe={handleSubscribe} onLogin={login} />;
-    }
+    // 2. (REMOVED) Subscription Payment Screen
+    // Direct access to Dashboard logic follows...
 
 
     if (dataLoading || subscriptionStatus === 'checking' || subscriptionStatus === 'restoring') {

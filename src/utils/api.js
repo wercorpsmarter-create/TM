@@ -64,7 +64,7 @@ export const api = {
         return tasks.filter(t => t.userId === userId);
     },
 
-    async createTask(userId, title, date, status = 'Pending') {
+    async createTask(userId, title, date, status = 'Pending', metadata = {}) {
         await delay(200);
         const tasks = getStore('prohub-data-tasks');
         const newTask = {
@@ -73,6 +73,7 @@ export const api = {
             title,
             date,
             status,
+            metadata,
             createdAt: new Date().toISOString()
         };
         tasks.push(newTask);
@@ -98,6 +99,12 @@ export const api = {
         let tasks = getStore('prohub-data-tasks');
         const filtered = tasks.filter(t => t.id !== id);
         setStore('prohub-data-tasks', filtered);
+        return { success: true };
+    },
+
+    async reorderTasks(tasks) {
+        await delay(200);
+        setStore('prohub-data-tasks', tasks);
         return { success: true };
     },
 
@@ -172,6 +179,36 @@ export const api = {
         // Assuming ID is passed correctly (which it isn't currently from App.jsx, but let's fix the backend first)
         const filtered = goals.filter(g => g.id !== id);
         setStore('prohub-data-goals', filtered);
+        return { success: true };
+    },
+
+    // Monthly Goal operations
+    async getMonthlyGoals(userId) {
+        await delay(200);
+        const goals = getStore('prohub-data-monthly-goals');
+        const userGoals = goals.filter(g => g.userId === userId);
+        return userGoals;
+    },
+
+    async createMonthlyGoal(userId, text, position) {
+        await delay(200);
+        const goals = getStore('prohub-data-monthly-goals');
+        const newGoal = {
+            id: Date.now().toString(),
+            userId,
+            text,
+            position
+        };
+        goals.push(newGoal);
+        setStore('prohub-data-monthly-goals', goals);
+        return newGoal;
+    },
+
+    async deleteMonthlyGoal(id) {
+        await delay(200);
+        let goals = getStore('prohub-data-monthly-goals');
+        const filtered = goals.filter(g => g.id !== id);
+        setStore('prohub-data-monthly-goals', filtered);
         return { success: true };
     },
 

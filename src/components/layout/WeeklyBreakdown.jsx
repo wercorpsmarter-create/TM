@@ -1,12 +1,223 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video } from 'lucide-react';
+import { DndContext, useDraggable, useDroppable, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask }) => {
+const TimePicker = ({ value, onChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+    const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')); // 5-minute intervals
+
+    const [selectedHour, setSelectedHour] = useState(value ? value.split(':')[0] : '12');
+    const [selectedMinute, setSelectedMinute] = useState(value ? value.split(':')[1] : '00');
+
+    React.useEffect(() => {
+        if (value) {
+            const [h, m] = value.split(':');
+            setSelectedHour(h);
+            setSelectedMinute(m);
+        }
+    }, [value]);
+
+    const handleTimeChange = (h, m) => {
+        setSelectedHour(h);
+        setSelectedMinute(m);
+        onChange(`${h}:${m}`);
+    };
+
+    return (
+        <div style={{ position: 'absolute', right: '35px', top: '50%', transform: 'translateY(-50%)' }}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    background: 'rgba(255,255,255,0.8)',
+                    border: '1px solid rgba(0,0,0,0.1)',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    fontSize: '0.75rem',
+                    color: '#334155',
+                    cursor: 'pointer',
+                    minWidth: '45px',
+                    textAlign: 'center',
+                    fontWeight: 500
+                }}
+            >
+                {value || '--:--'}
+            </button>
+
+            {isOpen && (
+                <>
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                        onClick={() => setIsOpen(false)}
+                    />
+                    <div className="time-picker-popup glass-card" style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 5px)',
+                        right: 0,
+                        zIndex: 100,
+                        display: 'flex',
+                        height: '150px',
+                        width: '120px',
+                        padding: '0',
+                        overflow: 'hidden',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+                    }}>
+                        {/* Hours Column */}
+                        <div style={{ flex: 1, overflowY: 'scroll', borderRight: '1px solid rgba(0,0,0,0.05)' }} className="hide-scrollbar">
+                            {hours.map(h => (
+                                <div
+                                    key={h}
+                                    onClick={() => handleTimeChange(h, selectedMinute)}
+                                    style={{
+                                        padding: '6px 0',
+                                        textAlign: 'center',
+                                        cursor: 'pointer',
+                                        background: selectedHour === h ? 'var(--primary)' : 'transparent',
+                                        color: selectedHour === h ? 'white' : 'var(--text-main)',
+                                        fontSize: '0.8rem'
+                                    }}
+                                >
+                                    {h}
+                                </div>
+                            ))}
+                        </div>
+                        {/* Minutes Column */}
+                        <div style={{ flex: 1, overflowY: 'scroll' }} className="hide-scrollbar">
+                            {minutes.map(m => (
+                                <div
+                                    key={m}
+                                    onClick={() => handleTimeChange(selectedHour, m)}
+                                    style={{
+                                        padding: '6px 0',
+                                        textAlign: 'center',
+                                        cursor: 'pointer',
+                                        background: selectedMinute === m ? 'var(--primary)' : 'transparent',
+                                        color: selectedMinute === m ? 'white' : 'var(--text-main)',
+                                        fontSize: '0.8rem'
+                                    }}
+                                >
+                                    {m}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+const SortableTask = ({ task, onToggleTask, onDeleteTask, isEditing, onInteractionStart, onInteractionEnd }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: task.id,
+        data: { task }
+    });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0 : 1,
+        zIndex: isDragging ? 999 : 'auto',
+        touchAction: 'none'
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...listeners}
+            {...attributes}
+            onPointerDown={(e) => {
+                // Aggressively prevent the swipeable container from capturing this event
+                e.stopPropagation();
+                // Stop native bubbling particularly for Framer Motion
+                if (e.nativeEvent) {
+                    e.nativeEvent.stopImmediatePropagation();
+                }
+
+                if (onInteractionStart) onInteractionStart();
+                // Pass event to dnd-kit listener
+                if (listeners && listeners.onPointerDown) {
+                    listeners.onPointerDown(e);
+                }
+            }}
+            onTouchStart={(e) => {
+                e.stopPropagation();
+                if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+            }}
+            onMouseDown={(e) => {
+                e.stopPropagation();
+                if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+            }}
+            onPointerUp={(e) => {
+                if (onInteractionEnd) onInteractionEnd();
+            }}
+            className={`compact-task ${task.status === 'Completed' ? 'completed' : ''}`}
+            onClick={(e) => {
+                // Prevent toggle if we just dragged (dnd-kit usually prevents click, but just in case)
+                if (isDragging) return;
+                onToggleTask(task.id);
+            }}
+        >
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                {task.status === 'Completed' ?
+                    <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
+                    <Circle size={18} color="rgba(0, 0, 0, 0.2)" />
+                }
+            </div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'space-between', marginRight: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem' }}>{task.text}</span>
+                {task.metadata?.meetLink && (
+                    <a
+                        href={task.metadata.meetLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Join Google Meet"
+                        className="meet-link-btn"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            background: 'rgba(37, 99, 235, 0.1)',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            color: 'var(--primary)',
+                            textDecoration: 'none'
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        <Video size={12} style={{ marginRight: '4px' }} />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>Join</span>
+                    </a>
+                )}
+            </div>
+            {isEditing && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
+                    className="btn-delete"
+                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag start when clicking delete
+                >
+                    <Trash2 size={14} />
+                </button>
+            )}
+        </div>
+    );
+};
+
+const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onInteractionStart, onInteractionEnd }) => {
+    const { setNodeRef } = useDroppable({
+        id: dayName,
+    });
+
     const [inputValue, setInputValue] = useState('');
     const [syncToGoogle, setSyncToGoogle] = useState(false);
+    const [taskTime, setTaskTime] = useState('');
     const [isEditing, setIsEditing] = useState(false);
 
     // Use the same Monday-start logic as App.jsx
@@ -50,9 +261,20 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask }) =>
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
-        onAddTask(dayName, inputValue, syncToGoogle);
+        onAddTask(dayName, inputValue, syncToGoogle, taskTime || null);
         setInputValue('');
         setSyncToGoogle(false);
+        setTaskTime('');
+    };
+
+    const toggleSync = () => {
+        if (syncToGoogle) {
+            setSyncToGoogle(false);
+            setTaskTime('');
+        } else {
+            setSyncToGoogle(true);
+            // Default to current hour or user picks
+        }
     };
 
     return (
@@ -73,9 +295,10 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask }) =>
                                 startAngle={90}
                                 endAngle={450}
                                 stroke="none"
-                                animationDuration={400}
-                                animationEasing="ease-out"
                                 isAnimationActive={true}
+                                animationDuration={1000}
+                                animationEasing="linear"
+                                animationBegin={0}
                             >
                                 <Cell fill="#475569" />
                                 <Cell fill="rgba(0, 0, 0, 0.05)" />
@@ -91,15 +314,23 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask }) =>
                             <input
                                 type="text"
                                 className="glass-input"
-                                placeholder="Add task..."
+                                placeholder={syncToGoogle ? "Add task & time..." : "Add task..."}
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
-                                style={{ width: '100%', paddingRight: '2.5rem' }}
+                                style={{ width: '100%', paddingRight: syncToGoogle ? '8rem' : '2.5rem' }}
                                 autoFocus
                             />
+
+                            {syncToGoogle && (
+                                <TimePicker
+                                    value={taskTime}
+                                    onChange={setTaskTime}
+                                />
+                            )}
+
                             <button
                                 type="button"
-                                onClick={() => setSyncToGoogle(!syncToGoogle)}
+                                onClick={toggleSync}
                                 style={{
                                     position: 'absolute',
                                     right: '8px',
@@ -107,7 +338,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask }) =>
                                     transform: 'translateY(-50%)',
                                     background: 'none',
                                     border: 'none',
-                                    color: syncToGoogle ? '#475569' : 'rgba(0,0,0,0.1)',
+                                    color: syncToGoogle ? 'var(--primary)' : 'rgba(0,0,0,0.1)',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center'
@@ -124,29 +355,29 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask }) =>
                 )}
 
                 {/* Task List */}
-                <div className="compact-task-list" style={{ marginTop: isEditing ? '0' : '1rem' }}>
-                    {dayTasks.map(task => (
-                        <div key={task.id} className={`compact-task ${task.status === 'Completed' ? 'completed' : ''}`}>
-                            <div onClick={() => onToggleTask(task.id)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                {task.status === 'Completed' ?
-                                    <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
-                                    <Circle size={18} color="rgba(0, 0, 0, 0.2)" />
-                                }
+                <SortableContext
+                    items={dayTasks.map(t => t.id)}
+                    strategy={verticalListSortingStrategy}
+                >
+                    <div className="compact-task-list" style={{ marginTop: isEditing ? '0' : '1rem', minHeight: '100px' }} ref={setNodeRef}>
+                        {dayTasks.map(task => (
+                            <SortableTask
+                                key={task.id}
+                                task={task}
+                                onToggleTask={onToggleTask}
+                                onDeleteTask={onDeleteTask}
+                                isEditing={isEditing}
+                                onInteractionStart={onInteractionStart}
+                                onInteractionEnd={onInteractionEnd}
+                            />
+                        ))}
+                        {dayTasks.length === 0 && !isEditing && (
+                            <div style={{ textAlign: 'center', opacity: 0.2, fontSize: '0.75rem', marginTop: '2rem' }}>
+                                No tasks
                             </div>
-                            <span style={{ fontSize: '0.85rem' }}>{task.text}</span>
-                            {isEditing && (
-                                <button onClick={() => onDeleteTask(task.id)} className="btn-delete">
-                                    <Trash2 size={14} />
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                    {dayTasks.length === 0 && !isEditing && (
-                        <div style={{ textAlign: 'center', opacity: 0.2, fontSize: '0.75rem', marginTop: '2rem' }}>
-                            No tasks
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                </SortableContext>
 
                 <button
                     className="widget-edit-trigger"
@@ -159,19 +390,105 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask }) =>
     );
 };
 
-export default function WeeklyBreakdown({ tasks, onAddTask, onDeleteTask, onToggleTask }) {
+export default function WeeklyBreakdown({
+    tasks,
+    onAddTask,
+    onDeleteTask,
+    onToggleTask,
+    onMoveTask,
+    onDragStart,
+    onDragEnd,
+    onReorderTasks,
+    visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+}) {
+    const [activeTask, setActiveTask] = useState(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
+
+    const handleDragStart = (event) => {
+        setActiveTask(event.active.data.current?.task);
+        if (onDragStart) onDragStart();
+    };
+
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+
+        if (over && active.id && over.id) {
+            // Check if same day (reorder) or different day (move)
+            const activeTaskData = tasks.find(t => t.id === active.id);
+            const overTaskData = tasks.find(t => t.id === over.id); // If dropped on another task
+            const overDayName = overTaskData ? overTaskData.day : over.id; // Either task's day or day column ID
+
+            if (activeTaskData) {
+                if (activeTaskData.day !== overDayName) {
+                    // Different day: Move
+                    onMoveTask(active.id, overDayName);
+                } else if (active.id !== over.id) {
+                    // Same day: Reorder
+                    // We need to reorder the *entire* tasks list to reflect this change?
+                    // Strategy: Extract tasks for this day. Reorder them. Merge back into full list.
+                    const dayTasks = tasks.filter(t => t.day === activeTaskData.day);
+                    const oldIndex = dayTasks.findIndex(t => t.id === active.id);
+                    const newIndex = dayTasks.findIndex(t => t.id === over.id);
+
+                    if (oldIndex !== -1 && newIndex !== -1) {
+                        const reorderedDayTasks = arrayMove(dayTasks, oldIndex, newIndex);
+                        // Reconstruct full list (keeping other days' tasks intact)
+                        const otherTasks = tasks.filter(t => t.day !== activeTaskData.day);
+                        // We concat. Note: This might change the global order of 'days' blocks in the array, but
+                        // since we filter by day for rendering, it shouldn't matter visually, as long as 
+                        // the user's reordering within the day is preserved.
+                        const newFullList = [...otherTasks, ...reorderedDayTasks];
+                        onReorderTasks(newFullList);
+                    }
+                }
+            }
+        }
+        setActiveTask(null);
+        if (onDragEnd) onDragEnd();
+    };
+
     return (
-        <div className="weekly-breakdown">
-            {DAYS.map(day => (
-                <DayColumn
-                    key={day}
-                    dayName={day}
-                    tasks={tasks}
-                    onAddTask={onAddTask}
-                    onDeleteTask={onDeleteTask}
-                    onToggleTask={onToggleTask}
-                />
-            ))}
-        </div>
+        <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            collisionDetection={closestCenter}
+            autoScroll={false}
+        >
+            <div className="weekly-breakdown">
+                {DAYS.filter(day => visibleDays.includes(day)).map(day => (
+                    <DayColumn
+                        key={day}
+                        dayName={day}
+                        tasks={tasks}
+                        onAddTask={onAddTask}
+                        onDeleteTask={onDeleteTask}
+                        onToggleTask={onToggleTask}
+                        onInteractionStart={onDragStart}
+                        onInteractionEnd={onDragEnd}
+                    />
+                ))}
+            </div>
+            <DragOverlay>
+                {activeTask ? (
+                    <div className={`compact-task ${activeTask.status === 'Completed' ? 'completed' : ''}`} style={{ opacity: 0.9, transform: 'scale(1.05)', transition: 'none', cursor: 'grabbing' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            {activeTask.status === 'Completed' ?
+                                <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
+                                <Circle size={18} color="rgba(0, 0, 0, 0.2)" />
+                            }
+                        </div>
+                        <span style={{ fontSize: '0.85rem' }}>{activeTask.text}</span>
+                    </div>
+                ) : null}
+            </DragOverlay>
+        </DndContext>
     );
 }

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { Calendar as CalendarIcon, Download, RefreshCcw, LogOut, X } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import api from './utils/api';
-import TopSection from './components/layout/TopSection';
-import WeeklyBreakdown from './components/layout/WeeklyBreakdown';
+import DashboardTab from './components/layout/DashboardTab';
 import CalendarTab from './components/layout/CalendarTab';
+import EmailTab from './components/layout/EmailTab';
 import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
 import Privacy from './Privacy';
@@ -48,6 +49,8 @@ const getTargetDate = (dayName) => {
 
 function App() {
     // FIXED: This now checks the URL bar before deciding which tab to show
+    const containerRef = useRef(null);
+    const isSwipingRef = useRef(false);
     const [activeTab, setActiveTab] = useState(() => {
         const path = window.location.pathname;
         if (path === '/privacy') return 'privacy';
@@ -59,7 +62,9 @@ function App() {
     const [tasks, setTasks] = useState([]);
     const [habits, setHabits] = useState([]);
     const [goals, setGoals] = useState([]);
+    const [monthlyGoals, setMonthlyGoals] = useState([]);
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity']);
+    const [visibleDays, setVisibleDays] = useLocalStorage('prohub-visible-days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
     const [subscriptionStatus, setSubscriptionStatus] = useState(() => {
         // If query params exist, we enter "checking" state to verify them
@@ -134,6 +139,36 @@ function App() {
     const [calendarList, setCalendarList] = useState([]);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importLoading, setImportLoading] = useState(false);
+    const [isTaskInteractionLocked, setIsTaskInteractionLocked] = useState(false);
+
+    const dragControls = useDragControls();
+    const [upcomingEvents, setUpcomingEvents] = useState([]);
+
+    // Fetch upcoming events for dashboard widget
+    useEffect(() => {
+        if (googleUser?.access_token) {
+            fetchUpcomingEvents(googleUser.access_token);
+        }
+    }, [googleUser]);
+
+    const fetchUpcomingEvents = async (accessToken) => {
+        try {
+            const start = new Date();
+            start.setHours(0, 0, 0, 0);
+            const timeMin = start.toISOString();
+            const response = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&maxResults=50&singleEvents=true&orderBy=startTime`,
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            if (response.ok) {
+                const data = await response.json();
+                setUpcomingEvents(data.items || []);
+            }
+        } catch (error) {
+            console.error('Error fetching upcoming events:', error);
+        }
+    };
+
     // Load user data from database when logged in
     useEffect(() => {
         if (googleUser?.email) {
@@ -154,6 +189,39 @@ function App() {
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
+
+    // Handle trackpad/mouse wheel horizontal swipe
+    useEffect(() => {
+        const handleWheel = (e) => {
+            // Check if it's a horizontal scroll
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 20) {
+                e.preventDefault(); // Prevent browser back/forward navigation
+
+                if (isSwipingRef.current) return;
+
+                if (activeTab === 'dashboard' && e.deltaX > 0) {
+                    setActiveTab('calendar');
+                    isSwipingRef.current = true;
+                    setTimeout(() => isSwipingRef.current = false, 500);
+                } else if (activeTab === 'calendar' && e.deltaX < 0) {
+                    setActiveTab('dashboard');
+                    isSwipingRef.current = true;
+                    setTimeout(() => isSwipingRef.current = false, 500);
+                }
+            }
+        };
+
+        const container = containerRef.current;
+        if (container) {
+            container.addEventListener('wheel', handleWheel, { passive: false });
+        }
+
+        return () => {
+            if (container) {
+                container.removeEventListener('wheel', handleWheel);
+            }
+        };
+    }, [activeTab]);
 
     const loadUserData = async () => {
         if (!googleUser?.email || !googleUser.id) return;
@@ -196,10 +264,11 @@ function App() {
             setSubscriptionStatus(user.subscription_status || 'none');
 
             // Load all user data
-            const [tasksData, habitsData, goalsData, layoutData] = await Promise.all([
+            const [tasksData, habitsData, goalsData, monthlyGoalsData, layoutData] = await Promise.all([
                 api.getTasks(user.id),
                 api.getHabits(user.id),
                 api.getGoals(user.id),
+                api.getMonthlyGoals(user.id),
                 api.getLayout(user.id)
             ]);
 
@@ -213,6 +282,8 @@ function App() {
             setTasks(transformedTasks);
             setHabits(habitsData);
             setGoals(goalsData);
+            setMonthlyGoals(monthlyGoalsData);
+            setDashboardLayout(layoutData);
             setDashboardLayout(layoutData);
         } catch (error) {
             console.error('Error loading user data:', error);
@@ -281,22 +352,14 @@ function App() {
                 });
                 const userInfo = await userInfoResponse.json();
 
-                // Check if user exists in database
+                // Check if user exists in database (optional sync)
                 const existingUser = await api.getUser(userInfo.id);
 
-                if (!existingUser) {
-                    alert('No account found. Please sign up first by starting a free trial.');
-                    return;
+                if (existingUser && existingUser.subscription_status) {
+                    setSubscriptionStatus(existingUser.subscription_status);
                 }
 
-                // Check if user has a valid subscription
-                if (existingUser.subscription_status === 'none' || !existingUser.subscription_status) {
-                    alert('Your account does not have an active subscription. Please start a free trial.');
-                    return;
-                }
-
-                // User is valid - proceed with login
-                setSubscriptionStatus(existingUser.subscription_status);
+                // Allow login regardless of existing account status
                 const completeUserData = {
                     ...tokenResponse,
                     email: userInfo.email,
@@ -311,7 +374,9 @@ function App() {
                 alert('Login failed. Please try again.');
             }
         },
-        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly',
+        select_account: true,
+        prompt: 'consent',  // Force showing all permissions again
     });
 
     const logout = async () => {
@@ -330,6 +395,7 @@ function App() {
         setTasks([]);
         setHabits([]);
         setGoals([]);
+        setMonthlyGoals([]);
         setSubscriptionStatus('none');
         localStorage.removeItem('prohub-signup-intent');
     };
@@ -397,8 +463,12 @@ function App() {
             );
             const data = await response.json();
 
-            // Calendar events are fetched but NOT converted to tasks
-            // They will only be visible in the Calendar tab
+
+
+            if (data.items && data.items.length > 0) {
+                await importTasksFromGoogle(data.items);
+            }
+
             setIsImportModalOpen(false);
         } catch (error) {
             console.error('Error importing events:', error);
@@ -407,8 +477,30 @@ function App() {
         }
     };
 
-    const pushToGoogle = async (taskText, dateStr) => {
+    const pushToGoogle = async (taskText, dateStr, time = null) => {
         if (!googleUser || !googleUser.access_token) return;
+
+        let eventBody;
+        if (time) {
+            // Create ISO string for start and end (1 hour duration)
+            const startDateTime = new Date(`${dateStr}T${time}:00`);
+            const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1 hour
+
+            eventBody = {
+                summary: taskText,
+                description: 'Added via Task Master',
+                start: { dateTime: startDateTime.toISOString() },
+                end: { dateTime: endDateTime.toISOString() }
+            };
+        } else {
+            // All-day event
+            eventBody = {
+                summary: taskText,
+                description: 'Added via Task Master',
+                start: { date: dateStr },
+                end: { date: dateStr }
+            };
+        }
 
         try {
             await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
@@ -417,12 +509,7 @@ function App() {
                     'Authorization': `Bearer ${googleUser.access_token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    summary: taskText,
-                    description: 'Added via Task Master',
-                    start: { date: dateStr },
-                    end: { date: dateStr }
-                })
+                body: JSON.stringify(eventBody)
             });
             console.log('Synced to Google Calendar');
         } catch (error) {
@@ -430,7 +517,7 @@ function App() {
         }
     };
 
-    const addTask = async (day, text, syncWithGoogle = false) => {
+    const addTask = async (day, text, syncWithGoogle = false, time = null) => {
         if (!userId) return;
 
         const dateStr = getTargetDate(day);
@@ -443,7 +530,7 @@ function App() {
             }]);
 
             if (syncWithGoogle) {
-                await pushToGoogle(text, dateStr);
+                await pushToGoogle(text, dateStr, time);
             }
         } catch (error) {
             console.error('Error adding task:', error);
@@ -474,6 +561,101 @@ function App() {
         }
     };
 
+    const updateGoogleEvent = async (taskId, newDateStr) => {
+        if (!googleUser?.access_token || !taskId) return;
+        const task = tasks.find(t => t.id === taskId);
+        if (!task || !task.metadata?.googleId) return;
+
+        try {
+            const eventId = task.metadata.googleId;
+            let eventPatch = {};
+
+            if (task.metadata.startTime) {
+                // Preserve time for timed events
+                const originalDate = new Date(task.metadata.startTime);
+                const hours = originalDate.getHours();
+                const minutes = originalDate.getMinutes();
+
+                // Construct new date with original time
+                const [y, m, d] = newDateStr.split('-').map(Number);
+                const newDateTime = new Date(y, m - 1, d, hours, minutes);
+
+                // Assume 1 hour duration if we can't calculate perfectly, 
+                // or just update start and let GCal handle end? 
+                // GCal usually validates end > start. We must update end too.
+                const newEnd = new Date(newDateTime.getTime() + 60 * 60 * 1000);
+
+                eventPatch = {
+                    start: { dateTime: newDateTime.toISOString() },
+                    end: { dateTime: newEnd.toISOString() }
+                };
+            } else {
+                // All-day event
+                const startDate = new Date(newDateStr);
+                const nextDate = new Date(startDate);
+                nextDate.setDate(startDate.getDate() + 1);
+                const nextDateStr = nextDate.toISOString().split('T')[0];
+
+                eventPatch = {
+                    start: { date: newDateStr },
+                    end: { date: nextDateStr }
+                };
+            }
+
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${googleUser.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(eventPatch)
+            });
+
+            if (response.ok) {
+                fetchUpcomingEvents(googleUser.access_token);
+            }
+        } catch (error) {
+            console.error("Failed to update Google Calendar event", error);
+        }
+    };
+
+    const moveTask = async (taskId, newDayName) => {
+        if (!userId) return;
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const dateStr = getTargetDate(newDayName);
+        try {
+            // Optimistic update
+            const updatedTasks = tasks.map(t =>
+                t.id === taskId ? { ...t, day: newDayName, date: dateStr } : t
+            );
+            setTasks(updatedTasks);
+
+            await api.updateTask(taskId, { date: dateStr });
+
+            // Sync with Google Calendar if linked
+            if (task.metadata?.googleId) {
+                await updateGoogleEvent(taskId, dateStr);
+            }
+        } catch (error) {
+            console.error('Error moving task:', error);
+            // Revert on failure
+            setTasks(tasks);
+        }
+    };
+
+    const reorderTasks = async (newTasks) => {
+        if (!userId) return;
+        try {
+            // Optimistic update
+            setTasks(newTasks);
+            await api.reorderTasks(newTasks);
+        } catch (error) {
+            console.error('Error reordering tasks:', error);
+        }
+    };
+
     const addGoal = async (text) => {
         if (!text.trim() || !userId) return;
 
@@ -495,6 +677,29 @@ function App() {
             setGoals(goals.filter((_, i) => i !== idx));
         } catch (error) {
             console.error('Error deleting goal:', error);
+        }
+    };
+
+    const addMonthlyGoal = async (text) => {
+        if (!text.trim() || !userId) return;
+        try {
+            const newGoal = await api.createMonthlyGoal(userId, text, monthlyGoals.length);
+            setMonthlyGoals([...monthlyGoals, newGoal]);
+        } catch (error) {
+            console.error('Error adding monthly goal:', error);
+        }
+    };
+
+    const deleteMonthlyGoal = async (idx) => {
+        if (!userId) return;
+        const goal = monthlyGoals[idx];
+        if (!goal) return;
+        const goalId = typeof goal === 'object' && goal.id != null ? goal.id : null;
+        try {
+            if (goalId) await api.deleteMonthlyGoal(goalId);
+            setMonthlyGoals(monthlyGoals.filter((_, i) => i !== idx));
+        } catch (error) {
+            console.error('Error deleting monthly goal:', error);
         }
     };
 
@@ -532,29 +737,61 @@ function App() {
     const importTasksFromGoogle = async (googleEvents) => {
         if (!userId) return;
 
-        const newTasks = [];
+        let updatedTasksList = [...tasks];
+        let hasChanges = false;
+
         for (const event of googleEvents) {
             const dateStr = (event.start.dateTime || event.start.date).split('T')[0];
             const dayName = getDayNameFromDate(dateStr);
+            const summary = event.summary || 'No Title';
+
+            const metadata = {
+                googleId: event.id,
+                meetLink: event.hangoutLink,
+                eventLink: event.htmlLink,
+                startTime: event.start.dateTime // Store original time to preserve it on move
+            };
 
             // Check if task already exists
-            const exists = tasks.some(t => t.text === event.summary && t.date === dateStr);
-            if (!exists) {
+            const existingTaskIndex = updatedTasksList.findIndex(t => t.text === summary && t.date === dateStr);
+
+            if (existingTaskIndex !== -1) {
+                // Update existing if missing metadata (specifically meetLink)
+                const existingTask = updatedTasksList[existingTaskIndex];
+                // Check if we need to update metadata (missing meetLink or googleId)
+                const missingMetadata = !existingTask.metadata ||
+                    !existingTask.metadata.meetLink && metadata.meetLink ||
+                    !existingTask.metadata.googleId;
+
+                if (missingMetadata) {
+                    try {
+                        // Merge existing metadata with new fields
+                        const newMetadata = { ...(existingTask.metadata || {}), ...metadata };
+                        const updated = await api.updateTask(existingTask.id, { metadata: newMetadata });
+                        // Merge update
+                        updatedTasksList[existingTaskIndex] = { ...existingTask, metadata: updated.metadata };
+                        hasChanges = true;
+                    } catch (e) {
+                        console.error('Error updating task metadata:', e);
+                    }
+                }
+            } else {
                 try {
-                    const task = await api.createTask(userId, event.summary, dateStr, 'Pending');
-                    newTasks.push({
+                    const task = await api.createTask(userId, summary, dateStr, 'Pending', metadata);
+                    updatedTasksList.push({
                         ...task,
                         day: dayName,
                         text: task.title
                     });
+                    hasChanges = true;
                 } catch (error) {
                     console.error('Error importing task:', error);
                 }
             }
         }
 
-        if (newTasks.length > 0) {
-            setTasks([...tasks, ...newTasks]);
+        if (hasChanges) {
+            setTasks(updatedTasksList);
         }
     };
 
@@ -566,7 +803,7 @@ function App() {
 
     // 1. Require Google Login FIRST (Auth)
     if (!googleUser) {
-        return <LoginScreen onLogin={login} isPostPayment={false} />;
+        return <LoginScreen onLogin={loginExistingUser} isPostPayment={false} />;
     }
 
     // 2. (REMOVED) Subscription Payment Screen
@@ -628,6 +865,23 @@ function App() {
                     CALENDAR
                 </button>
                 <button
+                    onClick={() => setActiveTab('emails')}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: activeTab === 'emails' ? 'var(--primary)' : 'var(--text-muted)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        letterSpacing: '0.1em',
+                        borderBottom: activeTab === 'emails' ? '2px solid var(--primary)' : '2px solid transparent',
+                        paddingBottom: '0.5rem',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    EMAILS
+                </button>
+                <button
                     onClick={logout}
                     style={{
                         background: 'none',
@@ -648,40 +902,113 @@ function App() {
                 </button>
             </nav>
 
-            {activeTab === 'dashboard' ? (
-                <>
-                    <TopSection
-                        tasks={tasks}
-                        habits={habits}
-                        setHabits={updateHabitHistory}
-                        onAddHabit={addHabit}
-                        onDeleteHabit={deleteHabit}
-                        goals={goals}
-                        onAddGoal={addGoal}
-                        onDeleteGoal={deleteGoal}
-                        onSyncClick={handleSyncClick}
-                        layout={dashboardLayout}
-                        setLayout={setDashboardLayout}
-                    />
-                    <WeeklyBreakdown
-                        tasks={tasks}
-                        onAddTask={addTask}
-                        onDeleteTask={deleteTask}
-                        onToggleTask={toggleTask}
-                    />
-                </>
-            ) : activeTab === 'calendar' ? (
-                <CalendarTab
-                    user={googleUser}
-                    setUser={setGoogleUser}
-                    tasks={tasks}
-                    onSyncClick={handleSyncClick}
-                />
-            ) : activeTab === 'privacy' ? (
-                <Privacy />
-            ) : activeTab === 'terms' ? (
-                <Terms />
-            ) : null}
+            <div ref={containerRef} style={{ overflowX: 'hidden', width: 'auto', margin: '0 -5rem', position: 'relative' }}>
+                <div style={{
+                    position: 'absolute', top: 0, bottom: 0, left: 0, width: '6rem', zIndex: 10,
+                    pointerEvents: 'none',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    maskImage: 'linear-gradient(to right, black, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, black, transparent)'
+                }} />
+                <div style={{
+                    position: 'absolute', top: 0, bottom: 0, right: 0, width: '6rem', zIndex: 10,
+                    pointerEvents: 'none',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    maskImage: 'linear-gradient(to left, black, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to left, black, transparent)'
+                }} />
+                <motion.div
+                    className="tab-track"
+                    style={{ display: 'flex', width: '300%', touchAction: 'pan-y' }}
+                    animate={{
+                        x: activeTab === 'calendar' ? '-33.333%' :
+                            activeTab === 'emails' ? '-66.666%' : '0%'
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    drag="x"
+                    dragListener={false}
+                    dragControls={dragControls}
+                    dragConstraints={containerRef}
+                    dragElastic={0.2}
+                    onPointerDown={(e) => {
+                        const isDraggableItem = e.target.closest('.compact-task') ||
+                            e.target.closest('.widget-item') ||
+                            e.target.closest('.time-picker-popup') ||
+                            e.target.closest('.widget-controls') ||
+                            e.target.closest('.btn-icon') ||
+                            e.target.closest('.customize-toggle') ||
+                            e.target.tagName === 'BUTTON' ||
+                            e.target.tagName === 'INPUT';
+
+                        if (!isDraggableItem) {
+                            dragControls.start(e);
+                        }
+                    }}
+                    onDragEnd={(e, { offset }) => {
+                        const swipe = offset.x;
+                        if (activeTab === 'dashboard' && swipe < -50) {
+                            setActiveTab('calendar');
+                        } else if (activeTab === 'calendar' && swipe > 50) {
+                            setActiveTab('dashboard');
+                        } else if (activeTab === 'calendar' && swipe < -50) {
+                            setActiveTab('emails');
+                        } else if (activeTab === 'emails' && swipe > 50) {
+                            setActiveTab('calendar');
+                        }
+                    }}
+                >
+                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                        <DashboardTab
+                            tasks={tasks}
+                            upcomingEvents={upcomingEvents}
+                            habits={habits}
+                            setHabits={updateHabitHistory}
+                            onAddHabit={addHabit}
+                            onDeleteHabit={deleteHabit}
+                            goals={goals}
+                            onAddGoal={addGoal}
+                            onDeleteGoal={deleteGoal}
+                            monthlyGoals={monthlyGoals}
+                            onAddMonthlyGoal={addMonthlyGoal}
+                            onDeleteMonthlyGoal={deleteMonthlyGoal}
+                            onSyncClick={handleSyncClick}
+                            layout={dashboardLayout}
+                            setLayout={setDashboardLayout}
+                            onAddTask={addTask}
+                            onDeleteTask={deleteTask}
+                            onToggleTask={toggleTask}
+                            onMoveTask={moveTask}
+                            onReorderTasks={reorderTasks}
+                            onTaskDragStart={() => setIsTaskInteractionLocked(true)}
+                            onTaskDragEnd={() => {
+                                // Add delay before re-enabling swipe to prevent accidental triggers
+                                setTimeout(() => setIsTaskInteractionLocked(false), 500);
+                            }}
+                            visibleDays={visibleDays}
+                            setVisibleDays={setVisibleDays}
+                        />
+                    </div>
+                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                        <CalendarTab
+                            user={googleUser}
+                            setUser={setGoogleUser}
+                            tasks={tasks}
+                            onSyncClick={handleSyncClick}
+                        />
+                    </div>
+                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                        <EmailTab
+                            user={googleUser}
+                            onRefresh={() => {
+                                // Optional: trigger any refresh logic
+                            }}
+                            onAddTask={addTask}
+                        />
+                    </div>
+                </motion.div>
+            </div>
 
             {/* Unified Import Modal */}
             {isImportModalOpen && (

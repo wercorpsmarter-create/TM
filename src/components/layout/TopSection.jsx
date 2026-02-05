@@ -1,32 +1,45 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import { RefreshCcw, Settings2, Check, Plus, Trash2, Pencil, CheckCircle2, GripVertical } from 'lucide-react';
+import { RefreshCcw, Settings2, Check, Plus, Trash2, Pencil, CheckCircle2, GripVertical, Video } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const SortableWidget = ({ id, children, isCustomizing }) => {
+const SortableWidget = ({ id, children, isCustomizing, onInteractionStart, onInteractionEnd }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
     const style = {
-        transform: CSS.Transform.toString(transform),
+        transform: CSS.Translate.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 50 : 1,
         position: 'relative',
+        touchAction: 'none'
     };
 
+    const handlers = isCustomizing ? {
+        ...attributes,
+        ...listeners,
+        onPointerDown: (e) => {
+            e.stopPropagation();
+            if (onInteractionStart) onInteractionStart();
+            if (listeners && listeners.onPointerDown) listeners.onPointerDown(e);
+        },
+        onPointerUp: (e) => {
+            if (onInteractionEnd) onInteractionEnd();
+            if (listeners && listeners.onPointerUp) listeners.onPointerUp(e);
+        }
+    } : {};
+
     return (
-        <div ref={setNodeRef} style={style} className={`glass-card widget-item ${isCustomizing ? 'customizing' : ''}`}>
-            {isCustomizing && (
-                <div className="widget-controls" {...attributes} {...listeners} style={{ cursor: 'grab' }}>
-                    <div className="drag-handle-btn">
-                        <GripVertical size={16} />
-                    </div>
-                </div>
-            )}
+        <div
+            ref={setNodeRef}
+            style={{ ...style, cursor: isCustomizing ? 'grab' : 'default' }}
+            className={`glass-card widget-item ${isCustomizing ? 'customizing' : ''}`}
+            {...handlers}
+        >
             {children}
         </div>
     );
@@ -86,13 +99,23 @@ export default function TopSection({
     goals,
     onAddGoal,
     onDeleteGoal,
+    monthlyGoals,
+    onAddMonthlyGoal,
+    onDeleteMonthlyGoal,
     onAddHabit,
-    onDeleteHabit
+    onDeleteHabit,
+    onDragStart,
+    onDragEnd,
+    upcomingEvents,
+    visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    setVisibleDays
 }) {
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [isEditingGoals, setIsEditingGoals] = useState(false);
+    const [isEditingMonthlyGoals, setIsEditingMonthlyGoals] = useState(false);
     const [isEditingHabits, setIsEditingHabits] = useState(false);
     const [newGoalText, setNewGoalText] = useState('');
+    const [newMonthlyGoalText, setNewMonthlyGoalText] = useState('');
     const [newHabitText, setNewHabitText] = useState('');
 
     const sensors = useSensors(
@@ -109,6 +132,12 @@ export default function TopSection({
     // Weekly Overview (Activity Score)
     const chartData = DAYS_SHORT.map((day, idx) => {
         const fullDayName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][idx];
+
+        // Skip if day is not visible
+        if (!visibleDays.includes(fullDayName)) {
+            return null;
+        }
+
         const DAYS_MAP = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const targetIdx = DAYS_MAP.indexOf(fullDayName);
         const d = new Date();
@@ -128,9 +157,11 @@ export default function TopSection({
 
         const dayTasks = tasks.filter(t => t.date === columnDateStr);
         const dayCompleted = dayTasks.filter(t => t.status === 'Completed').length;
-        const score = dayTasks.length > 0 ? (dayCompleted / dayTasks.length) * 100 : 0;
-        return { name: day, progress: isNaN(score) ? 0 : score };
-    });
+        const hasTasks = dayTasks.length > 0;
+        const score = hasTasks ? (dayCompleted / dayTasks.length) * 100 : 0;
+        const full = hasTasks ? 100 : 0;
+        return { name: day, progress: score, full: full };
+    }).filter(Boolean); // Remove null entries
 
     // Overall Progress (Donut)
     const completedCount = tasks.filter(t => t.status === 'Completed').length;
@@ -149,6 +180,10 @@ export default function TopSection({
         }
     };
 
+    const handleDragStart = () => {
+        if (onDragStart) onDragStart();
+    };
+
     const handleDragEnd = (event) => {
         const { active, over } = event;
 
@@ -157,12 +192,20 @@ export default function TopSection({
             const newIndex = layout.indexOf(over.id);
             setLayout(arrayMove(layout, oldIndex, newIndex));
         }
+
+        if (onDragEnd) onDragEnd();
     };
 
     const handleAddGoal = (e) => {
         e.preventDefault();
         onAddGoal(newGoalText);
         setNewGoalText('');
+    };
+
+    const handleAddMonthlyGoal = (e) => {
+        e.preventDefault();
+        onAddMonthlyGoal(newMonthlyGoalText);
+        setNewMonthlyGoalText('');
     };
 
     const handleAddHabit = (e) => {
@@ -176,7 +219,13 @@ export default function TopSection({
         switch (type) {
             case 'goals':
                 return (
-                    <SortableWidget id="goals" key="goals" isCustomizing={isCustomizing}>
+                    <SortableWidget
+                        id="goals"
+                        key="goals"
+                        isCustomizing={isCustomizing}
+                        onInteractionStart={onDragStart}
+                        onInteractionEnd={onDragEnd}
+                    >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <div className="card-title" style={{ margin: 0 }}>Weekly Goals</div>
                         </div>
@@ -221,20 +270,84 @@ export default function TopSection({
                         )}
                     </SortableWidget>
                 );
+            case 'monthly_goals':
+                return (
+                    <SortableWidget
+                        id="monthly_goals"
+                        key="monthly_goals"
+                        isCustomizing={isCustomizing}
+                        onInteractionStart={onDragStart}
+                        onInteractionEnd={onDragEnd}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <div className="card-title" style={{ margin: 0 }}>Monthly Goals</div>
+                        </div>
+
+                        {isEditingMonthlyGoals && (
+                            <form onSubmit={handleAddMonthlyGoal} className="task-input-container" style={{ marginBottom: '1.5rem' }}>
+                                <input
+                                    type="text"
+                                    className="glass-input"
+                                    placeholder="Add a goal..."
+                                    value={newMonthlyGoalText}
+                                    onChange={(e) => setNewMonthlyGoalText(e.target.value)}
+                                    autoFocus
+                                />
+                                <button type="submit" className="btn-icon">
+                                    <Plus size={18} />
+                                </button>
+                            </form>
+                        )}
+
+                        <ul className="goals-list" style={{ marginBottom: isEditingMonthlyGoals ? '3rem' : '1.5rem' }}>
+                            {monthlyGoals.map((g, i) => (
+                                <li key={typeof g === 'object' && g?.id != null ? g.id : i} className="goal-item-row">
+                                    <span className="goal-num">{i + 1}</span>
+                                    <span style={{ flex: 1 }}>{typeof g === 'string' ? g : (g?.text ?? '')}</span>
+                                    {isEditingMonthlyGoals && (
+                                        <button onClick={() => onDeleteMonthlyGoal(i)} className="btn-delete-small">
+                                            <Trash2 size={12} />
+                                        </button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+
+                        {!isCustomizing && (
+                            <button
+                                className="widget-edit-trigger"
+                                onClick={() => setIsEditingMonthlyGoals(!isEditingMonthlyGoals)}
+                            >
+                                {isEditingMonthlyGoals ? <CheckCircle2 size={18} color="#22c55e" /> : <Pencil size={14} />}
+                            </button>
+                        )}
+                    </SortableWidget>
+                );
             case 'activity':
                 return (
-                    <SortableWidget id="activity" key="activity" isCustomizing={isCustomizing}>
+                    <SortableWidget
+                        id="activity"
+                        key="activity"
+                        isCustomizing={isCustomizing}
+                        onInteractionStart={onDragStart}
+                        onInteractionEnd={onDragEnd}
+                    >
                         <div className="card-title">Activity Score</div>
                         <div style={{ height: '150px' }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData}>
-                                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
-                                    <YAxis hide />
+                                <BarChart data={chartData} barCategoryGap="20%">
+                                    <XAxis xAxisId="0" dataKey="name" fontSize={10} axisLine={{ stroke: 'rgba(71, 85, 105, 0.2)', strokeWidth: 1 }} tickLine={false} />
+                                    <XAxis xAxisId="1" dataKey="name" hide />
+                                    <YAxis hide domain={[0, 100]} />
                                     <Tooltip
                                         contentStyle={{ background: 'rgba(255, 255, 255, 0.8)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
                                         itemStyle={{ color: '#0f172a' }}
+                                        cursor={{ fill: 'transparent' }}
                                     />
-                                    <Bar dataKey="progress" fill="#475569" radius={[6, 6, 0, 0]} />
+                                    {/* Background Bar (Static) */}
+                                    <Bar xAxisId="0" dataKey="full" fill="rgba(71, 85, 105, 0.1)" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                                    {/* Foreground Bar (Animated) */}
+                                    <Bar xAxisId="1" dataKey="progress" fill="#475569" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1000} animationEasing="linear" animationBegin={0} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -242,7 +355,13 @@ export default function TopSection({
                 );
             case 'habits':
                 return (
-                    <SortableWidget id="habits" key="habits" isCustomizing={isCustomizing}>
+                    <SortableWidget
+                        id="habits"
+                        key="habits"
+                        isCustomizing={isCustomizing}
+                        onInteractionStart={onDragStart}
+                        onInteractionEnd={onDragEnd}
+                    >
                         <div className="card-title">Habits</div>
 
                         {isEditingHabits && (
@@ -308,7 +427,13 @@ export default function TopSection({
                 );
             case 'Weekly Overview':
                 return (
-                    <SortableWidget id="Weekly Overview" key="Weekly Overview" isCustomizing={isCustomizing}>
+                    <SortableWidget
+                        id="Weekly Overview"
+                        key="Weekly Overview"
+                        isCustomizing={isCustomizing}
+                        onInteractionStart={onDragStart}
+                        onInteractionEnd={onDragEnd}
+                    >
                         <div className="card-title">Weekly Overview</div>
                         <div style={{ height: '150px', position: 'relative' }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -323,8 +448,9 @@ export default function TopSection({
                                         endAngle={450}
                                         stroke="none"
                                         isAnimationActive={true}
-                                        animationDuration={400}
-                                        animationEasing="ease-in-out"
+                                        animationDuration={1000}
+                                        animationEasing="linear"
+                                        animationBegin={0}
                                     >
                                         <Cell fill="#475569" />
                                         <Cell fill="rgba(0, 0, 0, 0.05)" />
@@ -349,9 +475,83 @@ export default function TopSection({
                 );
             case 'clock':
                 return (
-                    <SortableWidget id="clock" key="clock" isCustomizing={isCustomizing}>
+                    <SortableWidget
+                        id="clock"
+                        key="clock"
+                        isCustomizing={isCustomizing}
+                        onInteractionStart={onDragStart}
+                        onInteractionEnd={onDragEnd}
+                    >
                         <div className="card-title">Local Time</div>
                         <LiveClock />
+                    </SortableWidget>
+                );
+            case 'upcoming_meetings':
+                return (
+                    <SortableWidget
+                        id="upcoming_meetings"
+                        key="upcoming_meetings"
+                        isCustomizing={isCustomizing}
+                        onInteractionStart={onDragStart}
+                        onInteractionEnd={onDragEnd}
+                    >
+                        <div className="card-title">
+                            <Video size={20} /> Upcoming Meetings
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {(!upcomingEvents || upcomingEvents.length === 0) && (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>No upcoming meetings found.</div>
+                            )}
+                            {upcomingEvents && upcomingEvents
+                                .filter(event => event.hangoutLink)
+                                .slice(0, 3)
+                                .map(event => (
+                                    <div key={event.id} style={{
+                                        padding: '0.75rem',
+                                        background: 'rgba(255,255,255,0.3)',
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(255,255,255,0.4)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        gap: '1rem'
+                                    }}>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.9rem', var: '--text-main', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {event.summary || '(No Title)'}
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                {event.start?.dateTime
+                                                    ? new Date(event.start.dateTime).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+                                                    : 'All Day'
+                                                }
+                                            </div>
+                                        </div>
+                                        <a
+                                            href={event.hangoutLink}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            title="Join Meeting"
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: '32px',
+                                                height: '32px',
+                                                background: 'rgba(37, 99, 235, 0.1)',
+                                                color: 'var(--primary)',
+                                                borderRadius: '50%',
+                                                textDecoration: 'none',
+                                                cursor: 'pointer',
+                                                transition: 'transform 0.2s'
+                                            }}
+                                            onPointerDown={(e) => e.stopPropagation()}
+                                        >
+                                            <Video size={16} />
+                                        </a>
+                                    </div>
+                                ))}
+                        </div>
                     </SortableWidget>
                 );
             default:
@@ -384,10 +584,12 @@ export default function TopSection({
                 }}>
                     {[
                         { id: 'goals', label: 'Weekly Goals' },
+                        { id: 'monthly_goals', label: 'Monthly Goals' },
                         { id: 'activity', label: 'Activity Score' },
                         { id: 'habits', label: 'Habits' },
-                        { id: 'Weekly Overview', label: 'Weekly Overview' }, 
-                        { id: 'clock', label: 'Digital Clock' }
+                        { id: 'Weekly Overview', label: 'Weekly Overview' },
+                        { id: 'clock', label: 'Digital Clock' },
+                        { id: 'upcoming_meetings', label: 'Upcoming Meetings' }
                     ].map(w => (
                         <button
                             key={w.id}
@@ -416,10 +618,63 @@ export default function TopSection({
                 </div>
             )}
 
+            {isCustomizing && (
+                <div style={{
+                    marginBottom: '1rem',
+                    padding: '1rem',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                    <div style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        marginBottom: '0.75rem',
+                        color: 'var(--text-main)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                    }}>Visible Days</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                            const isVisible = visibleDays.includes(day);
+                            const canToggle = !(isVisible && visibleDays.length === 1);
+                            return (
+                                <button
+                                    key={day}
+                                    onClick={() => {
+                                        if (!canToggle) return;
+                                        if (isVisible) {
+                                            setVisibleDays(visibleDays.filter(d => d !== day));
+                                        } else {
+                                            setVisibleDays([...visibleDays, day]);
+                                        }
+                                    }}
+                                    style={{
+                                        padding: '0.4rem 0.8rem',
+                                        borderRadius: '12px',
+                                        border: `1px solid ${isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.2)'}`,
+                                        background: isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                        color: isVisible ? 'white' : 'var(--text-muted)',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        cursor: canToggle ? 'pointer' : 'not-allowed',
+                                        transition: 'all 0.2s',
+                                        opacity: canToggle ? 1 : 0.5
+                                    }}
+                                >
+                                    {day.substring(0, 3)}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             <div className={`top-section ${isCustomizing ? 'customizing-overlap' : ''}`}>
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext items={layout} strategy={rectSortingStrategy}>

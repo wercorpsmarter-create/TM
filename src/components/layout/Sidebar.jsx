@@ -1,7 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, Calendar as CalendarIcon, Settings, LogOut } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab }) {
+export default function Sidebar({ activeTab, setActiveTab, onOpenSettings, onLogout }) {
     return (
         <div className="sidebar">
             <div className="logo">
@@ -24,14 +24,22 @@ export default function Sidebar({ activeTab, setActiveTab }) {
                     <CalendarIcon size={20} />
                     <span>Calendar</span>
                 </div>
-                <div className="nav-item">
+                <div
+                    className="nav-item"
+                    onClick={onOpenSettings}
+                    style={{ cursor: 'pointer' }}
+                >
                     <Settings size={20} />
                     <span>Settings</span>
                 </div>
             </nav>
 
             <div style={{ marginTop: 'auto' }}>
-                <div className="nav-item">
+                <div
+                    className="nav-item"
+                    onClick={onLogout}
+                    style={{ cursor: 'pointer' }}
+                >
                     <LogOut size={20} />
                     <span>Logout</span>
                 </div>

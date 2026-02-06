@@ -1005,6 +1005,8 @@ function App() {
                                 // Optional: trigger any refresh logic
                             }}
                             onAddTask={addTask}
+                            tasks={tasks}
+                            upcomingEvents={upcomingEvents}
                         />
                     </div>
                 </motion.div>

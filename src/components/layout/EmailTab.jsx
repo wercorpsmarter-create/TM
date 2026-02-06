@@ -5,19 +5,41 @@ import {
     Star, ChevronLeft, ChevronRight, Filter, StarOff
 } from 'lucide-react';
 
-const extractEventDetails = (subject, body, emailDate) => {
+const extractEventDetails = (subject, body, emailDate, tasks = [], upcomingEvents = []) => {
+    // Helper to check availability
+    const getAvailability = (date) => {
+        if (!tasks || !upcomingEvents) return "";
+        try {
+            const dateStr = date.toDateString();
+            const taskCount = tasks.filter(t => {
+                if (!t.date && !t.target_date) return false;
+                const tDate = new Date(t.date || t.target_date);
+                return tDate.toDateString() === dateStr;
+            }).length;
+            const eventCount = upcomingEvents.filter(e => {
+                if (!e.start) return false;
+                const start = e.start.dateTime || e.start.date;
+                const eDate = new Date(start);
+                return eDate.toDateString() === dateStr;
+            }).length;
+            const total = taskCount + eventCount;
+            if (total === 0) return "(Free)";
+            return `(${total} plan${total === 1 ? '' : 's'})`;
+        } catch (e) {
+            return "";
+        }
+    };
+
     // Heuristic extraction
     const text = `${subject}\n${body}`.toLowerCase();
     const today = new Date();
 
     // 1. Look for time (e.g., 5:00 PM, 14:00)
-    // We scan for ALL times to potentially map them
     const timeRegex = /(\d{1,2}:\d{2})\s*(am|pm)?/gi;
     const timeMatches = [...text.matchAll(timeRegex)];
     let defaultTime = null;
 
     if (timeMatches.length > 0) {
-        // Use the first found time as default
         const match = timeMatches[0];
         let [_, time, period] = match;
         if (period) {
@@ -31,76 +53,62 @@ const extractEventDetails = (subject, body, emailDate) => {
 
     const options = [];
 
-    // Strategy A: "Within X weeks" / "Next couple of weeks"
-    // If fuzzy timeline detected, suggest 3 candidate slots
+    // Strategy A: "Within X weeks"
     if (text.includes('within two weeks') || text.includes('next couple of weeks') || text.includes('within 2 weeks')) {
-        // Suggest: 2 days from now, 5 days from now, 9 days from now
         const offsets = [2, 5, 9];
         offsets.forEach(offset => {
             const d = new Date(today);
             d.setDate(d.getDate() + offset);
-            // Skip weekends for business suggestions? Let's just keep it simple.
+            const availability = getAvailability(d);
             options.push({
                 date: d,
-                label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+                label: `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} ${availability}`,
                 timeStr: defaultTime,
                 reason: "Suggested slot (within 2 weeks)"
             });
         });
-
-        return {
-            title: subject,
-            type: 'range',
-            options: options
-        };
+        return { title: subject, type: 'range', options: options };
     }
 
-
     // Strategy B: Explicit Dates
-    // Check for day names
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const foundDays = [];
     const todayDay = today.getDay();
 
     days.forEach((dayName, index) => {
         if (text.includes(dayName)) {
-            // Calculate next occurrence
             let diff = index - todayDay;
             if (diff <= 0) diff += 7;
             const d = new Date(today);
             d.setDate(d.getDate() + diff);
-
+            const availability = getAvailability(d);
             foundDays.push({
                 date: d,
-                label: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+                label: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${availability}`,
                 timeStr: defaultTime,
                 reason: `Mentioned "${dayName}"`
             });
         }
     });
 
-    // Check for specific date patterns like "Jan 25", "February 10"
     const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
     const fullMonthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
     const monthRegex = new RegExp(`(${monthNames.join('|')}|${fullMonthNames.join('|')})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?`, 'gi');
-
     let monthMatch;
     while ((monthMatch = monthRegex.exec(text)) !== null) {
         const monthStr = monthMatch[1].toLowerCase();
         const day = parseInt(monthMatch[2]);
         let monthIndex = fullMonthNames.indexOf(monthStr);
         if (monthIndex === -1) monthIndex = monthNames.indexOf(monthStr.substring(0, 3));
-
         if (monthIndex !== -1) {
             const d = new Date(today.getFullYear(), monthIndex, day);
             if (d < today) d.setFullYear(today.getFullYear() + 1);
-
-            // Avoid duplicates if day name logic caught it (heuristic check)
             const existing = foundDays.find(fd => fd.date.toDateString() === d.toDateString());
             if (!existing) {
+                const availability = getAvailability(d);
                 foundDays.push({
                     date: d,
-                    label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    label: `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${availability}`,
                     timeStr: defaultTime,
                     reason: "Found specific date"
                 });
@@ -108,15 +116,15 @@ const extractEventDetails = (subject, body, emailDate) => {
         }
     }
 
-    // Check for relative keywords
     if (text.includes('tomorrow')) {
         const d = new Date(today);
         d.setDate(d.getDate() + 1);
         const existing = foundDays.find(fd => fd.date.toDateString() === d.toDateString());
         if (!existing) {
+            const availability = getAvailability(d);
             foundDays.push({
                 date: d,
-                label: 'Tomorrow',
+                label: `Tomorrow ${availability}`,
                 timeStr: defaultTime,
                 reason: "Mentioned 'tomorrow'"
             });
@@ -124,48 +132,42 @@ const extractEventDetails = (subject, body, emailDate) => {
     } else if (text.includes('today')) {
         const existing = foundDays.find(fd => fd.date.toDateString() === today.toDateString());
         if (!existing) {
+            const availability = getAvailability(today);
             foundDays.push({
                 date: today,
-                label: 'Today',
+                label: `Today ${availability}`,
                 timeStr: defaultTime,
                 reason: "Mentioned 'today'"
             });
         }
     }
 
-    // Sort found days by date
     foundDays.sort((a, b) => a.date - b.date);
-
     if (foundDays.length > 0) {
-        return {
-            title: subject,
-            type: foundDays.length > 1 ? 'multiple' : 'single',
-            options: foundDays
-        };
+        return { title: subject, type: foundDays.length > 1 ? 'multiple' : 'single', options: foundDays };
     }
 
-
-    // Strategy C: Fallback Date Pattern
+    // Strategy C: Fallback
     const dateMatch = text.match(/(\d{1,2})\/(\d{1,2})/);
     if (dateMatch) {
         const d = new Date(today.getFullYear(), parseInt(dateMatch[1]) - 1, parseInt(dateMatch[2]));
         if (d < today) d.setFullYear(today.getFullYear() + 1);
+        const availability = getAvailability(d);
         return {
             title: subject,
             type: 'single',
             options: [{
                 date: d,
-                label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                label: `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${availability}`,
                 timeStr: defaultTime,
                 reason: "Found date pattern"
             }]
         };
     }
-
     return null;
 };
 
-export default function EmailTab({ user, onRefresh, onAddTask }) {
+export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcomingEvents = [] }) {
     const [activeTab, setActiveTab] = useState('inbox'); // 'inbox' or 'starred'
     const [emails, setEmails] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -273,7 +275,7 @@ export default function EmailTab({ user, onRefresh, onAddTask }) {
                 const date = new Date(parseInt(email.internalDate));
 
                 // Check for suggestion flag
-                const hasSuggestion = !!extractEventDetails(subject, snippet, date);
+                const hasSuggestion = !!extractEventDetails(subject, snippet, date, tasks, upcomingEvents);
 
                 return {
                     id: email.id,
@@ -423,7 +425,7 @@ export default function EmailTab({ user, onRefresh, onAddTask }) {
             setEmailContent(body);
 
             // Try to extract event (reuse logic)
-            const suggestion = extractEventDetails(email.subject, plainText || body.replace(/<[^>]*>?/gm, ''), email.date);
+            const suggestion = extractEventDetails(email.subject, plainText || body.replace(/<[^>]*>?/gm, ''), email.date, tasks, upcomingEvents);
             setSuggestedEvent(suggestion);
 
         } catch (err) {

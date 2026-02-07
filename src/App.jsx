@@ -7,6 +7,7 @@ import api from './utils/api';
 import DashboardTab from './components/layout/DashboardTab';
 import CalendarTab from './components/layout/CalendarTab';
 import EmailTab from './components/layout/EmailTab';
+import SlackTab from './components/layout/SlackTab';
 import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
 import Privacy from './Privacy';
@@ -177,14 +178,20 @@ function App() {
     }, [googleUser, subscriptionStatus]);
 
     // Handle browser back/forward navigation
+    // Handle browser back/forward navigation and initial load state
     useEffect(() => {
         const handlePopState = () => {
             const path = window.location.pathname;
-            if (path === '/privacy') setActiveTab('privacy');
+            const params = new URLSearchParams(window.location.search);
+
+            if (params.get('code')) setActiveTab('slack');
+            else if (path === '/privacy') setActiveTab('privacy');
             else if (path === '/terms') setActiveTab('terms');
             else if (path === '/tokusho') setActiveTab('tokusho');
             else setActiveTab('dashboard');
         };
+
+        handlePopState(); // Check on mount too
 
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
@@ -882,6 +889,23 @@ function App() {
                     EMAILS
                 </button>
                 <button
+                    onClick={() => setActiveTab('slack')}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: activeTab === 'slack' ? 'var(--primary)' : 'var(--text-muted)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        letterSpacing: '0.1em',
+                        borderBottom: activeTab === 'slack' ? '2px solid var(--primary)' : '2px solid transparent',
+                        paddingBottom: '0.5rem',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    SLACK
+                </button>
+                <button
                     onClick={logout}
                     style={{
                         background: 'none',
@@ -921,10 +945,11 @@ function App() {
                 }} />
                 <motion.div
                     className="tab-track"
-                    style={{ display: 'flex', width: '300%', touchAction: 'pan-y' }}
+                    style={{ display: 'flex', width: '400%', touchAction: 'pan-y' }}
                     animate={{
-                        x: activeTab === 'calendar' ? '-33.333%' :
-                            activeTab === 'emails' ? '-66.666%' : '0%'
+                        x: activeTab === 'calendar' ? '-25%' :
+                            activeTab === 'emails' ? '-50%' :
+                                activeTab === 'slack' ? '-75%' : '0%'
                     }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     drag="x"
@@ -956,10 +981,14 @@ function App() {
                             setActiveTab('emails');
                         } else if (activeTab === 'emails' && swipe > 50) {
                             setActiveTab('calendar');
+                        } else if (activeTab === 'emails' && swipe < -50) {
+                            setActiveTab('slack');
+                        } else if (activeTab === 'slack' && swipe > 50) {
+                            setActiveTab('emails');
                         }
                     }}
                 >
-                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{ width: '25%', flexShrink: 0, padding: '0 5rem' }}>
                         <DashboardTab
                             tasks={tasks}
                             upcomingEvents={upcomingEvents}
@@ -990,7 +1019,7 @@ function App() {
                             setVisibleDays={setVisibleDays}
                         />
                     </div>
-                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{ width: '25%', flexShrink: 0, padding: '0 5rem' }}>
                         <CalendarTab
                             user={googleUser}
                             setUser={setGoogleUser}
@@ -998,7 +1027,7 @@ function App() {
                             onSyncClick={handleSyncClick}
                         />
                     </div>
-                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{ width: '25%', flexShrink: 0, padding: '0 5rem' }}>
                         <EmailTab
                             user={googleUser}
                             onRefresh={() => {
@@ -1008,6 +1037,9 @@ function App() {
                             tasks={tasks}
                             upcomingEvents={upcomingEvents}
                         />
+                    </div>
+                    <div style={{ width: '25%', flexShrink: 0, padding: '0 5rem' }}>
+                        <SlackTab user={googleUser} />
                     </div>
                 </motion.div>
             </div>

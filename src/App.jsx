@@ -7,7 +7,7 @@ import api from './utils/api';
 import DashboardTab from './components/layout/DashboardTab';
 import CalendarTab from './components/layout/CalendarTab';
 import EmailTab from './components/layout/EmailTab';
-import SlackTab from './components/layout/SlackTab';
+
 import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
 import Privacy from './Privacy';
@@ -184,8 +184,8 @@ function App() {
             const path = window.location.pathname;
             const params = new URLSearchParams(window.location.search);
 
-            if (params.get('code')) setActiveTab('slack');
-            else if (path === '/privacy') setActiveTab('privacy');
+
+            if (path === '/privacy') setActiveTab('privacy');
             else if (path === '/terms') setActiveTab('terms');
             else if (path === '/tokusho') setActiveTab('tokusho');
             else setActiveTab('dashboard');
@@ -888,23 +888,7 @@ function App() {
                 >
                     EMAILS
                 </button>
-                <button
-                    onClick={() => setActiveTab('slack')}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        color: activeTab === 'slack' ? 'var(--primary)' : 'var(--text-muted)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        letterSpacing: '0.1em',
-                        borderBottom: activeTab === 'slack' ? '2px solid var(--primary)' : '2px solid transparent',
-                        paddingBottom: '0.5rem',
-                        transition: 'all 0.3s'
-                    }}
-                >
-                    SLACK
-                </button>
+
                 <button
                     onClick={logout}
                     style={{
@@ -945,11 +929,10 @@ function App() {
                 }} />
                 <motion.div
                     className="tab-track"
-                    style={{ display: 'flex', width: '400%', touchAction: 'pan-y' }}
+                    style={{ display: 'flex', width: '300%', touchAction: 'pan-y' }}
                     animate={{
-                        x: activeTab === 'calendar' ? '-25%' :
-                            activeTab === 'emails' ? '-50%' :
-                                activeTab === 'slack' ? '-75%' : '0%'
+                        x: activeTab === 'calendar' ? '-33.333%' :
+                            activeTab === 'emails' ? '-66.666%' : '0%'
                     }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     drag="x"
@@ -981,14 +964,10 @@ function App() {
                             setActiveTab('emails');
                         } else if (activeTab === 'emails' && swipe > 50) {
                             setActiveTab('calendar');
-                        } else if (activeTab === 'emails' && swipe < -50) {
-                            setActiveTab('slack');
-                        } else if (activeTab === 'slack' && swipe > 50) {
-                            setActiveTab('emails');
                         }
                     }}
                 >
-                    <div style={{ width: '25%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
                         <DashboardTab
                             tasks={tasks}
                             upcomingEvents={upcomingEvents}
@@ -1019,7 +998,7 @@ function App() {
                             setVisibleDays={setVisibleDays}
                         />
                     </div>
-                    <div style={{ width: '25%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
                         <CalendarTab
                             user={googleUser}
                             setUser={setGoogleUser}
@@ -1027,7 +1006,7 @@ function App() {
                             onSyncClick={handleSyncClick}
                         />
                     </div>
-                    <div style={{ width: '25%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
                         <EmailTab
                             user={googleUser}
                             onRefresh={() => {
@@ -1038,55 +1017,55 @@ function App() {
                             upcomingEvents={upcomingEvents}
                         />
                     </div>
-                    <div style={{ width: '25%', flexShrink: 0, padding: '0 5rem' }}>
-                        <SlackTab user={googleUser} />
-                    </div>
+
                 </motion.div>
             </div>
 
             {/* Unified Import Modal */}
-            {isImportModalOpen && (
-                <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
-                    <div className="modal-content glass-card" onClick={e => e.stopPropagation()} style={{ padding: '2rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ margin: 0 }}>Select Calendar to Import</h3>
-                            <button onClick={() => setIsImportModalOpen(false)} className="btn-icon" style={{ width: '32px', height: '32px', background: 'none' }}>
-                                <X size={20} />
+            {
+                isImportModalOpen && (
+                    <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
+                        <div className="modal-content glass-card" onClick={e => e.stopPropagation()} style={{ padding: '2rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ margin: 0 }}>Select Calendar to Import</h3>
+                                <button onClick={() => setIsImportModalOpen(false)} className="btn-icon" style={{ width: '32px', height: '32px', background: 'none' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '1.5rem' }}>
+                                Choose a calendar to pull events from and add them to your Hub dashboard as tasks.
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                {calendarList.map(cal => (
+                                    <div
+                                        key={cal.id}
+                                        className="calendar-list-item"
+                                        onClick={() => importFromCalendar(cal.id)}
+                                        style={{ opacity: importLoading ? 0.5 : 1, pointerEvents: importLoading ? 'none' : 'auto' }}
+                                    >
+                                        <span>{cal.summary}</span>
+                                        {cal.primary && <span style={{ fontSize: '0.65rem', opacity: 0.5, marginLeft: 'auto', background: 'rgba(96, 165, 250, 0.2)', padding: '2px 6px', borderRadius: '4px' }}>PRIMARY</span>}
+                                    </div>
+                                ))}
+                            </div>
+                            {importLoading && (
+                                <div style={{ marginTop: '1.5rem', textAlign: 'center', color: 'var(--primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+
+                                    <RefreshCcw size={16} className="spin" /> Syncing...
+                                </div>
+                            )}
+                            <button
+                                className="btn-icon"
+                                style={{ width: '100%', marginTop: '1.5rem', background: 'rgba(255,255,255,0.05)' }}
+                                onClick={() => setIsImportModalOpen(false)}
+                                disabled={importLoading}
+                            >
+                                Cancel
                             </button>
                         </div>
-                        <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '1.5rem' }}>
-                            Choose a calendar to pull events from and add them to your Hub dashboard as tasks.
-                        </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                            {calendarList.map(cal => (
-                                <div
-                                    key={cal.id}
-                                    className="calendar-list-item"
-                                    onClick={() => importFromCalendar(cal.id)}
-                                    style={{ opacity: importLoading ? 0.5 : 1, pointerEvents: importLoading ? 'none' : 'auto' }}
-                                >
-                                    <span>{cal.summary}</span>
-                                    {cal.primary && <span style={{ fontSize: '0.65rem', opacity: 0.5, marginLeft: 'auto', background: 'rgba(96, 165, 250, 0.2)', padding: '2px 6px', borderRadius: '4px' }}>PRIMARY</span>}
-                                </div>
-                            ))}
-                        </div>
-                        {importLoading && (
-                            <div style={{ marginTop: '1.5rem', textAlign: 'center', color: 'var(--primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-
-                                <RefreshCcw size={16} className="spin" /> Syncing...
-                            </div>
-                        )}
-                        <button
-                            className="btn-icon"
-                            style={{ width: '100%', marginTop: '1.5rem', background: 'rgba(255,255,255,0.05)' }}
-                            onClick={() => setIsImportModalOpen(false)}
-                            disabled={importLoading}
-                        >
-                            Cancel
-                        </button>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <div style={{ marginTop: '3rem', textAlign: 'center', opacity: 0.3, fontSize: '0.75rem', color: 'white' }}>
                 Task Master • Glassmorphism Edit
@@ -1138,27 +1117,29 @@ function App() {
                 </div>
             </div>
 
-            {importLoading && !isImportModalOpen && (
-                <div style={{
-                    position: 'fixed',
-                    bottom: '2rem',
-                    right: '2rem',
-                    background: 'var(--glass-bg)',
-                    backdropFilter: 'blur(10px)',
-                    padding: '1rem 1.5rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--glass-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    zIndex: 2000,
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
-                }}>
-                    <RefreshCcw size={20} className="spin" style={{ color: 'var(--primary)' }} />
-                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Importing your calendar...</span>
-                </div>
-            )}
-        </div>
+            {
+                importLoading && !isImportModalOpen && (
+                    <div style={{
+                        position: 'fixed',
+                        bottom: '2rem',
+                        right: '2rem',
+                        background: 'var(--glass-bg)',
+                        backdropFilter: 'blur(10px)',
+                        padding: '1rem 1.5rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--glass-border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        zIndex: 2000,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+                    }}>
+                        <RefreshCcw size={20} className="spin" style={{ color: 'var(--primary)' }} />
+                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Importing your calendar...</span>
+                    </div>
+                )
+            }
+        </div >
     );
 }
 

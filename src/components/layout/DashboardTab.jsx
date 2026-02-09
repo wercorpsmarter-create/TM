@@ -26,7 +26,10 @@ export default function DashboardTab({
     onTaskDragEnd,
     onReorderTasks,
     visibleDays,
-    setVisibleDays
+    setVisibleDays,
+    currentWeekOffset = 0,
+    onNextWeek,
+    onPrevWeek
 }) {
     return (
         <div className="dashboard-tab" style={{ paddingBottom: '2rem' }}>
@@ -61,6 +64,9 @@ export default function DashboardTab({
                 onDragEnd={onTaskDragEnd}
                 onReorderTasks={onReorderTasks}
                 visibleDays={visibleDays}
+                currentWeekOffset={currentWeekOffset}
+                onNextWeek={onNextWeek}
+                onPrevWeek={onPrevWeek}
             />
         </div>
     );

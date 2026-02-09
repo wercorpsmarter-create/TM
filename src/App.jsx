@@ -67,6 +67,7 @@ function App() {
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity']);
     const [visibleDays, setVisibleDays] = useLocalStorage('prohub-visible-days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
+    const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
     const [subscriptionStatus, setSubscriptionStatus] = useState(() => {
         // If query params exist, we enter "checking" state to verify them
         const urlParams = new URLSearchParams(window.location.search);
@@ -529,7 +530,7 @@ function App() {
 
         const dateStr = getTargetDate(day);
         try {
-            const newTask = await api.createTask(userId, text, dateStr, 'To-Do');
+            const newTask = await api.createTask(userId, text, dateStr, 'Pending');
             setTasks([...tasks, {
                 ...newTask,
                 day,
@@ -938,7 +939,7 @@ function App() {
                     drag="x"
                     dragListener={false}
                     dragControls={dragControls}
-                    dragConstraints={containerRef}
+
                     dragElastic={0.2}
                     onPointerDown={(e) => {
                         const isDraggableItem = e.target.closest('.compact-task') ||
@@ -984,7 +985,7 @@ function App() {
                             onSyncClick={handleSyncClick}
                             layout={dashboardLayout}
                             setLayout={setDashboardLayout}
-                            onAddTask={addTask}
+                            onAddTask={(day, text, sync, time) => addTask(day, text, sync, time, currentWeekOffset)}
                             onDeleteTask={deleteTask}
                             onToggleTask={toggleTask}
                             onMoveTask={moveTask}
@@ -996,6 +997,9 @@ function App() {
                             }}
                             visibleDays={visibleDays}
                             setVisibleDays={setVisibleDays}
+                            currentWeekOffset={currentWeekOffset}
+                            onNextWeek={() => setCurrentWeekOffset(prev => prev + 1)}
+                            onPrevWeek={() => setCurrentWeekOffset(prev => prev - 1)}
                         />
                     </div>
                     <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>

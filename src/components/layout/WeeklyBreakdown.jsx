@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -210,7 +210,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, isEditing, onInteracti
     );
 };
 
-const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onInteractionStart, onInteractionEnd }) => {
+const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onInteractionStart, onInteractionEnd, offset = 0 }) => {
     const { setNodeRef } = useDroppable({
         id: dayName,
     });
@@ -228,7 +228,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onIn
         const currentDay = d.getDay();
         const diffFromMonday = (currentDay === 0 ? 6 : currentDay - 1);
         const monday = new Date(d);
-        monday.setDate(d.getDate() - diffFromMonday);
+        monday.setDate(d.getDate() - diffFromMonday + (offset * 7)); // Add Offset
 
         const targetIdxRelative = targetIdx === 0 ? 6 : targetIdx - 1;
         const targetDate = new Date(monday);
@@ -399,7 +399,11 @@ export default function WeeklyBreakdown({
     onDragStart,
     onDragEnd,
     onReorderTasks,
-    visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+    visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    currentWeekOffset = 0,
+    onNextWeek,
+    onPrevWeek
 }) {
     const [activeTask, setActiveTask] = useState(null);
 
@@ -462,10 +466,19 @@ export default function WeeklyBreakdown({
             collisionDetection={closestCenter}
             autoScroll={false}
         >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0 1rem' }}>
+                <button onClick={onPrevWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ChevronLeft size={14} />
+                </button>
+                <button onClick={onNextWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ChevronRight size={14} />
+                </button>
+            </div>
+
             <div className="weekly-breakdown">
-                {DAYS.filter(day => visibleDays.includes(day)).map(day => (
+                {DAYS.filter(day => visibleDays.includes(day)).map((day, index) => (
                     <DayColumn
-                        key={day}
+                        key={`${day}-${currentWeekOffset}`}
                         dayName={day}
                         tasks={tasks}
                         onAddTask={onAddTask}
@@ -473,6 +486,7 @@ export default function WeeklyBreakdown({
                         onToggleTask={onToggleTask}
                         onInteractionStart={onDragStart}
                         onInteractionEnd={onDragEnd}
+                        offset={currentWeekOffset}
                     />
                 ))}
             </div>

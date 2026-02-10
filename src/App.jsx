@@ -525,12 +525,12 @@ function App() {
         }
     };
 
-    const addTask = async (day, text, syncWithGoogle = false, time = null) => {
+    const addTask = async (day, text, syncWithGoogle = false, time = null, duration = 30) => {
         if (!userId) return;
 
-        const dateStr = getTargetDate(day);
+        const dateStr = day.includes('-') ? day : getTargetDate(day);
         try {
-            const newTask = await api.createTask(userId, text, dateStr, 'Pending');
+            const newTask = await api.createTask(userId, text, dateStr, 'Pending', { time, duration });
             setTasks([...tasks, {
                 ...newTask,
                 day,
@@ -985,7 +985,7 @@ function App() {
                             onSyncClick={handleSyncClick}
                             layout={dashboardLayout}
                             setLayout={setDashboardLayout}
-                            onAddTask={(day, text, sync, time) => addTask(day, text, sync, time, currentWeekOffset)}
+                            onAddTask={(day, text, sync, time) => addTask(day, text, sync, time)}
                             onDeleteTask={deleteTask}
                             onToggleTask={toggleTask}
                             onMoveTask={moveTask}
@@ -1007,6 +1007,7 @@ function App() {
                             user={googleUser}
                             setUser={setGoogleUser}
                             tasks={tasks}
+                            onAddTask={addTask}
                             onSyncClick={handleSyncClick}
                         />
                     </div>

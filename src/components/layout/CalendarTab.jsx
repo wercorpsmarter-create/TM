@@ -2,12 +2,75 @@ import React, { useState, useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink } from 'lucide-react';
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask }) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState('month'); // 'month', 'week', 'day'
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [expandedEventId, setExpandedEventId] = useState(null);
+
+    // Drag to create state
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState(null); // { dayIndex: number, startMinutes: number, dateObj: Date }
+    const [dragCurrent, setDragCurrent] = useState(null); // { endMinutes: number }
+
+    const snapToQuarter = (minutes) => Math.floor(minutes / 15) * 15;
+
+    const handleDragStart = (e, dayIndex, dateObj) => {
+        // Prevent interaction if clicking on existing event
+        if (e.target.closest('.event-pill')) return;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        const minutes = (offsetY / 60) * 60;
+        const snapped = snapToQuarter(minutes);
+
+        setIsDragging(true);
+        setDragStart({ dayIndex, startMinutes: snapped, dateObj });
+        setDragCurrent({ endMinutes: snapped + 15 }); // Start with 15 min duration
+
+        e.preventDefault();
+    };
+
+    const handleDragMove = (e) => {
+        if (!isDragging || !dragStart) return;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        const minutes = (offsetY / 60) * 60;
+        const snapped = snapToQuarter(minutes);
+
+        if (snapped > dragStart.startMinutes) {
+            setDragCurrent({ endMinutes: snapped });
+        }
+    };
+
+    const handleDragEnd = async () => {
+        if (!isDragging || !dragStart || !dragCurrent) return;
+
+        const startMinutes = dragStart.startMinutes;
+        const endMinutes = Math.max(dragCurrent.endMinutes, startMinutes + 15);
+
+        const h = Math.floor(startMinutes / 60);
+        const m = startMinutes % 60;
+        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+
+        const year = dragStart.dateObj.getFullYear();
+        const month = String(dragStart.dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dragStart.dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
+        const title = window.prompt(`New Event at ${timeStr}`);
+
+        if (title && onAddTask) {
+            const duration = endMinutes - startMinutes;
+            await onAddTask(dateStr, title, false, timeStr, duration);
+        }
+
+        setIsDragging(false);
+        setDragStart(null);
+        setDragCurrent(null);
+    };
 
     const login = useGoogleLogin({
         onSuccess: (tokenResponse) => {
@@ -23,12 +86,6 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick }) {
 
     useEffect(() => {
         if (user && user.access_token) {
-            // Fetch based on view? 
-            // For simplicity, always fetch the CURRENT MONTH surrounding the currentDate
-            // to ensure we have data. If week spans two months, might miss some?
-            // Let's broaden existing fetch or keep it simple.
-            // If we are in week view, currentDate is still a specific day.
-            // We'll trust the month fetch for now or we could optimize later.
             fetchEvents(user.access_token);
         }
     }, [user, currentDate, view]);
@@ -36,22 +93,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick }) {
     const fetchEvents = async (accessToken) => {
         setLoading(true);
         try {
-            // Determine range based on view? 
-            // Actually, fetching a larger range (like +/- 1 month) is safer but let's stick to current month logic
-            // primarily, or adapt if view is week/day across boundaries.
-
-            let start, end;
-
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
 
-            // Default to monthly fetch logic to cover most cases
-            start = new Date(year, month, 1);
-            end = new Date(year, month + 1, 0, 23, 59, 59);
-
-            // If in week view and it crosses month, expand slightly?
-            // Let's just fetch previous, current, next month to be safe? 
-            // Or just stick to current month logic for now as 'currentDate' shifts.
+            // Default to +/- 1 month to ensure coverage
+            const start = new Date(year, month - 1, 1);
+            const end = new Date(year, month + 2, 0);
 
             const startStr = start.toISOString();
             const endStr = end.toISOString();
@@ -98,9 +145,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick }) {
 
     const getDaysInWeek = () => {
         const curr = new Date(currentDate);
-        const day = curr.getDay(); // 0 (Sun) to 6 (Sat)
-        // Adjust to make week start on Sunday? standard is Sunday=0
-
+        const day = curr.getDay();
         const first = curr.getDate() - day;
 
         const days = [];
@@ -111,7 +156,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick }) {
                 day: next.getDate(),
                 month: next.getMonth(),
                 year: next.getFullYear(),
-                currentMonth: next.getMonth() === currentDate.getMonth(), // strictly speaking
+                currentMonth: next.getMonth() === currentDate.getMonth(),
                 dateObj: next
             });
         }
@@ -267,144 +312,394 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick }) {
                 )}
 
                 {view === 'week' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', height: '100%', gap: '1px' }}>
-                        {getDaysInWeek().map((dayObj, i) => {
-                            const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
-                            const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
-                            const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', width: '100%', gap: '1px' }}>
+                                {getDaysInWeek().map((dayObj, i) => {
+                                    const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
+                                    const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                                    return (
+                                        <div key={i} style={{ textAlign: 'center', opacity: isToday ? 1 : 0.7 }}>
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
+                                            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: isToday ? 'var(--primary)' : 'var(--text-main)' }}>{dayObj.day}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
-                            return (
-                                <div key={i} style={{ display: 'flex', flexDirection: 'column', borderRight: i < 6 ? '1px solid rgba(255,255,255,0.1)' : 'none', padding: '0.5rem' }}>
-                                    <div style={{ textAlign: 'center', marginBottom: '1rem', opacity: isToday ? 1 : 0.7 }}>
-                                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
-                                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: isToday ? 'var(--primary)' : 'var(--text-main)' }}>{dayObj.day}</div>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto' }}>
-                                        {dayEvents.map(e => (
-                                            <div key={e.id} className="event-pill google" style={{ whiteSpace: 'normal', padding: '4px 8px', position: 'relative' }}>
-                                                {e.summary}
-                                                <div style={{ fontSize: '0.6rem', opacity: 0.7, marginBottom: e.hangoutLink ? '2px' : '0' }}>
-                                                    {new Date(e.start.dateTime || e.start.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                                {e.hangoutLink && (
-                                                    <a
-                                                        href={e.hangoutLink}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        title="Join Meet"
-                                                        onClick={(ev) => ev.stopPropagation()}
-                                                        style={{
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                            background: 'rgba(37, 99, 235, 0.15)',
-                                                            color: 'var(--primary)',
-                                                            textDecoration: 'none',
-                                                            borderRadius: '4px',
-                                                            padding: '2px 6px',
-                                                            fontSize: '0.65rem',
-                                                            fontWeight: 600,
-                                                            marginTop: '2px'
-                                                        }}
-                                                    >
-                                                        <Video size={10} /> Join
-                                                    </a>
-                                                )}
-                                            </div>
-                                        ))}
-                                        {dayTasks.map(t => (
-                                            <div key={t.id} className="event-pill hub" style={{ whiteSpace: 'normal', padding: '4px 8px' }}>
-                                                • {t.text}
-                                            </div>
-                                        ))}
-                                    </div>
+                        <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                            <div
+                                style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default' }}
+                                onMouseMove={handleDragMove}
+                                onMouseUp={handleDragEnd}
+                                onMouseLeave={handleDragEnd}
+                            >
+                                <div style={{ position: 'absolute', inset: 0, left: '50px', pointerEvents: 'none', zIndex: 0 }}>
+                                    {Array.from({ length: 24 }).map((_, i) => (
+                                        <div key={i} style={{
+                                            height: '60px',
+                                            borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.1)' : 'none',
+                                            borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.1)' : 'none',
+                                            boxSizing: 'border-box'
+                                        }} />
+                                    ))}
                                 </div>
-                            );
-                        })}
+
+                                <div style={{ width: '50px', flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.05)', marginRight: '0', zIndex: 1, backgroundColor: 'rgba(255,255,255,0.8)' }}>
+                                    {Array.from({ length: 24 }).map((_, i) => (
+                                        <div key={i} style={{ height: '60px', position: 'relative' }}>
+                                            <span style={{ position: 'absolute', top: '-6px', right: '8px', fontSize: '0.7rem', color: '#94a3b8' }}>
+                                                {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {(() => {
+                                    const now = new Date();
+                                    const minutes = now.getHours() * 60 + now.getMinutes();
+                                    const topOffset = (minutes / 60) * 60;
+                                    return (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: `${topOffset}px`,
+                                            left: '50px',
+                                            right: 0,
+                                            height: '2px',
+                                            backgroundColor: 'red',
+                                            zIndex: 50,
+                                            pointerEvents: 'none'
+                                        }}>
+                                            <div style={{
+                                                position: 'absolute',
+                                                left: '-6px',
+                                                top: '-4px',
+                                                width: '10px',
+                                                height: '10px',
+                                                borderRadius: '50%',
+                                                backgroundColor: 'red'
+                                            }} />
+                                        </div>
+                                    );
+                                })()}
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', width: '100%', gap: '0', zIndex: 1 }}>
+                                    {getDaysInWeek().map((dayObj, i) => {
+                                        const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
+
+                                        const items = [
+                                            ...dayEvents.map(e => {
+                                                const start = new Date(e.start.dateTime || e.start.date);
+                                                const end = new Date(e.end.dateTime || e.end.date);
+                                                const startMinutes = start.getHours() * 60 + start.getMinutes();
+                                                const duration = (end - start) / (1000 * 60);
+                                                return { ...e, type: 'google', startMinutes, duration, title: e.summary };
+                                            }),
+                                            ...dayTasks.map(t => {
+                                                let startMinutes = 0;
+                                                let duration = 30;
+                                                let hasTime = false;
+
+                                                if (t.metadata) {
+                                                    if (t.metadata.time) {
+                                                        const [h, m] = t.metadata.time.split(':').map(Number);
+                                                        startMinutes = h * 60 + m;
+                                                        hasTime = true;
+                                                    }
+                                                    if (t.metadata.duration) {
+                                                        duration = parseInt(t.metadata.duration, 10);
+                                                    }
+                                                }
+                                                return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text };
+                                            })
+                                        ];
+
+                                        return (
+                                            <div key={i}
+                                                style={{
+                                                    position: 'relative',
+                                                    borderRight: '1px solid rgba(0,0,0,0.1)',
+                                                    borderLeft: i === 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
+                                                    height: '100%'
+                                                }}
+                                                onMouseDown={(e) => handleDragStart(e, i, dayObj.dateObj)}
+                                            >
+                                                {isDragging && dragStart && dragStart.dayIndex === i && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: `${(dragStart.startMinutes / 60) * 60}px`,
+                                                        height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
+                                                        left: '2px', right: '2px',
+                                                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                                        borderRadius: '4px',
+                                                        zIndex: 100,
+                                                        pointerEvents: 'none',
+                                                        border: '1px solid var(--primary)',
+                                                        color: 'white',
+                                                        fontSize: '0.7rem',
+                                                        padding: '2px 4px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontWeight: 600
+                                                    }}>
+                                                        {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
+                                                        {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
+                                                    </div>
+                                                )}
+
+                                                {items.map((item, idx) => {
+                                                    const isAllDay = item.type === 'google' && !item.start.dateTime;
+
+                                                    if (isAllDay || (item.type === 'task' && !item.hasTime)) {
+                                                        return (
+                                                            <div key={idx} className={`event-pill ${item.type}`} style={{
+                                                                position: 'relative',
+                                                                marginBottom: '2px',
+                                                                fontSize: '0.7rem',
+                                                                padding: '2px 4px',
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis'
+                                                            }}>
+                                                                {item.title}
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    const top = (item.startMinutes / 60) * 60;
+                                                    const height = (item.duration / 60) * 60;
+
+                                                    return (
+                                                        <div key={idx} className={`event-pill ${item.type}`} style={{
+                                                            position: 'absolute',
+                                                            top: `${top}px`,
+                                                            height: `${Math.max(height, 20)}px`,
+                                                            left: '2px',
+                                                            right: '2px',
+                                                            fontSize: '0.75rem',
+                                                            padding: '2px 4px',
+                                                            overflow: 'hidden',
+                                                            zIndex: 10,
+                                                            border: '1px solid rgba(0,0,0,0.1)',
+                                                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                                            display: 'flex',
+                                                            flexDirection: 'column'
+                                                        }}>
+                                                            <div style={{ fontWeight: 600, fontSize: '0.7rem' }}>{item.title}</div>
+                                                            {height > 30 && (
+                                                                <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>
+                                                                    {Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
                 {view === 'day' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        {(() => {
-                            const { dayEvents, dayTasks } = getItemsForDay(currentDate.getDate(), currentDate.getMonth(), currentDate.getFullYear());
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                            <div
+                                style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default' }}
+                                onMouseMove={handleDragMove}
+                                onMouseUp={handleDragEnd}
+                                onMouseLeave={handleDragEnd}
+                            >
+                                <div style={{ position: 'absolute', inset: 0, left: '50px', pointerEvents: 'none', zIndex: 0 }}>
+                                    {Array.from({ length: 24 }).map((_, i) => (
+                                        <div key={i} style={{
+                                            height: '60px',
+                                            borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.1)' : 'none',
+                                            borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.1)' : 'none',
+                                            boxSizing: 'border-box'
+                                        }} />
+                                    ))}
+                                </div>
 
-                            // Sort all items by time if possible, roughly
-                            const allItems = [
-                                ...dayEvents.map(e => ({ ...e, type: 'google', time: new Date(e.start.dateTime || e.start.date) })),
-                                ...dayTasks.map(t => ({ ...t, type: 'task', time: new Date() })) // Tasks often have no time, assume all day or top
-                            ].sort((a, b) => a.time - b.time);
+                                <div style={{ width: '50px', flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.05)', marginRight: '0', zIndex: 1, backgroundColor: 'rgba(255,255,255,0.8)' }}>
+                                    {Array.from({ length: 24 }).map((_, i) => (
+                                        <div key={i} style={{ height: '60px', position: 'relative' }}>
+                                            <span style={{ position: 'absolute', top: '-6px', right: '8px', fontSize: '0.7rem', color: '#94a3b8' }}>
+                                                {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
 
-                            return (
-                                <div style={{ padding: '0 2rem', marginTop: '2rem' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        {allItems.length === 0 && <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No events scheduled for today.</div>}
+                                {(() => {
+                                    const now = new Date();
+                                    const minutes = now.getHours() * 60 + now.getMinutes();
+                                    const topOffset = (minutes / 60) * 60;
+                                    return (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: `${topOffset}px`,
+                                            left: '50px',
+                                            right: 0,
+                                            height: '2px',
+                                            backgroundColor: 'red',
+                                            zIndex: 50,
+                                            pointerEvents: 'none'
+                                        }}>
+                                            <div style={{
+                                                position: 'absolute',
+                                                left: '-6px',
+                                                top: '-4px',
+                                                width: '10px',
+                                                height: '10px',
+                                                borderRadius: '50%',
+                                                backgroundColor: 'red'
+                                            }} />
+                                        </div>
+                                    );
+                                })()}
 
-                                        {allItems.map((item, idx) => (
-                                            <div key={idx}
-                                                onClick={() => setExpandedEventId(expandedEventId === (item.id || idx) ? null : (item.id || idx))}
-                                                style={{
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    gap: '0.5rem',
-                                                    padding: '1rem',
-                                                    background: item.type === 'google' ? 'rgba(255,255,255,0.5)' : 'rgba(96, 165, 250, 0.1)',
-                                                    borderRadius: '12px',
-                                                    borderLeft: `4px solid ${item.type === 'google' ? '#94a3b8' : 'var(--primary)'}`,
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s'
-                                                }}>
-                                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                                    <div style={{ fontWeight: 700, minWidth: '80px', fontSize: '0.9rem' }}>
-                                                        {item.type === 'google'
-                                                            ? item.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                                            : 'All Day'
-                                                        }
-                                                    </div>
-                                                    <div style={{ fontWeight: 500, flex: 1 }}>
-                                                        {item.summary || item.text}
-                                                    </div>
+                                <div
+                                    style={{ flex: 1, position: 'relative', borderLeft: '1px solid rgba(0,0,0,0.1)', zIndex: 1 }}
+                                    onMouseDown={(e) => handleDragStart(e, 0, currentDate)} // dayIndex 0 for day view
+                                >
+                                    {isDragging && dragStart && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: `${(dragStart.startMinutes / 60) * 60}px`,
+                                            height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
+                                            left: '10px', right: '10px',
+                                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                            borderRadius: '4px',
+                                            zIndex: 100,
+                                            pointerEvents: 'none',
+                                            border: '1px solid var(--primary)',
+                                            color: 'white',
+                                            fontSize: '0.7rem',
+                                            padding: '2px 4px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontWeight: 600
+                                        }}>
+                                            {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
+                                            {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
+                                        </div>
+                                    )}
+
+                                    {(() => {
+                                        const { dayEvents, dayTasks } = getItemsForDay(currentDate.getDate(), currentDate.getMonth(), currentDate.getFullYear());
+
+                                        const items = [
+                                            ...dayEvents.map(e => {
+                                                const start = new Date(e.start.dateTime || e.start.date);
+                                                const end = new Date(e.end.dateTime || e.end.date);
+                                                const startMinutes = start.getHours() * 60 + start.getMinutes();
+                                                const duration = (end - start) / (1000 * 60);
+                                                return { ...e, type: 'google', startMinutes, duration, title: e.summary };
+                                            }),
+                                            ...dayTasks.map(t => {
+                                                let startMinutes = 0;
+                                                let duration = 30;
+                                                let hasTime = false;
+
+                                                if (t.metadata) {
+                                                    if (t.metadata.time) {
+                                                        const [h, m] = t.metadata.time.split(':').map(Number);
+                                                        startMinutes = h * 60 + m;
+                                                        hasTime = true;
+                                                    }
+                                                    if (t.metadata.duration) {
+                                                        duration = parseInt(t.metadata.duration, 10);
+                                                    }
+                                                }
+                                                return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text };
+                                            })
+                                        ];
+
+                                        const allDayItems = items.filter(item =>
+                                            (item.type === 'google' && !item.start.dateTime) ||
+                                            (item.type === 'task' && !item.hasTime)
+                                        );
+
+                                        const timedItems = items.filter(item =>
+                                            !((item.type === 'google' && !item.start.dateTime) ||
+                                                (item.type === 'task' && !item.hasTime))
+                                        );
+
+                                        return (
+                                            <>
+                                                <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
+                                                    {allDayItems.map((item, idx) => (
+                                                        <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
+                                                            position: 'relative',
+                                                            marginBottom: '4px',
+                                                            padding: '4px 8px',
+                                                        }}>
+                                                            <span style={{ fontWeight: 600 }}>All Day:</span> {item.title}
+                                                        </div>
+                                                    ))}
                                                 </div>
 
-                                                {/* Expanded Details */}
-                                                {expandedEventId === (item.id || idx) && item.type === 'google' && (
-                                                    <div style={{
-                                                        marginTop: '0.5rem',
-                                                        paddingTop: '0.5rem',
-                                                        borderTop: '1px solid rgba(0,0,0,0.05)',
-                                                        display: 'flex',
-                                                        gap: '1rem',
-                                                        fontSize: '0.85rem'
-                                                    }} onClick={(e) => e.stopPropagation()}>
-                                                        {item.hangoutLink && (
-                                                            <a href={item.hangoutLink} target="_blank" rel="noopener noreferrer" style={{
-                                                                display: 'flex', alignItems: 'center', gap: '0.4rem',
-                                                                color: 'var(--primary)', textDecoration: 'none', fontWeight: 600,
-                                                                background: 'rgba(37, 99, 235, 0.1)', padding: '4px 8px', borderRadius: '6px'
-                                                            }}>
-                                                                <Video size={14} /> Join Meet
-                                                            </a>
-                                                        )}
-                                                        {item.htmlLink && (
-                                                            <a href={item.htmlLink} target="_blank" rel="noopener noreferrer" style={{
-                                                                display: 'flex', alignItems: 'center', gap: '0.4rem',
-                                                                color: 'var(--text-muted)', textDecoration: 'none',
-                                                                padding: '4px 8px'
-                                                            }}>
-                                                                <ExternalLink size={14} /> View Event
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
+                                                {timedItems.map((item, idx) => {
+                                                    const top = (item.startMinutes / 60) * 60;
+                                                    const height = (item.duration / 60) * 60;
+                                                    const isExpanded = expandedEventId === (item.id || idx);
+
+                                                    return (
+                                                        <div key={idx}
+                                                            onClick={() => setExpandedEventId(isExpanded ? null : (item.id || idx))}
+                                                            className={`event-pill ${item.type}`}
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: `${top}px`,
+                                                                height: isExpanded ? 'auto' : `${Math.max(height, 40)}px`,
+                                                                minHeight: `${Math.max(height, 40)}px`,
+                                                                left: '10px',
+                                                                right: '10px',
+                                                                padding: '8px',
+                                                                zIndex: isExpanded ? 50 : 10,
+                                                                border: '1px solid rgba(0,0,0,0.1)',
+                                                                boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
+                                                            <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.5rem' }}>
+                                                                <span>{Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}</span>
+                                                                {item.type === 'google' && item.hangoutLink && <Video size={12} />}
+                                                            </div>
+                                                            {isExpanded && item.hangoutLink && (
+                                                                <div style={{ marginTop: '0.5rem' }}>
+                                                                    <a href={item.hangoutLink} target="_blank" rel="noopener noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        style={{
+                                                                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                                            color: 'var(--primary)', textDecoration: 'none', fontWeight: 600,
+                                                                            background: 'rgba(37, 99, 235, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem'
+                                                                        }}>
+                                                                        <Video size={14} /> Join Meet
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
-                            );
-                        })()}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
-        </div >
+        </div>
     );
 }

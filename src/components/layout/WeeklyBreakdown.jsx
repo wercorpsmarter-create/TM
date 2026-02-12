@@ -213,14 +213,23 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                                     </a>
                                 )}
 
-                                {/* Note Indicator Icon if note exists */}
+                                {/* Note Icon - Click to View/Edit */}
                                 {task.metadata?.note && (
-                                    <div title="Has note" style={{ color: 'var(--text-muted)' }}>
-                                        <StickyNote size={12} />
-                                    </div>
+                                    <button
+                                        className="btn-icon"
+                                        style={{ padding: '2px', height: 'auto', color: 'var(--primary)', opacity: 0.8 }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsNotePopupOpen(true);
+                                        }}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        title="View Note"
+                                    >
+                                        <StickyNote size={14} fill="rgba(59, 130, 246, 0.1)" />
+                                    </button>
                                 )}
 
-                                {/* Hover Menu */}
+                                {/* Hover Menu - Click to Add/Edit Note */}
                                 {(showMenu || isNotePopupOpen) && !isDragging && (
                                     <button
                                         className="btn-icon"
@@ -230,6 +239,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                                             setIsNotePopupOpen(true);
                                         }}
                                         onPointerDown={(e) => e.stopPropagation()}
+                                        title="Edit Note"
                                     >
                                         <MoreHorizontal size={14} />
                                     </button>
@@ -258,61 +268,72 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                     onPointerDown={(e) => e.stopPropagation()}
                 >
                     <div
-                        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(2px)' }}
+                        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}
                         onClick={() => setIsNotePopupOpen(false)}
                     />
                     <div
                         className="glass-card"
                         style={{
-                            width: '300px',
-                            padding: '16px',
+                            width: '500px',
+                            maxWidth: '90vw',
+                            height: '400px',
+                            padding: '24px',
                             position: 'relative',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '12px',
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                            gap: '16px',
+                            background: 'rgba(255, 255, 255, 0.98)',
+                            boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.25)',
+                            borderRadius: '16px',
+                            border: '1px solid rgba(255,255,255,0.4)'
                         }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#334155' }}>Task Note</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <StickyNote size={18} color="var(--primary)" />
+                                <span style={{ fontWeight: 600, fontSize: '1.1rem', color: '#1e293b' }}>Note</span>
+                            </div>
                             <button
                                 onClick={() => setIsNotePopupOpen(false)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                                style={{ background: 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer', color: '#64748b', padding: '6px', borderRadius: '50%', display: 'flex' }}
                             >
-                                <X size={16} />
+                                <X size={18} />
                             </button>
                         </div>
 
                         <textarea
                             value={noteText}
                             onChange={(e) => setNoteText(e.target.value)}
-                            placeholder="Add your note here..."
+                            placeholder="Type your note here..."
                             style={{
                                 width: '100%',
-                                minHeight: '100px',
-                                padding: '8px',
-                                borderRadius: '6px',
+                                flex: 1,
+                                padding: '16px',
+                                borderRadius: '12px',
                                 border: '1px solid #e2e8f0',
-                                fontSize: '0.85rem',
+                                fontSize: '1rem',
                                 fontFamily: 'inherit',
                                 resize: 'none',
-                                outline: 'none'
+                                outline: 'none',
+                                lineHeight: '1.6',
+                                background: '#f8fafc',
+                                color: '#334155'
                             }}
                             autoFocus
                         />
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                             <button
                                 onClick={() => setIsNotePopupOpen(false)}
                                 style={{
-                                    padding: '6px 12px',
+                                    padding: '10px 20px',
                                     background: 'transparent',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '6px',
-                                    fontSize: '0.8rem',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem',
                                     color: '#64748b',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    fontWeight: 500
                                 }}
                             >
                                 Cancel
@@ -320,14 +341,15 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                             <button
                                 onClick={handleSaveNote}
                                 style={{
-                                    padding: '6px 12px',
+                                    padding: '10px 24px',
                                     background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                                     border: 'none',
-                                    borderRadius: '6px',
-                                    fontSize: '0.8rem',
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem',
                                     color: 'white',
-                                    fontWeight: 500,
-                                    cursor: 'pointer'
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
                                 }}
                             >
                                 Save Note

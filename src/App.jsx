@@ -927,6 +927,20 @@ function App() {
 
     return (
         <div className="app-container">
+            {/* Background Glow */}
+            <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: `radial-gradient(circle at 50% -10%, ${accentColor} 0%, rgba(255,255,255,0) 70%)`,
+                opacity: 0.3,
+                pointerEvents: 'none',
+                zIndex: -1,
+                transition: 'background 0.5s ease'
+            }} />
+
             {/* Top Navigation */}
             <nav style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '3rem' }}>
                 <button

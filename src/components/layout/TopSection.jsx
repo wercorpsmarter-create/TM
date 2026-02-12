@@ -108,7 +108,6 @@ export default function TopSection({
     onDragEnd,
     upcomingEvents,
     visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-    visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
     setVisibleDays,
     accentColor = '#3b82f6',
     setAccentColor

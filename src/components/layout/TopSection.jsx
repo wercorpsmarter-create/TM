@@ -246,9 +246,15 @@ export default function TopSection({
                             </form>
                         )}
 
-                        <ul className="goals-list" style={{ marginBottom: isEditingGoals ? '3rem' : '1.5rem' }}>
+                        <ul className="goals-list" style={{ marginBottom: isEditingGoals ? '3rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             {goals.map((g, i) => (
-                                <li key={typeof g === 'object' && g?.id != null ? g.id : i} className="goal-item-row">
+                                <li key={typeof g === 'object' && g?.id != null ? g.id : i} className="goal-item-row" style={{
+                                    background: 'rgba(255, 255, 255, 0.4)',
+                                    border: '1px solid rgba(255, 255, 255, 0.4)',
+                                    borderRadius: '8px',
+                                    padding: '0.75rem',
+                                    marginBottom: 0
+                                }}>
                                     <span className="goal-num">{i + 1}</span>
                                     <span style={{ flex: 1 }}>{typeof g === 'string' ? g : (g?.text ?? '')}</span>
                                     {isEditingGoals && (
@@ -299,9 +305,15 @@ export default function TopSection({
                             </form>
                         )}
 
-                        <ul className="goals-list" style={{ marginBottom: isEditingMonthlyGoals ? '3rem' : '1.5rem' }}>
+                        <ul className="goals-list" style={{ marginBottom: isEditingMonthlyGoals ? '3rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             {monthlyGoals.map((g, i) => (
-                                <li key={typeof g === 'object' && g?.id != null ? g.id : i} className="goal-item-row">
+                                <li key={typeof g === 'object' && g?.id != null ? g.id : i} className="goal-item-row" style={{
+                                    background: 'rgba(255, 255, 255, 0.4)',
+                                    border: '1px solid rgba(255, 255, 255, 0.4)',
+                                    borderRadius: '8px',
+                                    padding: '0.75rem',
+                                    marginBottom: 0
+                                }}>
                                     <span className="goal-num">{i + 1}</span>
                                     <span style={{ flex: 1 }}>{typeof g === 'string' ? g : (g?.text ?? '')}</span>
                                     {isEditingMonthlyGoals && (

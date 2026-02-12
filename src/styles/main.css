@@ -472,7 +472,7 @@ body {
 /* Monthly Calendar Grid */
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px;
   background: var(--glass-border);
   border: 1px solid var(--glass-border);
@@ -773,7 +773,7 @@ body {
 /* Day Column adjustments for edit trigger */
 .day-column {
   position: relative;
-  padding-bottom: 2rem;
+  padding-bottom: 0;
   /* Make room for the trigger */
 }
 

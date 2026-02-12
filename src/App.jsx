@@ -145,10 +145,16 @@ function App() {
 
     const dragControls = useDragControls();
     const [upcomingEvents, setUpcomingEvents] = useState([]);
+    const [calendarPopupTrigger, setCalendarPopupTrigger] = useState(null);
 
     // Fetch upcoming events for dashboard widget
     useEffect(() => {
         if (googleUser?.access_token) {
+            if (googleUser.expires_at && Date.now() > googleUser.expires_at) {
+                console.log('Session expired');
+                setGoogleUser(null);
+                return;
+            }
             fetchUpcomingEvents(googleUser.access_token);
         }
     }, [googleUser]);
@@ -162,6 +168,10 @@ function App() {
                 `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&maxResults=50&singleEvents=true&orderBy=startTime`,
                 { headers: { Authorization: `Bearer ${accessToken}` } }
             );
+            if (response.status === 401) {
+                setGoogleUser(null);
+                return;
+            }
             if (response.ok) {
                 const data = await response.json();
                 setUpcomingEvents(data.items || []);
@@ -340,7 +350,8 @@ function App() {
                     email: userInfo.email,
                     name: userInfo.name,
                     picture: userInfo.picture,
-                    id: userInfo.id
+                    id: userInfo.id,
+                    expires_at: Date.now() + (tokenResponse.expires_in * 1000)
                 };
 
                 setGoogleUser(completeUserData);
@@ -348,7 +359,7 @@ function App() {
                 console.error('Error fetching user info:', error);
             }
         },
-        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        scope: 'https://www.googleapis.com/auth/calendar',
     });
 
     // Separate login for existing users - validates subscription
@@ -373,7 +384,8 @@ function App() {
                     email: userInfo.email,
                     name: userInfo.name,
                     picture: userInfo.picture,
-                    id: userInfo.id
+                    id: userInfo.id,
+                    expires_at: Date.now() + (tokenResponse.expires_in * 1000)
                 };
 
                 setGoogleUser(completeUserData);
@@ -382,9 +394,7 @@ function App() {
                 alert('Login failed. Please try again.');
             }
         },
-        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly',
-        select_account: true,
-        prompt: 'consent',  // Force showing all permissions again
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly'
     });
 
     const logout = async () => {
@@ -432,6 +442,15 @@ function App() {
             setIsImportModalOpen(true);
             fetchCalendarList(googleUser.access_token);
         }
+    };
+
+    const handleOpenCalendarPopup = (initialData = {}) => {
+        setCalendarPopupTrigger({
+            isOpen: true,
+            timestamp: Date.now(), // Force effect even if data is same
+            ...initialData
+        });
+        setActiveTab('calendar');
     };
 
     const handleSubscribe = () => {
@@ -485,18 +504,21 @@ function App() {
         }
     };
 
-    const pushToGoogle = async (taskText, dateStr, time = null) => {
+    const pushToGoogle = async (taskText, dateStr, time = null, duration = 60, description = '', location = '', attendees = [], addMeet = false) => {
         if (!googleUser || !googleUser.access_token) return;
 
         let eventBody;
+        let startDateTime, endDateTime;
+
         if (time) {
-            // Create ISO string for start and end (1 hour duration)
-            const startDateTime = new Date(`${dateStr}T${time}:00`);
-            const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1 hour
+            // Create ISO string for start and end
+            startDateTime = new Date(`${dateStr}T${time}:00`);
+            endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
 
             eventBody = {
                 summary: taskText,
-                description: 'Added via Task Master',
+                description: description || 'Added via Task Master',
+                location: location,
                 start: { dateTime: startDateTime.toISOString() },
                 end: { dateTime: endDateTime.toISOString() }
             };
@@ -504,14 +526,28 @@ function App() {
             // All-day event
             eventBody = {
                 summary: taskText,
-                description: 'Added via Task Master',
+                description: description || 'Added via Task Master',
+                location: location,
                 start: { date: dateStr },
                 end: { date: dateStr }
             };
         }
 
+        if (attendees && attendees.length > 0) {
+            eventBody.attendees = attendees.map(email => ({ email: email.trim() }));
+        }
+
+        if (addMeet) {
+            eventBody.conferenceData = {
+                createRequest: {
+                    requestId: Math.random().toString(36).substring(7),
+                    conferenceSolutionKey: { type: "hangoutsMeet" }
+                }
+            };
+        }
+
         try {
-            await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=${attendees.length > 0 ? 'all' : 'none'}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${googleUser.access_token}`,
@@ -519,18 +555,21 @@ function App() {
                 },
                 body: JSON.stringify(eventBody)
             });
-            console.log('Synced to Google Calendar');
+            const data = await response.json();
+            console.log('Synced to Google Calendar w/ details');
+            return data;
         } catch (error) {
             console.error('Error syncing to Google:', error);
+            return null;
         }
     };
 
-    const addTask = async (day, text, syncWithGoogle = false, time = null, duration = 30) => {
+    const addTask = async (day, text, syncWithGoogle = false, time = null, duration = 30, description = '', location = '', attendees = [], addMeet = false) => {
         if (!userId) return;
 
         const dateStr = day.includes('-') ? day : getTargetDate(day);
         try {
-            const newTask = await api.createTask(userId, text, dateStr, 'Pending', { time, duration });
+            const newTask = await api.createTask(userId, text, dateStr, 'Pending', { time, duration, description, location, attendees: JSON.stringify(attendees), addMeet });
             setTasks([...tasks, {
                 ...newTask,
                 day,
@@ -538,7 +577,18 @@ function App() {
             }]);
 
             if (syncWithGoogle) {
-                await pushToGoogle(text, dateStr, time);
+                const googleEvent = await pushToGoogle(text, dateStr, time, duration, description, location, attendees, addMeet);
+                if (googleEvent) {
+                    setUpcomingEvents(prev => {
+                        const newEvents = [...prev, googleEvent];
+                        // Sort by start time (handling both date and dateTime)
+                        return newEvents.sort((a, b) => {
+                            const startA = new Date(a.start.dateTime || a.start.date);
+                            const startB = new Date(b.start.dateTime || b.start.date);
+                            return startA - startB;
+                        });
+                    });
+                }
             }
         } catch (error) {
             console.error('Error adding task:', error);
@@ -930,7 +980,7 @@ function App() {
                 }} />
                 <motion.div
                     className="tab-track"
-                    style={{ display: 'flex', width: '300%', touchAction: 'pan-y' }}
+                    style={{ display: 'flex', width: '300%', touchAction: 'pan-y', alignItems: 'flex-start' }}
                     animate={{
                         x: activeTab === 'calendar' ? '-33.333%' :
                             activeTab === 'emails' ? '-66.666%' : '0%'
@@ -968,7 +1018,13 @@ function App() {
                         }
                     }}
                 >
-                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{
+                        width: '33.333%',
+                        flexShrink: 0,
+                        padding: '0 5rem 3rem 5rem',
+                        height: activeTab === 'dashboard' ? 'auto' : '0px',
+                        overflow: 'hidden'
+                    }}>
                         <DashboardTab
                             tasks={tasks}
                             upcomingEvents={upcomingEvents}
@@ -1000,18 +1056,33 @@ function App() {
                             currentWeekOffset={currentWeekOffset}
                             onNextWeek={() => setCurrentWeekOffset(prev => prev + 1)}
                             onPrevWeek={() => setCurrentWeekOffset(prev => prev - 1)}
+                            onOpenCalendarPopup={handleOpenCalendarPopup}
                         />
                     </div>
-                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{
+                        width: '33.333%',
+                        flexShrink: 0,
+                        padding: '0 5rem',
+                        height: activeTab === 'calendar' ? 'auto' : '0px',
+                        overflow: 'hidden'
+                    }}>
                         <CalendarTab
                             user={googleUser}
                             setUser={setGoogleUser}
                             tasks={tasks}
                             onAddTask={addTask}
                             onSyncClick={handleSyncClick}
+                            onLogin={loginExistingUser}
+                            externalPopupTrigger={calendarPopupTrigger}
                         />
                     </div>
-                    <div style={{ width: '33.333%', flexShrink: 0, padding: '0 5rem' }}>
+                    <div style={{
+                        width: '33.333%',
+                        flexShrink: 0,
+                        padding: '0 5rem 3rem 5rem',
+                        height: activeTab === 'emails' ? 'calc(100vh - 90px)' : '0px',
+                        overflow: 'hidden'
+                    }}>
                         <EmailTab
                             user={googleUser}
                             onRefresh={() => {

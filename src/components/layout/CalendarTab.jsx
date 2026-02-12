@@ -1,18 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { useGoogleLogin } from '@react-oauth/google';
-import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users } from 'lucide-react';
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger }) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState('month'); // 'month', 'week', 'day'
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [expandedEventId, setExpandedEventId] = useState(null);
+    const [showEventModal, setShowEventModal] = useState(false);
+    const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+    const [newEventData, setNewEventData] = useState({
+        title: '',
+        participants: '',
+        location: '',
+        description: '',
+        dateStr: '',
+        timeStr: '',
+        duration: 30,
+        eventType: 'event', // 'event', 'task', 'appointment'
+        addMeet: false
+    });
 
     // Drag to create state
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState(null); // { dayIndex: number, startMinutes: number, dateObj: Date }
     const [dragCurrent, setDragCurrent] = useState(null); // { endMinutes: number }
+
+    // Handle external popup trigger (e.g. from Dashboard)
+    useEffect(() => {
+        if (externalPopupTrigger && externalPopupTrigger.isOpen) {
+            const { title, dateStr, timeStr } = externalPopupTrigger;
+
+            // Navigate to the date
+            if (dateStr) {
+                const parts = dateStr.split('-');
+                let newDate;
+                if (parts.length === 3) {
+                    // Create date at noon to avoid timezone rollover issues
+                    newDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+                } else {
+                    newDate = new Date(dateStr);
+                }
+                setCurrentDate(newDate);
+                setView('week'); // Switch to week view to see the context
+            }
+
+            // Prep modal data
+            setNewEventData(prev => ({
+                ...prev,
+                title: title || '',
+                dateStr: dateStr || new Date().toISOString().split('T')[0],
+                timeStr: timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                participants: '',
+                location: '',
+                description: '',
+                addMeet: false
+            }));
+
+            // Position modal in center
+            setModalPosition({
+                top: Math.max(20, window.innerHeight / 2 - 200),
+                left: Math.max(20, window.innerWidth / 2 - 224)
+            });
+
+            setShowEventModal(true);
+        }
+    }, [externalPopupTrigger]);
 
     const snapToQuarter = (minutes) => Math.floor(minutes / 15) * 15;
 
@@ -45,8 +99,39 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         }
     };
 
-    const handleDragEnd = async () => {
+    const handleDragEnd = async (e) => {
         if (!isDragging || !dragStart || !dragCurrent) return;
+
+        // Calculate Position next to cursor logic
+        let x = e ? e.clientX : window.innerWidth / 2;
+        let y = e ? e.clientY : window.innerHeight / 2;
+
+        const modalWidth = 448;
+        const modalHeight = 550;
+        const padding = 20;
+
+        // Default: Place to the right of cursor
+        let finalX = x + padding;
+
+        // If not enough space on right, place on left
+        if (finalX + modalWidth > window.innerWidth - padding) {
+            finalX = x - modalWidth - padding;
+        }
+
+        // Ensure Y is within bounds
+        let finalY = y - (modalHeight / 4); // Center vertically relative to click slightly
+
+        if (finalY + modalHeight > window.innerHeight - padding) {
+            finalY = window.innerHeight - modalHeight - padding;
+        }
+        if (finalY < padding) {
+            finalY = padding;
+        }
+
+        // Ensure X allows visibility (in case screen is too narrow)
+        if (finalX < padding) finalX = padding;
+
+        setModalPosition({ top: finalY, left: finalX });
 
         const startMinutes = dragStart.startMinutes;
         const endMinutes = Math.max(dragCurrent.endMinutes, startMinutes + 15);
@@ -60,24 +145,53 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         const day = String(dragStart.dateObj.getDate()).padStart(2, '0');
         const dateStr = `${year}-${month}-${day}`;
 
-        const title = window.prompt(`New Event at ${timeStr}`);
+        setNewEventData({
+            title: '',
+            participants: '',
+            dateStr,
+            timeStr,
+            duration: endMinutes - startMinutes
+        });
+        setShowEventModal(true);
+        setIsDragging(false);
+    };
 
-        if (title && onAddTask) {
-            const duration = endMinutes - startMinutes;
-            await onAddTask(dateStr, title, false, timeStr, duration);
+    const handleSaveEvent = async () => {
+        if (!newEventData.title) return;
+
+        let description = '';
+        if (newEventData.participants) {
+            description += `Participants: ${newEventData.participants}\n`;
+        }
+        if (newEventData.location) {
+            description += `Location: ${newEventData.location}\n`;
+        }
+        if (newEventData.description) {
+            description += `\n${newEventData.description}`;
         }
 
-        setIsDragging(false);
+        const attendeesList = newEventData.participants
+            ? newEventData.participants.split(/[,;]+/).map(p => p.trim()).filter(p => p)
+            : [];
+
+        if (onAddTask) {
+            await onAddTask(
+                newEventData.dateStr,
+                newEventData.title,
+                true,
+                newEventData.timeStr,
+                newEventData.duration,
+                description,
+                newEventData.location,
+                attendeesList,
+                newEventData.addMeet
+            );
+        }
+
+        setShowEventModal(false);
         setDragStart(null);
         setDragCurrent(null);
     };
-
-    const login = useGoogleLogin({
-        onSuccess: (tokenResponse) => {
-            setUser(tokenResponse);
-        },
-        scope: 'https://www.googleapis.com/auth/calendar',
-    });
 
     const logout = () => {
         setUser(null);
@@ -257,7 +371,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 </div>
 
                 {!user ? (
-                    <button onClick={() => login()} className="btn-icon" style={{ width: 'auto', padding: '0 1.5rem', display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => onLogin()} className="btn-icon" style={{ width: 'auto', padding: '0 1.5rem', display: 'flex', gap: '0.5rem' }}>
                         <LogIn size={18} /> Login
                     </button>
                 ) : (
@@ -314,7 +428,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 {view === 'week' && (
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', width: '100%', gap: '1px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', width: '100%', gap: '1px' }}>
                                 {getDaysInWeek().map((dayObj, i) => {
                                     const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
                                     const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
@@ -384,7 +498,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     );
                                 })()}
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', width: '100%', gap: '0', zIndex: 1 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', width: '100%', gap: '0', zIndex: 1 }}>
                                     {getDaysInWeek().map((dayObj, i) => {
                                         const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
 
@@ -430,19 +544,23 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         position: 'absolute',
                                                         top: `${(dragStart.startMinutes / 60) * 60}px`,
                                                         height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
-                                                        left: '2px', right: '2px',
-                                                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                                                        borderRadius: '4px',
+                                                        left: '4px', right: '4px',
+                                                        background: 'rgba(59, 130, 246, 0.25)',
+                                                        backdropFilter: 'blur(4px)',
+                                                        WebkitBackdropFilter: 'blur(4px)',
+                                                        borderRadius: '6px',
                                                         zIndex: 100,
                                                         pointerEvents: 'none',
-                                                        border: '1px solid var(--primary)',
-                                                        color: 'white',
-                                                        fontSize: '0.7rem',
-                                                        padding: '2px 4px',
+                                                        border: '1px solid rgba(59, 130, 246, 0.5)',
+                                                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                                                        color: '#1e3a8a',
+                                                        fontSize: '0.75rem',
+                                                        padding: '4px',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        fontWeight: 600
+                                                        fontWeight: 600,
+                                                        transition: 'height 0.1s ease-out'
                                                     }}>
                                                         {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
                                                         {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
@@ -573,18 +691,22 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             top: `${(dragStart.startMinutes / 60) * 60}px`,
                                             height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
                                             left: '10px', right: '10px',
-                                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                                            borderRadius: '4px',
+                                            background: 'rgba(59, 130, 246, 0.25)',
+                                            backdropFilter: 'blur(4px)',
+                                            WebkitBackdropFilter: 'blur(4px)',
+                                            borderRadius: '6px',
                                             zIndex: 100,
                                             pointerEvents: 'none',
-                                            border: '1px solid var(--primary)',
-                                            color: 'white',
-                                            fontSize: '0.7rem',
-                                            padding: '2px 4px',
+                                            border: '1px solid rgba(59, 130, 246, 0.5)',
+                                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                                            color: '#1e3a8a',
+                                            fontSize: '0.75rem',
+                                            padding: '4px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            fontWeight: 600
+                                            fontWeight: 600,
+                                            transition: 'height 0.1s ease-out'
                                         }}>
                                             {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
                                             {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
@@ -700,6 +822,227 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     </div>
                 )}
             </div>
+
+            {/* Google Calendar Style Modal */}
+            {showEventModal && createPortal(
+                <>
+                    {/* Transparent backdrop to catch outside clicks if desired, or just let it float */}
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'transparent' }}
+                        onClick={() => { setShowEventModal(false); setDragStart(null); }}
+                    />
+
+                    <div style={{
+                        position: 'fixed',
+                        top: modalPosition.top,
+                        left: modalPosition.left,
+                        zIndex: 9999,
+                        width: '448px',
+                        background: 'rgba(255, 255, 255, 0.85)', // Glassmorphic background
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        borderRadius: '16px',
+                        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        padding: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        animation: 'fadeIn 0.1s ease-out'
+                    }}>
+                        {/* Header Drag Handle / Close */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <div style={{ flex: 1 }}></div>
+                            <button
+                                onClick={() => { setShowEventModal(false); setDragStart(null); }}
+                                style={{ background: 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer', color: '#5f6368', padding: '6px', borderRadius: '50%', display: 'flex', transition: 'background 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.1)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Title Input */}
+                        <div style={{ marginLeft: '40px' }}>
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Add title"
+                                value={newEventData.title}
+                                onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
+                                style={{
+                                    width: '100%',
+                                    fontSize: '22px',
+                                    padding: '8px',
+                                    border: 'none',
+                                    borderBottom: '2px solid rgba(0,0,0,0.1)',
+                                    background: 'transparent',
+                                    outline: 'none',
+                                    fontFamily: 'Google Sans, Roboto, Arial, sans-serif',
+                                    color: '#1f2937'
+                                }}
+                                onFocus={e => e.target.style.borderBottom = '2px solid #1a73e8'}
+                                onBlur={e => e.target.style.borderBottom = '2px solid rgba(0,0,0,0.1)'}
+                            />
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                                {['event', 'task', 'appointment'].map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setNewEventData({ ...newEventData, eventType: type })}
+                                        style={{
+                                            background: newEventData.eventType === type ? '#e8f0fe' : 'transparent',
+                                            color: newEventData.eventType === type ? '#1a73e8' : '#5f6368',
+                                            border: 'none',
+                                            padding: '6px 12px',
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            textTransform: 'capitalize',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {type === 'appointment' ? 'Appointment schedule' : type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Time Row */}
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                            <div style={{ width: '24px', display: 'flex', justifyContent: 'center', marginTop: '2px' }}>
+                                <Clock size={20} color="#5f6368" />
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#3c4043', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ fontWeight: 500 }}>
+                                    {new Date(newEventData.dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                    <span style={{ margin: '0 8px', color: '#9ca3af' }}>⋅</span>
+                                    {newEventData.timeStr}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#5f6368' }}>Does not repeat</div>
+                            </div>
+                        </div>
+
+                        {/* Guests Row */}
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                <Users size={20} color="#5f6368" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Add guests (email addresses)"
+                                value={newEventData.participants}
+                                onChange={e => setNewEventData({ ...newEventData, participants: e.target.value })}
+                                style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: '#3c4043', fontFamily: 'Roboto, Arial, sans-serif', padding: '8px 0' }}
+                            />
+                        </div>
+
+                        {/* Meet Row */}
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                <Video size={20} color="#5f6368" />
+                            </div>
+                            {!newEventData.addMeet ? (
+                                <button
+                                    onClick={() => setNewEventData({ ...newEventData, addMeet: true })}
+                                    style={{
+                                        background: '#1a73e8', color: 'white', border: 'none', borderRadius: '4px',
+                                        padding: '8px 16px', fontSize: '14px', fontWeight: 500, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                                    }}>
+                                    Add Google Meet video conferencing
+                                </button>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <button
+                                        style={{
+                                            background: '#1a73e8', color: 'white', border: 'none', borderRadius: '4px',
+                                            padding: '8px 16px', fontSize: '14px', fontWeight: 500, cursor: 'default',
+                                            display: 'flex', alignItems: 'center', gap: '8px',
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                                        }}>
+                                        <Video size={16} /> Join with Google Meet
+                                    </button>
+                                    <span style={{ fontSize: '12px', color: '#5f6368', marginLeft: '2px' }}>
+                                        Link generated on save
+                                        <button
+                                            onClick={() => setNewEventData({ ...newEventData, addMeet: false })}
+                                            style={{ border: 'none', background: 'none', color: '#5f6368', cursor: 'pointer', marginLeft: '8px' }}>
+                                            <X size={12} />
+                                        </button>
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Location Row */}
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                <MapPin size={20} color="#5f6368" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Add location"
+                                value={newEventData.location}
+                                onChange={e => setNewEventData({ ...newEventData, location: e.target.value })}
+                                style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: '#3c4043', fontFamily: 'Roboto, Arial, sans-serif', padding: '8px 0' }}
+                            />
+                        </div>
+
+                        {/* Description Row */}
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                            <div style={{ width: '24px', display: 'flex', justifyContent: 'center', marginTop: '2px' }}>
+                                <AlignLeft size={20} color="#5f6368" />
+                            </div>
+                            <textarea
+                                placeholder="Add description"
+                                value={newEventData.description}
+                                onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
+                                style={{
+                                    flex: 1, border: 'none', fontSize: '14px', outline: 'none', color: '#3c4043',
+                                    fontFamily: 'Roboto, Arial, sans-serif', resize: 'none', minHeight: '80px',
+                                    background: 'rgba(0,0,0,0.03)', padding: '12px', borderRadius: '8px',
+                                    backdropFilter: 'blur(5px)'
+                                }}
+                            />
+                        </div>
+
+                        {/* User Row */}
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '4px', paddingLeft: '2px' }}>
+                            <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                <CalendarIcon size={18} color="#5f6368" />
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#3c4043', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>{user?.name || 'User'}</span>
+                                <span style={{ width: '10px', height: '10px', background: '#039be5', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 0 2px rgba(255,255,255,0.8)' }}></span>
+                                <span style={{ color: '#5f6368', fontSize: '12px', opacity: 0.8 }}>Busy ⋅ Default visibility ⋅ Notify 30 minutes before</span>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '16px', gap: '8px' }}>
+                            <button
+                                onClick={() => alert("More options clicked")}
+                                style={{ background: 'transparent', border: '1px solid rgba(0,0,0,0.1)', color: '#1a73e8', fontWeight: 500, cursor: 'pointer', padding: '8px 16px', borderRadius: '6px' }}
+                            >
+                                More options
+                            </button>
+                            <button
+                                onClick={handleSaveEvent}
+                                style={{
+                                    background: '#1a73e8', color: 'white', border: 'none', padding: '8px 24px', borderRadius: '6px', fontWeight: 500, cursor: 'pointer',
+                                    boxShadow: '0 2px 6px rgba(26, 115, 232, 0.3)'
+                                }}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </>,
+                document.body
+            )}
         </div>
     );
 }

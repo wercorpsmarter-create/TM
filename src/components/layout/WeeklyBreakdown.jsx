@@ -173,9 +173,9 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, isEditing, onInteracti
             </div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'space-between', marginRight: '0.5rem' }}>
                 <span style={{ fontSize: '0.85rem' }}>{task.text}</span>
-                {task.metadata?.meetLink && (
+                {(task.metadata?.meetLink || task.metadata?.hangoutLink) && (
                     <a
-                        href={task.metadata.meetLink}
+                        href={task.metadata.meetLink || task.metadata.hangoutLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -210,7 +210,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, isEditing, onInteracti
     );
 };
 
-const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onInteractionStart, onInteractionEnd, offset = 0 }) => {
+const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onInteractionStart, onInteractionEnd, offset = 0, onOpenCalendarPopup }) => {
     const { setNodeRef } = useDroppable({
         id: dayName,
     });
@@ -219,6 +219,9 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onIn
     const [syncToGoogle, setSyncToGoogle] = useState(false);
     const [taskTime, setTaskTime] = useState('');
     const [isEditing, setIsEditing] = useState(false);
+    const [isCalendarMode, setIsCalendarMode] = useState(false);
+
+
 
     // Use the same Monday-start logic as App.jsx
     const getColumnDate = () => {
@@ -261,10 +264,23 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onIn
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
-        onAddTask(dayName, inputValue, syncToGoogle, taskTime || null);
+
+        if (isCalendarMode) {
+            if (onOpenCalendarPopup) {
+                onOpenCalendarPopup({
+                    title: inputValue,
+                    dateStr: formatLocalDate(columnDate),
+                    // timeStr: taskTime // Optional: if we want to pass time too
+                });
+            }
+        } else {
+            onAddTask(dayName, inputValue, syncToGoogle, taskTime || null);
+        }
+
         setInputValue('');
         setSyncToGoogle(false);
         setTaskTime('');
+        setIsCalendarMode(false);
     };
 
     const toggleSync = () => {
@@ -314,23 +330,18 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onIn
                             <input
                                 type="text"
                                 className="glass-input"
-                                placeholder={syncToGoogle ? "Add task & time..." : "Add task..."}
+                                placeholder={isCalendarMode ? "Add event to calendar..." : "Add task..."}
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
-                                style={{ width: '100%', paddingRight: syncToGoogle ? '8rem' : '2.5rem' }}
+                                style={{ width: '100%', paddingRight: '2.5rem' }}
                                 autoFocus
                             />
 
-                            {syncToGoogle && (
-                                <TimePicker
-                                    value={taskTime}
-                                    onChange={setTaskTime}
-                                />
-                            )}
+
 
                             <button
                                 type="button"
-                                onClick={toggleSync}
+                                onClick={() => setIsCalendarMode(!isCalendarMode)}
                                 style={{
                                     position: 'absolute',
                                     right: '8px',
@@ -338,12 +349,12 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onIn
                                     transform: 'translateY(-50%)',
                                     background: 'none',
                                     border: 'none',
-                                    color: syncToGoogle ? 'var(--primary)' : 'rgba(0,0,0,0.1)',
+                                    color: isCalendarMode ? 'var(--primary)' : 'rgba(0,0,0,0.1)',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center'
                                 }}
-                                title="Sync to Google Calendar"
+                                title="Add to Calendar"
                             >
                                 <CalendarIcon size={16} />
                             </button>
@@ -386,7 +397,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onIn
                     {isEditing ? <CheckCircle2 size={18} color="#22c55e" /> : <Pencil size={14} />}
                 </button>
             </div>
-        </div>
+        </div >
     );
 };
 
@@ -403,7 +414,8 @@ export default function WeeklyBreakdown({
     visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
     currentWeekOffset = 0,
     onNextWeek,
-    onPrevWeek
+    onPrevWeek,
+    onOpenCalendarPopup
 }) {
     const [activeTask, setActiveTask] = useState(null);
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+
 import {
     Mail, RefreshCw, ExternalLink, Inbox, Clock, User,
     Star, ChevronLeft, ChevronRight, Filter, StarOff
@@ -178,6 +178,8 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     const [error, setError] = useState(null);
     const [nextPageToken, setNextPageToken] = useState(null);
     const [hasMore, setHasMore] = useState(true);
+    const [manualTitle, setManualTitle] = useState('');
+    const [manualDate, setManualDate] = useState('');
     const observerRef = useRef();
 
     // Reset and fetch when tab or user changes
@@ -368,6 +370,8 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
         setLoadingContent(true);
         setEmailContent(null);
         setSuggestedEvent(null);
+        setManualTitle(email.subject);
+        setManualDate('');
 
         // API call to remove UNREAD label (mark as read)
         try {
@@ -538,372 +542,472 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     }
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ height: '100%', display: 'flex', overflow: 'hidden', gap: '0' }}>
 
-            {/* Header & Tabs */}
-            <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#111827' }}>
-                        <Mail size={32} />
-                        Emails
-                    </h1>
-                    <button onClick={handleRefresh} className="btn-icon" style={{ color: '#4B5563' }}>
-                        <RefreshCw size={20} className={loading ? 'spin' : ''} />
-                    </button>
-                </div>
-
-                <div style={{
-                    display: 'flex',
-                    gap: '1rem',
-                    borderBottom: '1px solid rgba(0,0,0,0.1)',
-                    paddingBottom: '1px'
-                }}>
-                    <button
-                        onClick={() => setActiveTab('inbox')}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '0.75rem 1.5rem',
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            color: activeTab === 'inbox' ? '#2563EB' : '#6B7280',
-                            borderBottom: activeTab === 'inbox' ? '2px solid #2563EB' : '2px solid transparent',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        <Inbox size={18} />
-                        Inbox
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('starred')}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '0.75rem 1.5rem',
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            color: activeTab === 'starred' ? '#F59E0B' : '#6B7280',
-                            borderBottom: activeTab === 'starred' ? '2px solid #F59E0B' : '2px solid transparent',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        <Star size={18} fill={activeTab === 'starred' ? '#F59E0B' : 'none'} />
-                        Starred
-                    </button>
-                </div>
-            </div>
-
-            {/* Email List Content */}
+            {/* LEFT PANE: Email List */}
             <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                background: 'rgba(255, 255, 255, 0.6)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '16px',
-                border: '1px solid rgba(255, 255, 255, 0.8)',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.02)'
+                width: selectedEmail ? '380px' : '100%',
+                minWidth: '350px',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                padding: '2rem 2rem 2rem 0',
+                paddingRight: selectedEmail ? '1rem' : '2rem',
+                paddingLeft: '2rem'
             }}>
-                {loading && emails.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>
-                        <RefreshCw size={32} className="spin" style={{ marginBottom: '1rem' }} />
-                        <p>Loading emails...</p>
-                    </div>
-                ) : emails.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>
-                        {activeTab === 'starred' ? (
-                            <>
-                                <Star size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                                <p>No starred emails in the last 7 days</p>
-                            </>
-                        ) : (
-                            <>
-                                <Inbox size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                                <p>No emails in the last 7 days</p>
-                            </>
-                        )}
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {emails.map(email => (
-                            <div
-                                key={email.id}
-                                onClick={() => handleEmailClick(email)}
-                                className="email-row"
+                <div style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'rgba(255, 255, 255, 0.6)',
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: '24px',
+                    border: '1px solid rgba(255, 255, 255, 0.8)',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
+                    overflow: 'hidden'
+                }}>
+                    {/* Header Section */}
+                    <div style={{
+                        padding: '1.5rem',
+                        borderBottom: '1px solid rgba(0,0,0,0.05)',
+                        background: 'rgba(255,255,255,0.4)',
+                        flexShrink: 0
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h1 style={{ fontSize: '2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#111827', margin: 0 }}>
+                                <Mail size={32} />
+                                Emails
+                            </h1>
+                            <button onClick={handleRefresh} className="btn-icon" style={{ color: '#4B5563' }}>
+                                <RefreshCw size={20} className={loading ? 'spin' : ''} />
+                            </button>
+                        </div>
+
+                        <div style={{
+                            display: 'flex',
+                            gap: '1rem',
+                        }}>
+                            <button
+                                onClick={() => setActiveTab('inbox')}
                                 style={{
-                                    display: 'flex',
-                                    padding: '1rem 1.25rem',
-                                    borderBottom: '1px solid rgba(0,0,0,0.05)',
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0.5rem 1rem',
+                                    fontSize: '0.95rem',
+                                    fontWeight: 600,
+                                    color: activeTab === 'inbox' ? '#2563EB' : '#6B7280',
+                                    backgroundColor: activeTab === 'inbox' ? 'rgba(37, 99, 235, 0.1)' : 'transparent',
+                                    borderRadius: '8px',
                                     cursor: 'pointer',
-                                    transition: 'background 0.2s',
-                                    gap: '1rem',
-                                    alignItems: 'flex-start',
-                                    // Dim if read, keeping unread bright
-                                    opacity: email.isUnread ? 1 : 0.6,
-                                    background: email.isUnread ? 'rgba(255,255,255,0.4)' : 'transparent'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.6)';
-                                    e.currentTarget.style.opacity = '1'; // Brighten on hover just a bit for feedback
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = email.isUnread ? 'rgba(255,255,255,0.4)' : 'transparent';
-                                    e.currentTarget.style.opacity = email.isUnread ? '1' : '0.6';
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    transition: 'all 0.2s'
                                 }}
                             >
-                                {/* Status Indicator */}
-                                <div style={{ paddingTop: '2px' }}>
-                                    {activeTab === 'starred' ? (
-                                        <Star size={18} fill="#F59E0B" color="#F59E0B" />
-                                    ) : email.hasSuggestion ? (
-                                        <div title="Event Suggestion" style={{ width: '18px', height: '18px', background: '#2563EB', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Clock size={12} color="white" strokeWidth={3} />
+                                <Inbox size={18} />
+                                Inbox
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('starred')}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0.5rem 1rem',
+                                    fontSize: '0.95rem',
+                                    fontWeight: 600,
+                                    color: activeTab === 'starred' ? '#F59E0B' : '#6B7280',
+                                    backgroundColor: activeTab === 'starred' ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <Star size={18} fill={activeTab === 'starred' ? '#F59E0B' : 'none'} />
+                                Starred
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* List Content */}
+                    <div style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        {loading && emails.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>
+                                <RefreshCw size={32} className="spin" style={{ marginBottom: '1rem' }} />
+                                <p>Loading emails...</p>
+                            </div>
+                        ) : emails.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '4rem', color: '#6B7280' }}>
+                                {activeTab === 'starred' ? (
+                                    <>
+                                        <Star size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                                        <p>No starred emails in the last 7 days</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Inbox size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                                        <p>No emails in the last 7 days</p>
+                                    </>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                {emails.map(email => (
+                                    <div
+                                        key={email.id}
+                                        onClick={() => handleEmailClick(email)}
+                                        className="email-row"
+                                        style={{
+                                            display: 'flex',
+                                            padding: '1rem 1.25rem',
+                                            borderBottom: '1px solid rgba(0,0,0,0.05)',
+                                            cursor: 'pointer',
+                                            transition: 'background 0.2s',
+                                            gap: '0.75rem',
+                                            alignItems: 'flex-start',
+                                            background: selectedEmail?.id === email.id ? 'rgba(37, 99, 235, 0.1)' : (email.isUnread ? 'rgba(255,255,255,0.4)' : 'transparent'),
+                                            borderLeft: selectedEmail?.id === email.id ? '3px solid #2563EB' : '3px solid transparent'
+                                        }}
+                                    >
+                                        {/* Status Indicator */}
+                                        <div style={{ paddingTop: '2px', flexShrink: 0 }}>
+                                            {activeTab === 'starred' ? (
+                                                <Star size={16} fill="#F59E0B" color="#F59E0B" />
+                                            ) : email.hasSuggestion ? (
+                                                <div title="Event Suggestion" style={{ width: '16px', height: '16px', background: '#2563EB', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Clock size={10} color="white" strokeWidth={3} />
+                                                </div>
+                                            ) : email.isUnread ? (
+                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB', margin: '4px' }} />
+                                            ) : (
+                                                <div style={{ width: '8px', margin: '4px' }} />
+                                            )}
                                         </div>
-                                    ) : email.isUnread ? (
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2563EB', margin: '4px' }} />
-                                    ) : (
-                                        <div style={{ width: '10px', margin: '4px' }} />
-                                    )}
-                                </div>
 
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                        <span style={{
-                                            fontWeight: email.isUnread ? 700 : 500,
-                                            fontSize: '0.95rem',
-                                            color: email.isUnread ? '#000' : '#4B5563'
-                                        }}>
-                                            {extractName(email.from)}
-                                        </span>
-                                        <span style={{ fontSize: '0.8rem', color: '#6B7280' }}>
-                                            {formatDate(email.date)}
-                                        </span>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem', alignItems: 'baseline' }}>
+                                                <span style={{
+                                                    fontWeight: email.isUnread ? 700 : 500,
+                                                    fontSize: '0.9rem',
+                                                    color: email.isUnread ? '#000' : '#4B5563',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    maxWidth: '140px'
+                                                }}>
+                                                    {extractName(email.from)}
+                                                </span>
+                                                <span style={{ fontSize: '0.75rem', color: '#6B7280', flexShrink: 0, marginLeft: '4px' }}>
+                                                    {formatDate(email.date)}
+                                                </span>
+                                            </div>
+                                            <div style={{
+                                                fontWeight: email.isUnread ? 600 : 400,
+                                                color: email.isUnread ? '#111827' : '#374151',
+                                                fontSize: '0.85rem',
+                                                marginBottom: '0.1rem',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis'
+                                            }}>
+                                                {email.subject}
+                                            </div>
+                                            <div style={{
+                                                color: '#6B7280',
+                                                fontSize: '0.8rem',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                lineHeight: '1.3'
+                                            }}>
+                                                {email.snippet}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{
-                                        fontWeight: email.isUnread ? 600 : 400,
-                                        color: email.isUnread ? '#111827' : '#374151',
-                                        fontSize: '0.9rem',
-                                        marginBottom: '0.1rem',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                    }}>
-                                        {email.subject}
-                                    </div>
-                                    <div style={{
-                                        color: '#6B7280',
-                                        fontSize: '0.85rem',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical',
-                                        lineHeight: '1.4'
-                                    }}>
-                                        {email.snippet}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                ))}
 
-                        {hasMore && (
-                            <div ref={observerRef} style={{ padding: '1.5rem', textAlign: 'center' }}>
-                                {loading && <RefreshCw size={16} className="spin" color="#6B7280" />}
-                            </div>
-                        )}
+                                {hasMore && (
+                                    <div ref={observerRef} style={{ padding: '1.5rem', textAlign: 'center' }}>
+                                        {loading && <RefreshCw size={16} className="spin" color="#6B7280" />}
+                                    </div>
+                                )}
 
-                        {!hasMore && (
-                            <div style={{ padding: '1.5rem', textAlign: 'center', fontSize: '0.8rem', color: '#9CA3AF', opacity: 0.8 }}>
-                                End of list (Last 7 days)
+                                {!hasMore && (
+                                    <div style={{ padding: '1.5rem', textAlign: 'center', fontSize: '0.8rem', color: '#9CA3AF', opacity: 0.8 }}>
+                                        End of list
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
-                )}
+                </div>
             </div>
 
-            {/* Email Detail Modal */}
-            {selectedEmail && createPortal(
+            {/* RIGHT PANE: Detail View */}
+            {selectedEmail && (
                 <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(255,255,255,0.2)',
-                    backdropFilter: 'blur(8px)',
-                    zIndex: 9999, // Ensure it's on top of everything
+                    flex: 1,
+                    minWidth: 0,
+                    height: '100%',
+                    padding: '2rem 2rem 2rem 0',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '2rem'
-                }} onClick={closePopup}>
+                    gap: '1rem',
+                    animation: 'fadeIn 0.3s ease-out forwards',
+                    opacity: 0
+                }}>
+                    <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }`}</style>
+
+                    {/* Email Content Card */}
                     <div style={{
-                        width: '100%',
-                        maxWidth: suggestedEvent ? '1100px' : '800px', // Wider if suggestion
-                        height: '80vh',
+                        flex: 1,
+                        background: 'rgba(255, 255, 255, 0.65)',
+                        backdropFilter: 'blur(20px)',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(255,255,255,0.8)',
                         display: 'flex',
-                        gap: '1rem',
-                        transition: 'all 0.3s'
-                    }} onClick={e => e.stopPropagation()}>
-
-
-                        {/* Main Email Content */}
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)'
+                    }}>
+                        {/* Header */}
                         <div style={{
-                            flex: 1,
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            borderRadius: '24px',
-                            border: '1px solid rgba(255,255,255,0.8)',
+                            padding: '1.5rem',
+                            borderBottom: '1px solid rgba(0,0,0,0.05)',
                             display: 'flex',
-                            flexDirection: 'column',
-                            overflow: 'hidden',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05)'
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            background: 'rgba(255,255,255,0.4)'
                         }}>
-
-                            {/* Modal Header */}
-                            <div style={{
-                                padding: '1.5rem',
-                                borderBottom: '1px solid rgba(0,0,0,0.05)',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'flex-start',
-                                background: 'rgba(255,255,255,0.5)'
-                            }}>
-                                <div>
-                                    <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', lineHeight: 1.4, color: '#111827' }}>{selectedEmail.subject}</h2>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#6B7280', fontSize: '0.9rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.8rem', fontWeight: 700 }}>
-                                                {extractName(selectedEmail.from)[0]}
-                                            </div>
-                                            <span style={{ color: '#374151' }}>{extractName(selectedEmail.from)}</span>
+                            <div>
+                                <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', lineHeight: 1.4, color: '#111827' }}>{selectedEmail.subject}</h2>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#6B7280', fontSize: '0.9rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.8rem', fontWeight: 700 }}>
+                                            {extractName(selectedEmail.from)[0]}
                                         </div>
-                                        <span>•</span>
-                                        <span>{selectedEmail.date.toLocaleString()}</span>
+                                        <span style={{ color: '#374151' }}>{extractName(selectedEmail.from)}</span>
                                     </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button onClick={() => openInGmail(selectedEmail)} title="Open in Gmail" style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer' }}>
-                                        <ExternalLink size={20} />
-                                    </button>
-                                    <button onClick={closePopup} title="Close" style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer' }}>
-                                        <div style={{ fontSize: '1.5rem', lineHeight: 0.5 }}>×</div>
-                                    </button>
+                                    <span>•</span>
+                                    <span>{selectedEmail.date.toLocaleString()}</span>
                                 </div>
                             </div>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button onClick={() => openInGmail(selectedEmail)} title="Open in Gmail" style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer' }}>
+                                    <ExternalLink size={20} />
+                                </button>
+                                <button onClick={closePopup} title="Close" style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer' }}>
+                                    <div style={{ fontSize: '1.5rem', lineHeight: 0.5 }}>×</div>
+                                </button>
+                            </div>
+                        </div>
 
-                            {/* Modal Body */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', background: 'transparent', color: '#111827' }}>
+                        {/* Body */}
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '2rem' }}>
+                            <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
                                 {loadingContent ? (
-                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
                                         <RefreshCw className="spin" size={32} color="#6B7280" />
                                     </div>
                                 ) : (
                                     <div
                                         dangerouslySetInnerHTML={{ __html: emailContent || selectedEmail.snippet }}
-                                        style={{ lineHeight: 1.6, fontSize: '1rem' }}
+                                        style={{ lineHeight: 1.5, fontSize: '0.9rem', color: '#1f2937', zoom: '0.85' }}
                                     />
                                 )}
                             </div>
                         </div>
+                    </div>
 
-                        {/* Suggestion Sidebar */}
-                        {suggestedEvent && (
-                            <div style={{
-                                width: '320px',
-                                background: 'rgba(255, 255, 255, 0.8)',
-                                backdropFilter: 'blur(20px)',
-                                borderRadius: '24px',
-                                border: '1px solid rgba(255,255,255,0.8)',
-                                padding: '1.5rem',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '1rem',
-                                boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563EB', fontWeight: 700, fontSize: '0.9rem' }}>
-                                    <Star size={16} fill="#2563EB" />
-                                    Smart Suggestion
+                    {/* Sidebar: Plan & Suggestions */}
+                    <div style={{
+                        width: '320px',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        backdropFilter: 'blur(20px)',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(255,255,255,0.8)',
+                        padding: '1.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1.5rem',
+                        boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)',
+                        height: 'fit-content',
+                        maxHeight: '100%',
+                        overflowY: 'auto'
+                    }}>
+
+                        {/* Section: Manual Creation */}
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#111827', fontWeight: 700, fontSize: '0.95rem', marginBottom: '1rem' }}>
+                                <div style={{ width: '24px', height: '24px', background: '#334155', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>+</span>
                                 </div>
+                                Create Plan
+                            </div>
 
-                                {/* Task Name Input */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div>
-                                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#4B5563', marginBottom: '0.25rem', display: 'block' }}>Task Name</label>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        Task Name
+                                    </label>
                                     <input
                                         type="text"
-                                        defaultValue={suggestedEvent.title}
+                                        value={manualTitle}
+                                        onChange={(e) => setManualTitle(e.target.value)}
                                         style={{
                                             width: '100%',
-                                            padding: '0.5rem',
-                                            borderRadius: '8px',
-                                            border: '1px solid #E5E7EB',
+                                            padding: '0.75rem',
+                                            borderRadius: '12px',
+                                            border: '1px solid #E2E8F0',
                                             fontSize: '0.9rem',
-                                            color: '#111827',
-                                            background: 'rgba(255,255,255,0.5)'
+                                            color: '#1E293B',
+                                            background: '#F8FAFC',
+                                            transition: 'all 0.2s',
+                                            outline: 'none'
                                         }}
-                                        onChange={(e) => suggestedEvent.title = e.target.value} // Direct mutation for now, ideally use state
+                                        onFocus={(e) => e.target.style.borderColor = '#94A3B8'}
+                                        onBlur={(e) => e.target.style.borderColor = '#E2E8F0'}
                                     />
                                 </div>
 
-                                <div style={{ fontWeight: 600, color: '#374151', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                                    Choose a date:
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '400px' }}>
-                                    {suggestedEvent.options.map((opt, idx) => (
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        When?
+                                    </label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                         <button
-                                            key={idx}
-                                            onClick={() => handleAddToCalendar(opt)}
+                                            onClick={() => {
+                                                const d = new Date();
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true);
+                                                alert('Added to Today!');
+                                            }}
                                             style={{
+                                                padding: '0.6rem',
+                                                borderRadius: '10px',
+                                                border: '1px solid #E2E8F0',
                                                 background: 'white',
-                                                border: '1px solid #E5E7EB',
-                                                padding: '0.75rem',
-                                                borderRadius: '12px',
+                                                color: '#334155',
+                                                fontSize: '0.85rem',
+                                                fontWeight: 500,
                                                 cursor: 'pointer',
-                                                textAlign: 'left',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '0.25rem',
-                                                transition: 'all 0.2s',
-                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                transition: 'all 0.2s'
                                             }}
-                                            onMouseEnter={e => {
-                                                e.currentTarget.style.borderColor = '#2563EB';
-                                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                                e.currentTarget.style.boxShadow = '0 4px 6px rgba(37, 99, 235, 0.1)';
-                                            }}
-                                            onMouseLeave={e => {
-                                                e.currentTarget.style.borderColor = '#E5E7EB';
-                                                e.currentTarget.style.transform = 'none';
-                                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-                                            }}
+                                            onMouseEnter={e => e.target.style.background = '#F1F5F9'}
+                                            onMouseLeave={e => e.target.style.background = 'white'}
                                         >
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                                <span style={{ fontWeight: 600, color: '#111827' }}>{opt.label}</span>
-                                                {opt.timeStr && (
-                                                    <span style={{ fontSize: '0.8rem', color: '#2563EB', background: '#EFF6FF', padding: '2px 6px', borderRadius: '4px' }}>
-                                                        {opt.timeStr}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>
-                                                {opt.reason}
-                                            </span>
+                                            Today
                                         </button>
-                                    ))}
+                                        <button
+                                            onClick={() => {
+                                                const d = new Date();
+                                                d.setDate(d.getDate() + 1);
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true);
+                                                alert('Added to Tomorrow!');
+                                            }}
+                                            style={{
+                                                padding: '0.6rem',
+                                                borderRadius: '10px',
+                                                border: '1px solid #E2E8F0',
+                                                background: 'white',
+                                                color: '#334155',
+                                                fontSize: '0.85rem',
+                                                fontWeight: 500,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={e => e.target.style.background = '#F1F5F9'}
+                                            onMouseLeave={e => e.target.style.background = 'white'}
+                                        >
+                                            Tomorrow
+                                        </button>
+                                    </div>
+                                    <input
+                                        type="date"
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.6rem',
+                                            borderRadius: '10px',
+                                            border: '1px solid #E2E8F0',
+                                            background: 'white',
+                                            color: '#334155',
+                                            fontSize: '0.85rem'
+                                        }}
+                                        onChange={(e) => {
+                                            if (!e.target.value) return;
+                                            const d = new Date(e.target.value);
+                                            onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true);
+                                            alert(`Added to ${d.toLocaleDateString()}!`);
+                                        }}
+                                    />
                                 </div>
                             </div>
-                        )}
+                        </div>
 
+                        {/* Section: Smart Suggestions (Conditional) */}
+                        {suggestedEvent && (
+                            <>
+                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.05)', width: '100%' }}></div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563EB', fontWeight: 700, fontSize: '0.9rem' }}>
+                                        <Clock size={16} />
+                                        Smart Suggestions
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        {suggestedEvent.options.map((opt, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleAddToCalendar(opt)}
+                                                style={{
+                                                    background: 'rgba(37, 99, 235, 0.05)',
+                                                    border: '1px solid rgba(37, 99, 235, 0.1)',
+                                                    padding: '0.75rem',
+                                                    borderRadius: '12px',
+                                                    cursor: 'pointer',
+                                                    textAlign: 'left',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '0.25rem',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={e => {
+                                                    e.currentTarget.style.borderColor = '#2563EB';
+                                                    e.currentTarget.style.background = 'rgba(37, 99, 235, 0.1)';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.1)';
+                                                    e.currentTarget.style.background = 'rgba(37, 99, 235, 0.05)';
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                    <span style={{ fontWeight: 600, color: '#1E3A8A' }}>{opt.label}</span>
+                                                    {opt.timeStr && (
+                                                        <span style={{ fontSize: '0.75rem', color: '#2563EB', background: 'white', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(37,99,235,0.2)' }}>
+                                                            {opt.timeStr}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                                                    {opt.reason}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
-                </div>,
-                document.body
+                </div>
             )}
         </div>
     );

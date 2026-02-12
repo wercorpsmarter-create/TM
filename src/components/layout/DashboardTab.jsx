@@ -29,10 +29,12 @@ export default function DashboardTab({
     setVisibleDays,
     currentWeekOffset = 0,
     onNextWeek,
-    onPrevWeek
+    onNextWeek,
+    onPrevWeek,
+    onOpenCalendarPopup
 }) {
     return (
-        <div className="dashboard-tab" style={{ paddingBottom: '2rem' }}>
+        <div className="dashboard-tab" style={{ paddingBottom: '0' }}>
             <TopSection
                 tasks={tasks}
                 upcomingEvents={upcomingEvents}
@@ -67,6 +69,7 @@ export default function DashboardTab({
                 currentWeekOffset={currentWeekOffset}
                 onNextWeek={onNextWeek}
                 onPrevWeek={onPrevWeek}
+                onOpenCalendarPopup={onOpenCalendarPopup}
             />
         </div>
     );

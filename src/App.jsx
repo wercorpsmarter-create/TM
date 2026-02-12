@@ -1074,6 +1074,7 @@ function App() {
                             onSyncClick={handleSyncClick}
                             onLogin={loginExistingUser}
                             externalPopupTrigger={calendarPopupTrigger}
+                            isActive={activeTab === 'calendar'}
                         />
                     </div>
                     <div style={{

@@ -4,7 +4,7 @@ import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight,
 
 import MiniCalendar from './MiniCalendar';
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive }) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState(() => localStorage.getItem('calendar_view') || 'month'); // 'month', 'week', 'day'
 
@@ -43,13 +43,18 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
     const scrollContainerRef = React.useRef(null);
 
-    // Scroll to 9 AM when switching to week or day view
+    // Scroll to 9 AM when switching to week or day view, or when tab becomes active
     useEffect(() => {
         if ((view === 'week' || view === 'day') && scrollContainerRef.current) {
             // 9 AM = 9 * 60px/hr = 540px
-            scrollContainerRef.current.scrollTop = 540;
+            // Small timeout to ensure layout is ready
+            setTimeout(() => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTop = 540;
+                }
+            }, 0);
         }
-    }, [view]);
+    }, [view, isActive]);
 
     // Drag to create state
     const [isDragging, setIsDragging] = useState(false);

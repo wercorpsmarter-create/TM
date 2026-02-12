@@ -4,7 +4,13 @@ import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight,
 
 export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger }) {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [view, setView] = useState('month'); // 'month', 'week', 'day'
+    const [view, setView] = useState(() => localStorage.getItem('calendar_view') || 'month'); // 'month', 'week', 'day'
+
+    // Save view to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('calendar_view', view);
+    }, [view]);
+
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [expandedEventId, setExpandedEventId] = useState(null);
@@ -12,7 +18,14 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
     const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
     const [calendars, setCalendars] = useState([]);
     const [selectedCalendarIds, setSelectedCalendarIds] = useState(new Set());
-    const [showSidebar, setShowSidebar] = useState(true);
+    const [showSidebar, setShowSidebar] = useState(() => {
+        const saved = localStorage.getItem('calendar_show_sidebar');
+        return saved !== null ? JSON.parse(saved) : true;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('calendar_show_sidebar', JSON.stringify(showSidebar));
+    }, [showSidebar]);
 
     const [newEventData, setNewEventData] = useState({
         title: '',
@@ -214,6 +227,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         }
     }, [user, currentDate, view, selectedCalendarIds]);
 
+    useEffect(() => {
+        if (selectedCalendarIds.size > 0) {
+            localStorage.setItem('calendar_selected_ids', JSON.stringify(Array.from(selectedCalendarIds)));
+        }
+    }, [selectedCalendarIds]);
+
     const fetchCalendars = async (accessToken) => {
         try {
             const response = await fetch(
@@ -225,12 +244,30 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 const items = data.items || [];
                 setCalendars(items);
 
-                // Initialize selected calendars based on the API response 'selected' field or default to all
-                const initialSelected = new Set(items.filter(c => c.selected).map(c => c.id));
-                if (initialSelected.size === 0 && items.length > 0) {
-                    // Fallback: select primary
-                    const primary = items.find(c => c.primary);
-                    if (primary) initialSelected.add(primary.id);
+                // Try to load selection from local storage
+                const savedSelection = localStorage.getItem('calendar_selected_ids');
+                let initialSelected;
+
+                if (savedSelection) {
+                    try {
+                        const savedArray = JSON.parse(savedSelection);
+                        // Filter saved IDs to only those that exist in the current calendar list
+                        const validIds = savedArray.filter(id => items.some(c => c.id === id));
+                        if (validIds.length > 0) {
+                            initialSelected = new Set(validIds);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing saved calendar selection', e);
+                    }
+                }
+
+                if (!initialSelected || initialSelected.size === 0) {
+                    // Fallback: select based on API 'selected' property or primary
+                    initialSelected = new Set(items.filter(c => c.selected).map(c => c.id));
+                    if (initialSelected.size === 0 && items.length > 0) {
+                        const primary = items.find(c => c.primary);
+                        if (primary) initialSelected.add(primary.id);
+                    }
                 }
                 setSelectedCalendarIds(initialSelected);
             }

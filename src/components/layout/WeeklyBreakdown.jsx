@@ -143,7 +143,8 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
             backgroundColor: `${color}15`,
             backdropFilter: 'blur(4px)',
             borderColor: `${color}40`,
-            borderLeft: `3px solid ${color}`
+            borderLeft: `3px solid ${color}`,
+            color: '#000'
         } : {})
     };
 

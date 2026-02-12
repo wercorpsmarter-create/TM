@@ -692,7 +692,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         backgroundColor: `${color}4d`, // 30% opacity
                                                         backdropFilter: 'blur(4px)',
                                                         borderLeft: `3px solid ${color}`,
-                                                        color: 'white', // Text color
+                                                        color: '#000', // Text color - Changed to black
                                                         // Glassmorphic border
                                                         borderTop: `1px solid ${color}40`,
                                                         borderRight: `1px solid ${color}40`,
@@ -899,7 +899,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     backdropFilter: color ? 'blur(4px)' : undefined,
                                                                     border: color ? `1px solid ${color}66` : undefined,
                                                                     borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                    color: color ? 'white' : undefined,
+                                                                    color: color ? '#000' : undefined,
                                                                     borderRadius: '4px'
                                                                 }}>
                                                                     {item.title}
@@ -928,7 +928,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                 backdropFilter: color ? 'blur(4px)' : undefined,
                                                                 border: color ? `1px solid ${color}66` : '1px solid rgba(0,0,0,0.1)',
                                                                 borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                color: color ? 'white' : undefined,
+                                                                color: color ? '#000' : undefined,
                                                                 borderRadius: '4px'
                                                             }}>
                                                                 <div style={{ fontWeight: 600, fontSize: '0.7rem' }}>{item.title}</div>
@@ -1098,7 +1098,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     backdropFilter: color ? 'blur(4px)' : undefined,
                                                                     border: color ? `1px solid ${color}66` : undefined,
                                                                     borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                    color: color ? 'white' : undefined,
+                                                                    color: color ? '#000' : undefined,
                                                                     borderRadius: '4px',
                                                                     fontSize: '0.85rem'
                                                                 }}>
@@ -1135,7 +1135,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     backdropFilter: color ? 'blur(4px)' : undefined,
                                                                     border: color ? `1px solid ${color}66` : '1px solid rgba(0,0,0,0.1)',
                                                                     borderLeft: color ? `4px solid ${color}` : undefined,
-                                                                    color: color ? 'white' : undefined,
+                                                                    color: color ? '#000' : undefined,
                                                                     borderRadius: '6px'
                                                                 }}
                                                             >

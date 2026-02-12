@@ -291,7 +291,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         if (user && user.access_token) {
             fetchEvents(user.access_token);
         }
-    }, [user, currentDate, view, selectedCalendarIds]);
+    }, [user, currentDate, view, selectedCalendarIds, calendars]);
 
     useEffect(() => {
         if (selectedCalendarIds.size > 0) {
@@ -373,11 +373,13 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     }
 
                     const data = await response.json();
+                    const cal = calendars.find(c => c.id === calendarId);
                     return (data.items || []).map(item => ({
                         ...item,
                         calendarId,
                         // If the event doesn't have a color, use the calendar color (we'll need to look this up from the calendars list)
-                        calendarColor: calendars.find(c => c.id === calendarId)?.backgroundColor
+                        calendarColor: cal?.backgroundColor,
+                        isPrimary: cal?.primary || false
                     }));
                 } catch (e) {
                     console.error(`Error fetching events for calendar ${calendarId}:`, e);
@@ -708,7 +710,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             <div className="day-number" style={{ color: 'inherit', marginBottom: '2px', fontWeight: 600 }}>{dayObj.day}</div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                                                 {visibleItems.map((item, idx) => {
-                                                    const color = item.extendedProperties?.private?.customColor || item.metadata?.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#039be5') : undefined);
+                                                    const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                    const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
 
                                                     const style = color ? {
                                                         backgroundColor: `${color}4d`, // 30% opacity
@@ -905,7 +908,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                                     {items.map((item, idx) => {
                                                         const isAllDay = item.type === 'google' && !item.start.dateTime;
-                                                        const color = item.extendedProperties?.private?.customColor || item.color || item.calendarColor || '#3b82f6';
+                                                        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
 
                                                         if (isAllDay || (item.type === 'task' && !item.hasTime)) {
                                                             return (
@@ -1110,7 +1114,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 <>
                                                     <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
                                                         {allDayItems.map((item, idx) => {
-                                                            const color = item.extendedProperties?.private?.customColor || item.color || item.calendarColor || '#3b82f6';
+                                                            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                            const color = customColor || item.color || item.calendarColor || '#3b82f6';
                                                             return (
                                                                 <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
                                                                     position: 'relative',
@@ -1134,7 +1139,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         const top = (item.startMinutes / 60) * 60;
                                                         const height = (item.duration / 60) * 60;
                                                         const isExpanded = expandedEventId === (item.id || idx);
-                                                        const color = item.extendedProperties?.private?.customColor || item.color || item.calendarColor || '#3b82f6';
+                                                        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
 
                                                         return (
                                                             <div key={idx}

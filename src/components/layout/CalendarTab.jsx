@@ -1064,30 +1064,30 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 showEventModal && createPortal(
                     <>
                         <div
-                            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(8px)' }}
+                            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}
                             onClick={() => { setShowEventModal(false); setDragStart(null); }}
                         />
 
                         <div style={{
                             position: 'fixed',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
+                            top: dragStart ? modalPosition.top : '50%',
+                            left: dragStart ? modalPosition.left : '50%',
+                            transform: dragStart ? 'none' : 'translate(-50%, -50%)',
                             zIndex: 9999,
-                            width: '500px',
-                            background: 'rgba(30, 41, 59, 0.85)',
-                            backdropFilter: 'blur(40px)',
-                            WebkitBackdropFilter: 'blur(40px)',
-                            borderRadius: '24px',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                            width: '480px',
+                            background: 'rgba(255, 255, 255, 0.9)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            borderRadius: '16px',
+                            boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.6) inset, 0 0 0 1px rgba(0,0,0,0.05)',
                             padding: '0',
                             display: 'flex',
                             flexDirection: 'column',
                             overflow: 'hidden',
-                            animation: 'popupScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                            color: 'white'
+                            animation: 'popupScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            color: '#1e293b'
                         }}>
-                            {/* Futuristic Header Gradient Line */}
+                            {/* Header Gradient Line */}
                             <div style={{ height: '4px', width: '100%', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899)' }}></div>
 
                             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1095,9 +1095,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                     <button
                                         onClick={() => { setShowEventModal(false); setDragStart(null); }}
-                                        style={{ background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', color: 'white', padding: '8px', borderRadius: '50%', display: 'flex', transition: 'all 0.2s' }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'rotate(0deg)'; }}
+                                        style={{ background: 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer', color: '#64748b', padding: '8px', borderRadius: '50%', display: 'flex', transition: 'all 0.2s' }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'rotate(0deg)'; }}
                                     >
                                         <X size={20} />
                                     </button>
@@ -1113,18 +1113,18 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
                                         style={{
                                             width: '100%',
-                                            fontSize: '28px',
+                                            fontSize: '24px',
                                             fontWeight: 700,
                                             padding: '8px 0',
                                             border: 'none',
-                                            borderBottom: '2px solid rgba(255,255,255,0.1)',
+                                            borderBottom: '2px solid rgba(0,0,0,0.1)',
                                             background: 'transparent',
                                             outline: 'none',
-                                            color: 'white',
+                                            color: '#1e293b',
                                             letterSpacing: '-0.5px'
                                         }}
-                                        onFocus={e => e.target.style.borderBottom = '2px solid #8b5cf6'}
-                                        onBlur={e => e.target.style.borderBottom = '2px solid rgba(255,255,255,0.1)'}
+                                        onFocus={e => e.target.style.borderBottom = '2px solid #3b82f6'}
+                                        onBlur={e => e.target.style.borderBottom = '2px solid rgba(0,0,0,0.1)'}
                                     />
                                     <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                                         {['event', 'task', 'appointment'].map(type => (
@@ -1132,9 +1132,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 key={type}
                                                 onClick={() => setNewEventData({ ...newEventData, eventType: type })}
                                                 style={{
-                                                    background: newEventData.eventType === type ? 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' : 'rgba(255,255,255,0.05)',
-                                                    color: 'white',
-                                                    border: '1px solid ' + (newEventData.eventType === type ? 'transparent' : 'rgba(255,255,255,0.1)'),
+                                                    background: newEventData.eventType === type ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'rgba(0,0,0,0.05)',
+                                                    color: newEventData.eventType === type ? 'white' : '#64748b',
+                                                    border: 'none',
                                                     padding: '6px 14px',
                                                     borderRadius: '20px',
                                                     fontSize: '12px',
@@ -1155,12 +1155,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
                                     {/* Time Row */}
-                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <Clock size={20} color="#94a3b8" />
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.5)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                                        <Clock size={20} color="#64748b" />
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                            <div style={{ fontWeight: 500, fontSize: '15px' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '15px', color: '#334155' }}>
                                                 {new Date(newEventData.dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                                <span style={{ margin: '0 8px', color: 'rgba(255,255,255,0.2)' }}>|</span>
+                                                <span style={{ margin: '0 8px', color: '#cbd5e1' }}>|</span>
                                                 {newEventData.timeStr}
                                             </div>
                                             <div style={{ fontSize: '12px', color: '#94a3b8' }}>Does not repeat</div>
@@ -1169,24 +1169,24 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                     {/* Guests Row */}
                                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
-                                        <Users size={20} color="#94a3b8" />
+                                        <Users size={20} color="#64748b" />
                                         <input
                                             type="text"
                                             placeholder="Add guests (email addresses)"
                                             value={newEventData.participants}
                                             onChange={e => setNewEventData({ ...newEventData, participants: e.target.value })}
-                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: 'white', padding: '8px 0' }}
+                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: '#1e293b', padding: '8px 0' }}
                                         />
                                     </div>
 
                                     {/* Meet Row */}
                                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
-                                        <Video size={20} color="#94a3b8" />
+                                        <Video size={20} color="#64748b" />
                                         {!newEventData.addMeet ? (
                                             <button
                                                 onClick={() => setNewEventData({ ...newEventData, addMeet: true })}
                                                 style={{
-                                                    background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px',
+                                                    background: '#eff6ff', color: '#2563eb', border: '1px solid #dbeafe', borderRadius: '8px',
                                                     padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                                                     display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center'
                                                 }}>
@@ -1205,7 +1205,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 </button>
                                                 <button
                                                     onClick={() => setNewEventData({ ...newEventData, addMeet: false })}
-                                                    style={{ border: 'none', background: 'rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}>
+                                                    style={{ border: 'none', background: 'rgba(0,0,0,0.05)', color: '#64748b', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}>
                                                     <X size={14} />
                                                 </button>
                                             </div>
@@ -1214,25 +1214,25 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                     {/* Location Row */}
                                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
-                                        <MapPin size={20} color="#94a3b8" />
+                                        <MapPin size={20} color="#64748b" />
                                         <input
                                             type="text"
                                             placeholder="Add location"
                                             value={newEventData.location}
                                             onChange={e => setNewEventData({ ...newEventData, location: e.target.value })}
-                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: 'white', padding: '8px 0' }}
+                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: '#1e293b', padding: '8px 0' }}
                                         />
                                     </div>
 
                                     {/* Description Row */}
                                     <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', padding: '0 12px' }}>
-                                        <AlignLeft size={20} color="#94a3b8" style={{ marginTop: '2px' }} />
+                                        <AlignLeft size={20} color="#64748b" style={{ marginTop: '2px' }} />
                                         <textarea
                                             placeholder="Add description"
                                             value={newEventData.description}
                                             onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
                                             style={{
-                                                flex: 1, border: 'none', fontSize: '14px', outline: 'none', color: '#e2e8f0',
+                                                flex: 1, border: 'none', fontSize: '14px', outline: 'none', color: '#1e293b',
                                                 fontFamily: 'inherit', resize: 'none', minHeight: '60px',
                                                 background: 'transparent', padding: '2px 0', lineHeight: '1.5'
                                             }}
@@ -1244,33 +1244,33 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             {/* Footer */}
                             <div style={{
                                 padding: '16px 24px',
-                                borderTop: '1px solid rgba(255,255,255,0.05)',
+                                borderTop: '1px solid rgba(0,0,0,0.05)',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                background: 'rgba(0,0,0,0.2)'
+                                background: 'rgba(255,255,255,0.5)'
                             }}>
                                 <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                    Creating as <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{user?.name || 'User'}</span>
+                                    Creating as <span style={{ color: '#334155', fontWeight: 600 }}>{user?.name || 'User'}</span>
                                 </div>
                                 <div style={{ display: 'flex', gap: '12px' }}>
                                     <button
                                         onClick={() => alert("More options clicked")}
-                                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontWeight: 500, cursor: 'pointer', fontSize: '13px' }}
+                                        style={{ background: 'transparent', border: 'none', color: '#64748b', fontWeight: 500, cursor: 'pointer', fontSize: '13px' }}
                                     >
                                         More options
                                     </button>
                                     <button
                                         onClick={handleSaveEvent}
                                         style={{
-                                            background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+                                            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
                                             color: 'white',
                                             border: 'none',
                                             padding: '8px 24px',
                                             borderRadius: '8px',
                                             fontWeight: 600,
                                             cursor: 'pointer',
-                                            boxShadow: '0 4px 15px rgba(236, 72, 153, 0.4)',
+                                            boxShadow: '0 4px 15px rgba(15, 23, 42, 0.3)',
                                             transition: 'transform 0.2s'
                                         }}
                                         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}

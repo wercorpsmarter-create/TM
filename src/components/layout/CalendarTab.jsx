@@ -675,14 +675,15 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             style={{
                                                 cursor: 'pointer',
                                                 color: dayObj.currentMonth ? '#000' : '#9ca3af',
-                                                minHeight: '120px', // Static height
-                                                height: '120px',    // Ensure strict grid row if container allows
+                                                minHeight: '150px', // Increased static height
+                                                height: '150px',    // Increased static height
                                                 overflow: 'hidden',  // Hide overflow
                                                 display: 'flex',
-                                                flexDirection: 'column'
+                                                flexDirection: 'column',
+                                                padding: '4px'      // Add padding
                                             }}
                                         >
-                                            <div className="day-number" style={{ color: 'inherit', marginBottom: '4px' }}>{dayObj.day}</div>
+                                            <div className="day-number" style={{ color: 'inherit', marginBottom: '2px', fontWeight: 600 }}>{dayObj.day}</div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                                                 {visibleItems.map((item, idx) => {
                                                     const color = item.extendedProperties?.private?.customColor || item.metadata?.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#039be5') : undefined);

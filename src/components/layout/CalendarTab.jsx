@@ -6,6 +6,67 @@ import MiniCalendar from './MiniCalendar';
 
 export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive }) {
     const [currentDate, setCurrentDate] = useState(new Date());
+
+    // Helper for event layout
+    const layoutEvents = (items) => {
+        const timed = items.filter(item => !((item.type === 'google' && !item.start.dateTime) || (item.type === 'task' && !item.hasTime)));
+        const allDay = items.filter(item => ((item.type === 'google' && !item.start.dateTime) || (item.type === 'task' && !item.hasTime)));
+
+        if (timed.length === 0) return { allDay, timed: [] };
+
+        // Sort by start time, then duration
+        timed.sort((a, b) => a.startMinutes - b.startMinutes || b.duration - a.duration);
+
+        const groups = [];
+        let currentGroup = [];
+        let groupEnd = -1;
+
+        timed.forEach(event => {
+            if (currentGroup.length === 0) {
+                currentGroup.push(event);
+                groupEnd = event.startMinutes + event.duration;
+            } else {
+                if (event.startMinutes < groupEnd) {
+                    currentGroup.push(event);
+                    groupEnd = Math.max(groupEnd, event.startMinutes + event.duration);
+                } else {
+                    groups.push(currentGroup);
+                    currentGroup = [event];
+                    groupEnd = event.startMinutes + event.duration;
+                }
+            }
+        });
+        if (currentGroup.length > 0) groups.push(currentGroup);
+
+        const processedTimed = [];
+        groups.forEach(group => {
+            const columns = [];
+            group.forEach(event => {
+                let placed = false;
+                for (let i = 0; i < columns.length; i++) {
+                    if (columns[i] <= event.startMinutes) {
+                        event.colIndex = i;
+                        columns[i] = event.startMinutes + event.duration;
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    event.colIndex = columns.length;
+                    columns.push(event.startMinutes + event.duration);
+                }
+            });
+
+            const numCols = columns.length;
+            group.forEach(event => {
+                event.layoutLeft = (event.colIndex / numCols) * 100;
+                event.layoutWidth = (1 / numCols) * 100;
+                processedTimed.push(event);
+            });
+        });
+
+        return { allDay, timed: processedTimed };
+    };
     const [view, setView] = useState(() => localStorage.getItem('calendar_view') || 'month'); // 'month', 'week', 'day'
 
     // Save view to localStorage whenever it changes
@@ -868,6 +929,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 })
                                             ];
 
+                                            const { allDay, timed } = layoutEvents(items);
+
                                             return (
                                                 <div key={i}
                                                     style={{
@@ -906,43 +969,43 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         </div>
                                                     )}
 
-                                                    {items.map((item, idx) => {
-                                                        const isAllDay = item.type === 'google' && !item.start.dateTime;
+                                                    {allDay.map((item, idx) => {
+                                                        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
+                                                        return (
+                                                            <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
+                                                                position: 'relative',
+                                                                marginBottom: '2px',
+                                                                fontSize: '0.7rem',
+                                                                padding: '2px 4px',
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                backgroundColor: color ? `${color}4d` : undefined,
+                                                                backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                border: color ? `1px solid ${color}66` : undefined,
+                                                                borderLeft: color ? `3px solid ${color}` : undefined,
+                                                                color: color ? '#000' : undefined,
+                                                                borderRadius: '4px'
+                                                            }}>
+                                                                {item.title}
+                                                            </div>
+                                                        );
+                                                    })}
+
+                                                    {timed.map((item, idx) => {
+                                                        const top = (item.startMinutes / 60) * 60;
+                                                        const height = (item.duration / 60) * 60;
                                                         const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
                                                         const color = customColor || item.color || item.calendarColor || '#3b82f6';
 
-                                                        if (isAllDay || (item.type === 'task' && !item.hasTime)) {
-                                                            return (
-                                                                <div key={idx} className={`event-pill ${item.type}`} style={{
-                                                                    position: 'relative',
-                                                                    marginBottom: '2px',
-                                                                    fontSize: '0.7rem',
-                                                                    padding: '2px 4px',
-                                                                    whiteSpace: 'nowrap',
-                                                                    overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis',
-                                                                    backgroundColor: color ? `${color}4d` : undefined,
-                                                                    backdropFilter: color ? 'blur(4px)' : undefined,
-                                                                    border: color ? `1px solid ${color}66` : undefined,
-                                                                    borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                    color: color ? '#000' : undefined,
-                                                                    borderRadius: '4px'
-                                                                }}>
-                                                                    {item.title}
-                                                                </div>
-                                                            );
-                                                        }
-
-                                                        const top = (item.startMinutes / 60) * 60;
-                                                        const height = (item.duration / 60) * 60;
-
                                                         return (
-                                                            <div key={idx} className={`event-pill ${item.type}`} style={{
+                                                            <div key={`t-${idx}`} className={`event-pill ${item.type}`} style={{
                                                                 position: 'absolute',
                                                                 top: `${top}px`,
                                                                 height: `${Math.max(height, 20)}px`,
-                                                                left: '2px',
-                                                                right: '2px',
+                                                                left: `${item.layoutLeft}%`,
+                                                                width: `calc(${item.layoutWidth}% - 2px)`,
                                                                 fontSize: '0.75rem',
                                                                 padding: '2px 4px',
                                                                 overflow: 'hidden',
@@ -1100,20 +1163,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 })
                                             ];
 
-                                            const allDayItems = items.filter(item =>
-                                                (item.type === 'google' && !item.start.dateTime) ||
-                                                (item.type === 'task' && !item.hasTime)
-                                            );
-
-                                            const timedItems = items.filter(item =>
-                                                !((item.type === 'google' && !item.start.dateTime) ||
-                                                    (item.type === 'task' && !item.hasTime))
-                                            );
+                                            const { allDay, timed: timedItems } = layoutEvents(items);
 
                                             return (
                                                 <>
                                                     <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
-                                                        {allDayItems.map((item, idx) => {
+                                                        {allDay.map((item, idx) => {
                                                             const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
                                                             const color = customColor || item.color || item.calendarColor || '#3b82f6';
                                                             return (
@@ -1151,8 +1206,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     top: `${top}px`,
                                                                     height: isExpanded ? 'auto' : `${Math.max(height, 40)}px`,
                                                                     minHeight: `${Math.max(height, 40)}px`,
-                                                                    left: '10px',
-                                                                    right: '10px',
+                                                                    left: `${item.layoutLeft}%`,
+                                                                    width: `calc(${item.layoutWidth}% - 4px)`,
                                                                     padding: '8px',
                                                                     zIndex: isExpanded ? 50 : 10,
                                                                     boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',

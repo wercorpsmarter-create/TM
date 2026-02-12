@@ -638,6 +638,32 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
                                     const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
 
+                                    // Merge and sort items
+                                    const allItems = [
+                                        ...dayEvents.map(e => ({ ...e, type: 'google' })),
+                                        ...dayTasks.map(t => ({ ...t, type: 'task', title: t.text }))
+                                    ].sort((a, b) => {
+                                        // Simple sort by time if available, otherwise prioritize all-day events?
+                                        // Or just keep grouped. I'll stick to a simple merge.
+                                        // Actually, let's sort by start time if possible.
+                                        const getMinutes = (item) => {
+                                            if (item.type === 'google' && item.start.dateTime) {
+                                                const d = new Date(item.start.dateTime);
+                                                return d.getHours() * 60 + d.getMinutes();
+                                            }
+                                            if (item.type === 'task' && item.metadata?.time) {
+                                                const [h, m] = item.metadata.time.split(':').map(Number);
+                                                return h * 60 + m;
+                                            }
+                                            return -1; // All day / no time
+                                        };
+                                        return getMinutes(a) - getMinutes(b);
+                                    });
+
+                                    const MAX_VISIBLE = 3;
+                                    const visibleItems = allItems.slice(0, MAX_VISIBLE);
+                                    const overflowCount = allItems.length - MAX_VISIBLE;
+
                                     return (
                                         <div
                                             key={i}
@@ -648,35 +674,58 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             }}
                                             style={{
                                                 cursor: 'pointer',
-                                                color: dayObj.currentMonth ? '#000' : '#9ca3af'
+                                                color: dayObj.currentMonth ? '#000' : '#9ca3af',
+                                                minHeight: '120px', // Static height
+                                                height: '120px',    // Ensure strict grid row if container allows
+                                                overflow: 'hidden',  // Hide overflow
+                                                display: 'flex',
+                                                flexDirection: 'column'
                                             }}
                                         >
-                                            <div className="day-number" style={{ color: 'inherit' }}>{dayObj.day}</div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
-                                                {dayEvents.map(e => {
-                                                    const cal = calendars.find(c => c.id === e.calendarId);
-                                                    const color = e.colorId // Event specific color?
-                                                        ? null // We'd need a color map for this, ignoring for now or mapping specific IDs
-                                                        : (cal?.backgroundColor || '#039be5');
+                                            <div className="day-number" style={{ color: 'inherit', marginBottom: '4px' }}>{dayObj.day}</div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                                                {visibleItems.map((item, idx) => {
+                                                    const color = item.extendedProperties?.private?.customColor || item.metadata?.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#039be5') : undefined);
+
+                                                    const style = color ? {
+                                                        backgroundColor: `${color}4d`, // 30% opacity
+                                                        backdropFilter: 'blur(4px)',
+                                                        borderLeft: `3px solid ${color}`,
+                                                        color: 'white', // Text color
+                                                        // Glassmorphic border
+                                                        borderTop: `1px solid ${color}40`,
+                                                        borderRight: `1px solid ${color}40`,
+                                                        borderBottom: `1px solid ${color}40`,
+                                                    } : {
+                                                        // Default gray style if no color (though mostly should have color)
+                                                        backgroundColor: 'rgba(0,0,0,0.05)',
+                                                        color: 'var(--text-main)',
+                                                        borderLeft: '3px solid rgba(0,0,0,0.2)'
+                                                    };
 
                                                     return (
-                                                        <div key={e.id} className="event-pill google" title={e.summary}
+                                                        <div key={`${item.id}-${idx}`} className="event-pill" title={item.summary || item.title}
                                                             style={{
-                                                                backgroundColor: color,
-                                                                borderColor: 'transparent',
-                                                                color: '#fff', // Assuming dark text on light bg or vice versa? Google colors are usually dark enough for white, or we check
-                                                                borderLeft: 'none'
+                                                                ...style,
+                                                                padding: '2px 4px',
+                                                                fontSize: '0.75rem',
+                                                                borderRadius: '4px',
+                                                                marginBottom: '1px',
+                                                                overflow: 'hidden',
+                                                                whiteSpace: 'nowrap',
+                                                                textOverflow: 'ellipsis',
+                                                                display: 'block'
                                                             }}
                                                         >
-                                                            {e.summary}
+                                                            {item.summary || item.title}
                                                         </div>
                                                     );
                                                 })}
-                                                {dayTasks.map(t => (
-                                                    <div key={t.id} className="event-pill hub" title={t.text}>
-                                                        • {t.text}
+                                                {overflowCount > 0 && (
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '4px', marginTop: '2px', fontWeight: 600 }}>
+                                                        +{overflowCount} more...
                                                     </div>
-                                                ))}
+                                                )}
                                             </div>
                                         </div>
                                     );

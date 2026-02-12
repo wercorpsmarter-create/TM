@@ -45,14 +45,26 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
     // Scroll to 9 AM when switching to week or day view, or when tab becomes active
     useEffect(() => {
-        if ((view === 'week' || view === 'day') && scrollContainerRef.current) {
-            // 9 AM = 9 * 60px/hr = 540px
-            // Small timeout to ensure layout is ready
-            setTimeout(() => {
+        if ((view === 'week' || view === 'day')) {
+            // Use multiple timeouts to catch different rendering phases
+            const scroll = () => {
                 if (scrollContainerRef.current) {
+                    // 9 AM = 9 * 60px/hr = 540px
                     scrollContainerRef.current.scrollTop = 540;
                 }
-            }, 0);
+            };
+
+            // Immediate attempt
+            scroll();
+
+            // Delayed attempts to handle layout/animation frames
+            const t1 = setTimeout(scroll, 50);
+            const t2 = setTimeout(scroll, 200);
+
+            return () => {
+                clearTimeout(t1);
+                clearTimeout(t2);
+            };
         }
     }, [view, isActive]);
 

@@ -935,7 +935,7 @@ function App() {
                 right: 0,
                 bottom: 0,
                 backgroundColor: accentColor,
-                opacity: 0.15,
+                opacity: 0.5,
                 pointerEvents: 'none',
                 zIndex: -1,
                 transition: 'background-color 0.5s ease'

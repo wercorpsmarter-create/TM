@@ -41,6 +41,16 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         addMeet: false
     });
 
+    const scrollContainerRef = React.useRef(null);
+
+    // Scroll to 9 AM when switching to week or day view
+    useEffect(() => {
+        if ((view === 'week' || view === 'day') && scrollContainerRef.current) {
+            // 9 AM = 9 * 60px/hr = 540px
+            scrollContainerRef.current.scrollTop = 540;
+        }
+    }, [view]);
+
     // Drag to create state
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState(null); // { dayIndex: number, startMinutes: number, dateObj: Date }
@@ -575,9 +585,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
                                             setView('day');
                                         }}
-                                        style={{ cursor: 'pointer' }}
+                                        style={{
+                                            cursor: 'pointer',
+                                            color: dayObj.currentMonth ? '#000' : '#9ca3af'
+                                        }}
                                     >
-                                        <div className="day-number">{dayObj.day}</div>
+                                        <div className="day-number" style={{ color: 'inherit' }}>{dayObj.day}</div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
                                             {dayEvents.map(e => {
                                                 const cal = calendars.find(c => c.id === e.calendarId);
@@ -627,7 +640,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 </div>
                             </div>
 
-                            <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                            <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
                                 <div
                                     style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default' }}
                                     onMouseMove={handleDragMove}
@@ -816,7 +829,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                     {view === 'day' && (
                         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                            <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                            <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
                                 <div
                                     style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default' }}
                                     onMouseMove={handleDragMove}

@@ -450,7 +450,7 @@ function App() {
             timestamp: Date.now(), // Force effect even if data is same
             ...initialData
         });
-        setActiveTab('calendar');
+        // Removed setActiveTab('calendar') so it stays on dashboard
     };
 
     const handleSubscribe = () => {

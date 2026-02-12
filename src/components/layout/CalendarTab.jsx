@@ -89,7 +89,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     newDate = new Date(dateStr);
                 }
                 setCurrentDate(newDate);
-                setView('week'); // Switch to week view to see the context
+                // setView('week'); // Removed: Don't switch view, stay context agnostic or let user decide
             }
 
             // Prep modal data

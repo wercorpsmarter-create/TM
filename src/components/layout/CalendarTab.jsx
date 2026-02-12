@@ -38,7 +38,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         timeStr: '',
         duration: 30,
         eventType: 'event', // 'event', 'task', 'appointment'
-        addMeet: false
+        addMeet: false,
+        color: '#3b82f6'
     });
 
     const scrollContainerRef = React.useRef(null);
@@ -194,9 +195,14 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         setNewEventData({
             title: '',
             participants: '',
+            location: '',
+            description: '',
             dateStr,
             timeStr,
-            duration: endMinutes - startMinutes
+            duration: endMinutes - startMinutes,
+            eventType: 'event',
+            addMeet: false,
+            color: '#3b82f6' // Default color for new events
         });
         setShowEventModal(true);
         setIsDragging(false);
@@ -220,17 +226,48 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             ? newEventData.participants.split(/[,;]+/).map(p => p.trim()).filter(p => p)
             : [];
 
+        // Construct start and end Date objects for the event
+        const [year, month, day] = newEventData.dateStr.split('-').map(Number);
+        const [hour, minute] = newEventData.timeStr.split(':').map(Number);
+        const startDateTime = new Date(year, month - 1, day, hour, minute);
+        const endDateTime = new Date(startDateTime.getTime() + newEventData.duration * 60 * 1000);
+
+        const event = {
+            summary: newEventData.title,
+            start: { dateTime: startDateTime.toISOString() },
+            end: { dateTime: endDateTime.toISOString() },
+            colorId: (() => {
+                // Simple mapping based on the hex codes we used
+                switch (newEventData.color) {
+                    case '#3b82f6': return '1';
+                    case '#ef4444': return '11';
+                    case '#22c55e': return '10';
+                    case '#eab308': return '5';
+                    case '#a855f7': return '3';
+                    case '#ec4899': return '4';
+                    case '#64748b': return '8';
+                    default: return undefined;
+                }
+            })(),
+            extendedProperties: {
+                private: {
+                    customColor: newEventData.color
+                }
+            }
+        };
+
         if (onAddTask) {
             await onAddTask(
                 newEventData.dateStr,
                 newEventData.title,
                 true,
                 newEventData.timeStr,
-                newEventData.duration,
+                newEventData.duration, // duration
                 description,
                 newEventData.location,
                 attendeesList,
-                newEventData.addMeet
+                newEventData.addMeet,
+                { color: newEventData.color } // Pass metadata object with color
             );
         }
 
@@ -537,7 +574,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 currentMainDate={currentDate}
                                 onDateSelect={(date) => {
                                     setCurrentDate(date);
-                                    // Optional: Switch to day/week view? User said "zooms to it". 
+                                    // Optional: Switch to day/week view? User said "zooms to it".
                                     // Navigating to the date in the current view is standard, but 'zoom' implies detail.
                                     // If we are in 'month' view, maybe we stay in month view but just go there?
                                     // Notion Calendar behavior: clicking a date in mini cal just navigates.
@@ -988,6 +1025,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         {allDayItems.map((item, idx) => (
                                                             <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
                                                                 position: 'relative',
+                                                                background: item.extendedProperties?.private?.customColor || undefined,
                                                                 marginBottom: '4px',
                                                                 padding: '4px 8px',
                                                                 backgroundColor: item.color,

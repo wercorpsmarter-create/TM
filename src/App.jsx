@@ -504,7 +504,7 @@ function App() {
         }
     };
 
-    const pushToGoogle = async (taskText, dateStr, time = null, duration = 60, description = '', location = '', attendees = [], addMeet = false) => {
+    const pushToGoogle = async (taskText, dateStr, time = null, duration = 60, description = '', location = '', attendees = [], addMeet = false, color = null) => {
         if (!googleUser || !googleUser.access_token) return;
 
         let eventBody;
@@ -512,7 +512,9 @@ function App() {
 
         if (time) {
             // Create ISO string for start and end
-            startDateTime = new Date(`${dateStr}T${time}:00`);
+            const [h, m] = time.split(':').map(Number);
+            startDateTime = new Date(dateStr);
+            startDateTime.setHours(h, m, 0, 0);
             endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
 
             eventBody = {
@@ -546,6 +548,22 @@ function App() {
             };
         }
 
+        if (color) {
+            // Map hex to Google Calendar colorId
+            const colorMap = {
+                '#3b82f6': '9', // Blueberry
+                '#ef4444': '11', // Tomato
+                '#22c55e': '10', // Basil
+                '#eab308': '5', // Banana
+                '#a855f7': '3', // Grape
+                '#ec4899': '4', // Flamingo
+                '#64748b': '8'  // Graphite
+            };
+            if (colorMap[color]) {
+                eventBody.colorId = colorMap[color];
+            }
+        }
+
         try {
             const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=${attendees.length > 0 ? 'all' : 'none'}`, {
                 method: 'POST',
@@ -564,12 +582,14 @@ function App() {
         }
     };
 
-    const addTask = async (day, text, syncWithGoogle = false, time = null, duration = 30, description = '', location = '', attendees = [], addMeet = false) => {
+    const addTask = async (day, text, syncWithGoogle = false, time = null, duration = 30, description = '', location = '', attendees = [], addMeet = false, metadata = {}) => {
         if (!userId) return;
 
         const dateStr = day.includes('-') ? day : getTargetDate(day);
+        const color = metadata?.color || null;
+
         try {
-            const newTask = await api.createTask(userId, text, dateStr, 'Pending', { time, duration, description, location, attendees: JSON.stringify(attendees), addMeet });
+            const newTask = await api.createTask(userId, text, dateStr, 'Pending', { time, duration, description, location, attendees: JSON.stringify(attendees), addMeet, color });
             setTasks([...tasks, {
                 ...newTask,
                 day,
@@ -577,7 +597,7 @@ function App() {
             }]);
 
             if (syncWithGoogle) {
-                const googleEvent = await pushToGoogle(text, dateStr, time, duration, description, location, attendees, addMeet);
+                const googleEvent = await pushToGoogle(text, dateStr, time, duration, description, location, attendees, addMeet, color);
                 if (googleEvent) {
                     setUpcomingEvents(prev => {
                         const newEvents = [...prev, googleEvent];

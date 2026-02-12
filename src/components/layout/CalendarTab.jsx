@@ -532,7 +532,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             <div style={{ display: 'flex', gap: '1rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
                 {showSidebar && user && (
                     <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-                        <div className="glass-card" style={{ padding: '1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                        <div className="glass-card static" style={{ padding: '1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                             <MiniCalendar
                                 currentMainDate={currentDate}
                                 onDateSelect={(date) => {
@@ -590,7 +590,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     </div>
                 )}
 
-                <div className="glass-card" style={{ padding: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+                <div className="glass-card static" style={{ padding: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
                     {view === 'month' && (
                         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
                             <div className="calendar-grid">

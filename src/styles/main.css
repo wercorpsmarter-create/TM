@@ -76,6 +76,12 @@ body {
   border-color: #fff;
 }
 
+.glass-card.static:hover {
+  transform: none;
+  box-shadow: var(--shadow-soft);
+  border-color: var(--glass-border);
+}
+
 .card-title {
   font-size: 1.25rem;
   font-weight: 800;

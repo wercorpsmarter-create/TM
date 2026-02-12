@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users } from 'lucide-react';
 
+import MiniCalendar from './MiniCalendar';
+
 export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger }) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState(() => localStorage.getItem('calendar_view') || 'month'); // 'month', 'week', 'day'
@@ -498,6 +500,18 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 {showSidebar && user && (
                     <div style={{ width: '250px', flexShrink: 0 }}>
                         <div className="glass-card" style={{ padding: '1rem', minHeight: '200px' }}>
+                            <MiniCalendar
+                                currentMainDate={currentDate}
+                                onDateSelect={(date) => {
+                                    setCurrentDate(date);
+                                    // Optional: Switch to day/week view? User said "zooms to it". 
+                                    // Navigating to the date in the current view is standard, but 'zoom' implies detail.
+                                    // If we are in 'month' view, maybe we stay in month view but just go there?
+                                    // Notion Calendar behavior: clicking a date in mini cal just navigates.
+                                    // But user used the word "zoom". Let's stick to navigation.
+                                }}
+                            />
+                            <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', margin: '0.5rem 0 1rem 0' }}></div>
                             <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Calendars</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {calendars.map(cal => (

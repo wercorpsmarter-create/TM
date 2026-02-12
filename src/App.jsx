@@ -928,18 +928,20 @@ function App() {
     return (
         <div className="app-container">
             {/* Background Tint */}
-            <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: accentColor,
-                opacity: 0.5,
-                pointerEvents: 'none',
-                zIndex: -1,
-                transition: 'background-color 0.5s ease'
-            }} />
+            {accentColor && accentColor !== '#ffffff' && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: accentColor,
+                    opacity: 0.5,
+                    pointerEvents: 'none',
+                    zIndex: -1,
+                    transition: 'background-color 0.5s ease'
+                }} />
+            )}
 
             {/* Top Navigation */}
             <nav style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '3rem' }}>

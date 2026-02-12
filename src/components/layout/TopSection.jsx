@@ -702,6 +702,7 @@ export default function TopSection({
                             '#ec4899', // Pink
                             '#f97316', // Orange
                             '#64748b', // Slate
+                            '#ffffff', // System White
                         ].map(color => (
                             <button
                                 key={color}

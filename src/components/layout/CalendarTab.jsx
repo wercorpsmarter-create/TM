@@ -8,7 +8,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Helper for event layout
-    const layoutEvents = (items) => {
+    const layoutEvents = React.useCallback((items) => {
         const timed = items.filter(item => !((item.type === 'google' && !item.start.dateTime) || (item.type === 'task' && !item.hasTime)));
         const allDay = items.filter(item => ((item.type === 'google' && !item.start.dateTime) || (item.type === 'task' && !item.hasTime)));
 
@@ -66,7 +66,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         });
 
         return { allDay, timed: processedTimed };
-    };
+    }, []);
     const [view, setView] = useState(() => localStorage.getItem('calendar_view') || 'month'); // 'month', 'week', 'day'
 
     // Save view to localStorage whenever it changes

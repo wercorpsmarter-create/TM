@@ -883,7 +883,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                                     {items.map((item, idx) => {
                                                         const isAllDay = item.type === 'google' && !item.start.dateTime;
-                                                        const color = item.extendedProperties?.private?.customColor || item.color;
+                                                        const color = item.extendedProperties?.private?.customColor || item.color || item.calendarColor || '#3b82f6';
 
                                                         if (isAllDay || (item.type === 'task' && !item.hasTime)) {
                                                             return (
@@ -1088,7 +1088,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 <>
                                                     <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
                                                         {allDayItems.map((item, idx) => {
-                                                            const color = item.extendedProperties?.private?.customColor || item.color;
+                                                            const color = item.extendedProperties?.private?.customColor || item.color || item.calendarColor || '#3b82f6';
                                                             return (
                                                                 <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
                                                                     position: 'relative',
@@ -1112,7 +1112,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         const top = (item.startMinutes / 60) * 60;
                                                         const height = (item.duration / 60) * 60;
                                                         const isExpanded = expandedEventId === (item.id || idx);
-                                                        const color = item.extendedProperties?.private?.customColor || item.color;
+                                                        const color = item.extendedProperties?.private?.customColor || item.color || item.calendarColor || '#3b82f6';
 
                                                         return (
                                                             <div key={idx}

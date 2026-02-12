@@ -72,7 +72,8 @@ function App() {
 
     // Apply accent color globally
     useEffect(() => {
-        document.documentElement.style.setProperty('--primary', accentColor);
+        const appliedColor = accentColor === '#ffffff' ? '#0f172a' : accentColor;
+        document.documentElement.style.setProperty('--primary', appliedColor);
     }, [accentColor]);
     const [subscriptionStatus, setSubscriptionStatus] = useState(() => {
         // If query params exist, we enter "checking" state to verify them

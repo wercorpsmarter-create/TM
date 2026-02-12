@@ -696,11 +696,6 @@ export default function TopSection({
                         {[
                             '#3b82f6', // Blue
                             '#ef4444', // Red
-                            '#22c55e', // Green
-                            '#eab308', // Yellow
-                            '#a855f7', // Purple
-                            '#ec4899', // Pink
-                            '#f97316', // Orange
                             '#64748b', // Slate
                             '#ffffff', // System White
                         ].map(color => (

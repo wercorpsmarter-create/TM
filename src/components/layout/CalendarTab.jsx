@@ -855,26 +855,55 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                             <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
                                 <div
-                                    style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default' }}
+                                    style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
                                     onMouseMove={handleDragMove}
                                     onMouseUp={handleDragEnd}
                                     onMouseLeave={handleDragEnd}
                                 >
-                                    <div style={{ position: 'absolute', inset: 0, left: '50px', pointerEvents: 'none', zIndex: 0 }}>
+                                    <div style={{ position: 'absolute', inset: 0, left: '70px', pointerEvents: 'none', zIndex: 0 }}>
                                         {Array.from({ length: 24 }).map((_, i) => (
                                             <div key={i} style={{
                                                 height: '60px',
-                                                borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.1)' : 'none',
-                                                borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.1)' : 'none',
+                                                borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
                                                 boxSizing: 'border-box'
                                             }} />
                                         ))}
                                     </div>
 
-                                    <div style={{ width: '50px', flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.05)', marginRight: '0', zIndex: 1, backgroundColor: 'rgba(255,255,255,0.8)' }}>
+                                    <div style={{
+                                        width: '60px',
+                                        flexShrink: 0,
+                                        marginRight: '10px',
+                                        zIndex: 1,
+                                        position: 'relative',
+                                        marginTop: '10px' // Compensate for the pill extending up
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '-25px',
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            backgroundColor: 'rgba(255,255,255,0.4)',
+                                            backdropFilter: 'blur(20px)',
+                                            borderRadius: '30px',
+                                            border: '1px solid rgba(255,255,255,0.6)',
+                                            boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+                                            zIndex: -1
+                                        }} />
                                         {Array.from({ length: 24 }).map((_, i) => (
                                             <div key={i} style={{ height: '60px', position: 'relative' }}>
-                                                <span style={{ position: 'absolute', top: '-6px', right: '8px', fontSize: '0.7rem', color: '#94a3b8' }}>
+                                                <span style={{
+                                                    position: 'absolute',
+                                                    top: '-6px',
+                                                    left: 0,
+                                                    width: '100%',
+                                                    textAlign: 'center',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 600,
+                                                    color: 'var(--text-muted)'
+                                                }}>
                                                     {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
                                                 </span>
                                             </div>
@@ -889,7 +918,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             <div style={{
                                                 position: 'absolute',
                                                 top: `${topOffset}px`,
-                                                left: '50px',
+                                                left: '70px',
                                                 right: 0,
                                                 height: '2px',
                                                 backgroundColor: 'red',
@@ -1057,26 +1086,55 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                             <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
                                 <div
-                                    style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default' }}
+                                    style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
                                     onMouseMove={handleDragMove}
                                     onMouseUp={handleDragEnd}
                                     onMouseLeave={handleDragEnd}
                                 >
-                                    <div style={{ position: 'absolute', inset: 0, left: '50px', pointerEvents: 'none', zIndex: 0 }}>
+                                    <div style={{ position: 'absolute', inset: 0, left: '70px', pointerEvents: 'none', zIndex: 0 }}>
                                         {Array.from({ length: 24 }).map((_, i) => (
                                             <div key={i} style={{
                                                 height: '60px',
-                                                borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.1)' : 'none',
-                                                borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.1)' : 'none',
+                                                borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
                                                 boxSizing: 'border-box'
                                             }} />
                                         ))}
                                     </div>
 
-                                    <div style={{ width: '50px', flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.05)', marginRight: '0', zIndex: 1, backgroundColor: 'rgba(255,255,255,0.8)' }}>
+                                    <div style={{
+                                        width: '60px',
+                                        flexShrink: 0,
+                                        marginRight: '10px',
+                                        zIndex: 1,
+                                        position: 'relative',
+                                        marginTop: '10px'
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '-25px',
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            backgroundColor: 'rgba(255,255,255,0.4)',
+                                            backdropFilter: 'blur(20px)',
+                                            borderRadius: '30px',
+                                            border: '1px solid rgba(255,255,255,0.6)',
+                                            boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+                                            zIndex: -1
+                                        }} />
                                         {Array.from({ length: 24 }).map((_, i) => (
                                             <div key={i} style={{ height: '60px', position: 'relative' }}>
-                                                <span style={{ position: 'absolute', top: '-6px', right: '8px', fontSize: '0.7rem', color: '#94a3b8' }}>
+                                                <span style={{
+                                                    position: 'absolute',
+                                                    top: '-6px',
+                                                    left: 0,
+                                                    width: '100%',
+                                                    textAlign: 'center',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 600,
+                                                    color: 'var(--text-muted)'
+                                                }}>
                                                     {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
                                                 </span>
                                             </div>
@@ -1091,7 +1149,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             <div style={{
                                                 position: 'absolute',
                                                 top: `${topOffset}px`,
-                                                left: '50px',
+                                                left: '70px',
                                                 right: 0,
                                                 height: '2px',
                                                 backgroundColor: 'red',

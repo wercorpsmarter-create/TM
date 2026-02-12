@@ -774,6 +774,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     let startMinutes = 0;
                                                     let duration = 30;
                                                     let hasTime = false;
+                                                    let color = undefined;
 
                                                     if (t.metadata) {
                                                         if (t.metadata.time) {
@@ -784,8 +785,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         if (t.metadata.duration) {
                                                             duration = parseInt(t.metadata.duration, 10);
                                                         }
+                                                        if (t.metadata.color) {
+                                                            color = t.metadata.color;
+                                                        }
                                                     }
-                                                    return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text };
+                                                    return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
                                                 })
                                             ];
 
@@ -829,6 +833,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                                     {items.map((item, idx) => {
                                                         const isAllDay = item.type === 'google' && !item.start.dateTime;
+                                                        const color = item.extendedProperties?.private?.customColor || item.color;
 
                                                         if (isAllDay || (item.type === 'task' && !item.hasTime)) {
                                                             return (
@@ -840,9 +845,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     whiteSpace: 'nowrap',
                                                                     overflow: 'hidden',
                                                                     textOverflow: 'ellipsis',
-                                                                    backgroundColor: item.color,
-                                                                    borderColor: item.color ? 'transparent' : undefined,
-                                                                    color: item.color ? '#fff' : undefined
+                                                                    backgroundColor: color ? `${color}4d` : undefined,
+                                                                    backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                    border: color ? `1px solid ${color}66` : undefined,
+                                                                    borderLeft: color ? `3px solid ${color}` : undefined,
+                                                                    color: color ? 'white' : undefined,
+                                                                    borderRadius: '4px'
                                                                 }}>
                                                                     {item.title}
                                                                 </div>
@@ -863,13 +871,15 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                 padding: '2px 4px',
                                                                 overflow: 'hidden',
                                                                 zIndex: 10,
-                                                                border: '1px solid rgba(0,0,0,0.1)',
                                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
                                                                 display: 'flex',
                                                                 flexDirection: 'column',
-                                                                backgroundColor: item.color,
-                                                                borderColor: item.color ? 'transparent' : undefined,
-                                                                color: item.color ? '#fff' : undefined
+                                                                backgroundColor: color ? `${color}4d` : undefined,
+                                                                backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                border: color ? `1px solid ${color}66` : '1px solid rgba(0,0,0,0.1)',
+                                                                borderLeft: color ? `3px solid ${color}` : undefined,
+                                                                color: color ? 'white' : undefined,
+                                                                borderRadius: '4px'
                                                             }}>
                                                                 <div style={{ fontWeight: 600, fontSize: '0.7rem' }}>{item.title}</div>
                                                                 {height > 30 && (

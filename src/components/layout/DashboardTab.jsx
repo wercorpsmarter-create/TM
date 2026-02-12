@@ -29,7 +29,7 @@ export default function DashboardTab({
     setVisibleDays,
     currentWeekOffset = 0,
     onNextWeek,
-    onNextWeek,
+
     onPrevWeek,
     onOpenCalendarPopup
 }) {

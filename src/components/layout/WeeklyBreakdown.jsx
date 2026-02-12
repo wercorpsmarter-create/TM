@@ -224,7 +224,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                                             backdropFilter: 'blur(4px)',
                                             border: '1px solid rgba(255, 255, 255, 0.4)',
                                             borderRadius: '6px',
-                                            color: task.metadata?.note ? '#3b82f6' : '#64748b', // Blue if note exists, gray otherwise
+                                            color: '#64748b', // Always gray/neutral
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -240,7 +240,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                                     >
                                         <StickyNote
                                             size={14}
-                                            fill={task.metadata?.note ? "rgba(59, 130, 246, 0.2)" : "none"}
+                                            fill={task.metadata?.note ? "rgba(0, 0, 0, 0.1)" : "none"}
                                             strokeWidth={2}
                                         />
                                     </button>

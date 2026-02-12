@@ -1210,7 +1210,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         const height = (item.duration / 60) * 60;
                                                         const isExpanded = expandedEventId === (item.id || idx);
                                                         const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || accentColor;
+                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
 
                                                         return (
                                                             <div key={idx}

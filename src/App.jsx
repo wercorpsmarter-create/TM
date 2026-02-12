@@ -1135,7 +1135,7 @@ function App() {
                                 user={googleUser}
                                 setUser={setGoogleUser}
                                 tasks={tasks} // Pass tasks for read-only view in calendar
-                                onSyncClick={handleSync}
+                                onSyncClick={handleSyncClick}
                                 onAddTask={addTask}
                                 onLogin={() => login()}
                                 externalPopupTrigger={calendarPopupTrigger}

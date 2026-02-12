@@ -450,8 +450,14 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         : '';
 
     return (
-        <div style={{ padding: '1rem 1rem 6rem 1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div style={{
+            height: 'calc(100vh - 4rem)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            padding: '1rem'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                     <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--primary)', margin: 0, minWidth: '200px' }}>
                         <CalendarIcon size={24} />
@@ -523,10 +529,10 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 )}
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
                 {showSidebar && user && (
-                    <div style={{ width: '250px', flexShrink: 0 }}>
-                        <div className="glass-card" style={{ padding: '1rem', minHeight: '200px' }}>
+                    <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                        <div className="glass-card" style={{ padding: '1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                             <MiniCalendar
                                 currentMainDate={currentDate}
                                 onDateSelect={(date) => {
@@ -584,59 +590,61 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     </div>
                 )}
 
-                <div className="glass-card" style={{ padding: '0.5rem', minHeight: '500px', flex: 1 }}>
+                <div className="glass-card" style={{ padding: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
                     {view === 'month' && (
-                        <div className="calendar-grid">
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                                <div key={d} className="calendar-header-cell">{d}</div>
-                            ))}
-                            {getDaysInMonth().map((dayObj, i) => {
-                                const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
-                                const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
+                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+                            <div className="calendar-grid">
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                    <div key={d} className="calendar-header-cell">{d}</div>
+                                ))}
+                                {getDaysInMonth().map((dayObj, i) => {
+                                    const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
+                                    const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
 
-                                return (
-                                    <div
-                                        key={i}
-                                        className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
-                                        onClick={() => {
-                                            setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
-                                            setView('day');
-                                        }}
-                                        style={{
-                                            cursor: 'pointer',
-                                            color: dayObj.currentMonth ? '#000' : '#9ca3af'
-                                        }}
-                                    >
-                                        <div className="day-number" style={{ color: 'inherit' }}>{dayObj.day}</div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
-                                            {dayEvents.map(e => {
-                                                const cal = calendars.find(c => c.id === e.calendarId);
-                                                const color = e.colorId // Event specific color?
-                                                    ? null // We'd need a color map for this, ignoring for now or mapping specific IDs
-                                                    : (cal?.backgroundColor || '#039be5');
+                                    return (
+                                        <div
+                                            key={i}
+                                            className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
+                                            onClick={() => {
+                                                setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
+                                                setView('day');
+                                            }}
+                                            style={{
+                                                cursor: 'pointer',
+                                                color: dayObj.currentMonth ? '#000' : '#9ca3af'
+                                            }}
+                                        >
+                                            <div className="day-number" style={{ color: 'inherit' }}>{dayObj.day}</div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                                                {dayEvents.map(e => {
+                                                    const cal = calendars.find(c => c.id === e.calendarId);
+                                                    const color = e.colorId // Event specific color?
+                                                        ? null // We'd need a color map for this, ignoring for now or mapping specific IDs
+                                                        : (cal?.backgroundColor || '#039be5');
 
-                                                return (
-                                                    <div key={e.id} className="event-pill google" title={e.summary}
-                                                        style={{
-                                                            backgroundColor: color,
-                                                            borderColor: 'transparent',
-                                                            color: '#fff', // Assuming dark text on light bg or vice versa? Google colors are usually dark enough for white, or we check
-                                                            borderLeft: 'none'
-                                                        }}
-                                                    >
-                                                        {e.summary}
+                                                    return (
+                                                        <div key={e.id} className="event-pill google" title={e.summary}
+                                                            style={{
+                                                                backgroundColor: color,
+                                                                borderColor: 'transparent',
+                                                                color: '#fff', // Assuming dark text on light bg or vice versa? Google colors are usually dark enough for white, or we check
+                                                                borderLeft: 'none'
+                                                            }}
+                                                        >
+                                                            {e.summary}
+                                                        </div>
+                                                    );
+                                                })}
+                                                {dayTasks.map(t => (
+                                                    <div key={t.id} className="event-pill hub" title={t.text}>
+                                                        • {t.text}
                                                     </div>
-                                                );
-                                            })}
-                                            {dayTasks.map(t => (
-                                                <div key={t.id} className="event-pill hub" title={t.text}>
-                                                    • {t.text}
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
 

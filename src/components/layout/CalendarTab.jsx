@@ -1022,25 +1022,32 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             return (
                                                 <>
                                                     <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
-                                                        {allDayItems.map((item, idx) => (
-                                                            <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
-                                                                position: 'relative',
-                                                                background: item.extendedProperties?.private?.customColor || undefined,
-                                                                marginBottom: '4px',
-                                                                padding: '4px 8px',
-                                                                backgroundColor: item.color,
-                                                                borderColor: item.color ? 'transparent' : undefined,
-                                                                color: item.color ? '#fff' : undefined
-                                                            }}>
-                                                                <span style={{ fontWeight: 600 }}>All Day:</span> {item.title}
-                                                            </div>
-                                                        ))}
+                                                        {allDayItems.map((item, idx) => {
+                                                            const color = item.extendedProperties?.private?.customColor || item.color;
+                                                            return (
+                                                                <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
+                                                                    position: 'relative',
+                                                                    marginBottom: '4px',
+                                                                    padding: '4px 8px',
+                                                                    backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
+                                                                    backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                    border: color ? `1px solid ${color}66` : undefined,
+                                                                    borderLeft: color ? `3px solid ${color}` : undefined,
+                                                                    color: color ? 'white' : undefined,
+                                                                    borderRadius: '4px',
+                                                                    fontSize: '0.85rem'
+                                                                }}>
+                                                                    <span style={{ fontWeight: 600 }}>All Day:</span> {item.title}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
 
                                                     {timedItems.map((item, idx) => {
                                                         const top = (item.startMinutes / 60) * 60;
                                                         const height = (item.duration / 60) * 60;
                                                         const isExpanded = expandedEventId === (item.id || idx);
+                                                        const color = item.extendedProperties?.private?.customColor || item.color;
 
                                                         return (
                                                             <div key={idx}
@@ -1055,14 +1062,16 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     right: '10px',
                                                                     padding: '8px',
                                                                     zIndex: isExpanded ? 50 : 10,
-                                                                    border: '1px solid rgba(0,0,0,0.1)',
                                                                     boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
                                                                     cursor: 'pointer',
-                                                                    backgroundColor: item.color,
-                                                                    borderColor: item.color ? 'transparent' : undefined,
-                                                                    color: item.color ? '#fff' : undefined
+                                                                    backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
+                                                                    backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                    border: color ? `1px solid ${color}66` : '1px solid rgba(0,0,0,0.1)',
+                                                                    borderLeft: color ? `4px solid ${color}` : undefined,
+                                                                    color: color ? 'white' : undefined,
+                                                                    borderRadius: '6px'
                                                                 }}
                                                             >
                                                                 <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>

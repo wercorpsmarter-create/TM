@@ -449,7 +449,29 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             return start === dayToDateString;
         });
 
-        const dayTasks = tasks.filter(t => t.date === isoDateStr);
+        const dayTasks = tasks.filter(t => {
+            if (t.date !== isoDateStr) return false;
+
+            // Deduplication: Check if this task exists as a Google Event
+            const isDuplicate = dayEvents.some(e => {
+                // Match title
+                if ((e.summary || '').trim() !== (t.text || '').trim()) return false;
+
+                // Match time
+                if (t.metadata?.time) {
+                    if (!e.start.dateTime) return false; // Event is all-day, task is timed -> Not same
+                    const eventDate = new Date(e.start.dateTime);
+                    const [h, m] = t.metadata.time.split(':').map(Number);
+                    return eventDate.getHours() === h && eventDate.getMinutes() === m;
+                } else {
+                    // Task is effectively all-day (no time)
+                    if (e.start.dateTime) return false; // Event is timed, task is all-day -> Not same
+                    return true; // Both all-day and title matches
+                }
+            });
+
+            return !isDuplicate;
+        });
         return { dayEvents, dayTasks };
     };
 

@@ -32,7 +32,9 @@ export default function DashboardTab({
     onNextWeek,
 
     onPrevWeek,
-    onOpenCalendarPopup
+    onOpenCalendarPopup,
+    accentColor,
+    setAccentColor
 }) {
     return (
         <div className="dashboard-tab" style={{ paddingBottom: '0' }}>
@@ -56,6 +58,8 @@ export default function DashboardTab({
                 onDragEnd={onTaskDragEnd}
                 visibleDays={visibleDays}
                 setVisibleDays={setVisibleDays}
+                accentColor={accentColor}
+                setAccentColor={setAccentColor}
             />
             <WeeklyBreakdown
                 tasks={tasks}

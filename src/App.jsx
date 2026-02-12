@@ -66,8 +66,14 @@ function App() {
     const [monthlyGoals, setMonthlyGoals] = useState([]);
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity']);
     const [visibleDays, setVisibleDays] = useLocalStorage('prohub-visible-days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
+    const [accentColor, setAccentColor] = useLocalStorage('prohub-accent-color', '#3b82f6');
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
     const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+
+    // Apply accent color globally
+    useEffect(() => {
+        document.documentElement.style.setProperty('--primary', accentColor);
+    }, [accentColor]);
     const [subscriptionStatus, setSubscriptionStatus] = useState(() => {
         // If query params exist, we enter "checking" state to verify them
         const urlParams = new URLSearchParams(window.location.search);
@@ -1089,29 +1095,38 @@ function App() {
                             }}
                             visibleDays={visibleDays}
                             setVisibleDays={setVisibleDays}
+                            accentColor={accentColor}
+                            setAccentColor={setAccentColor}
                             currentWeekOffset={currentWeekOffset}
                             onNextWeek={() => setCurrentWeekOffset(prev => prev + 1)}
                             onPrevWeek={() => setCurrentWeekOffset(prev => prev - 1)}
-                            onOpenCalendarPopup={handleOpenCalendarPopup}
+                            onOpenCalendarPopup={() => {
+                                setActiveTab('calendar');
+                                // We need to signal CalendarTab to open the modal
+                                // This is a bit hacky, normally we'd pass a prop, but for now specific state
+                                setCalendarPopupTrigger(Date.now());
+                            }}
                         />
                     </div>
                     <div style={{
                         width: '33.333%',
                         flexShrink: 0,
                         padding: '0 5rem',
-                        height: activeTab === 'calendar' ? 'auto' : '0px',
                         overflow: 'hidden'
                     }}>
-                        <CalendarTab
-                            user={googleUser}
-                            setUser={setGoogleUser}
-                            tasks={tasks}
-                            onAddTask={addTask}
-                            onSyncClick={handleSyncClick}
-                            onLogin={loginExistingUser}
-                            externalPopupTrigger={calendarPopupTrigger}
-                            isActive={activeTab === 'calendar'}
-                        />
+                        {activeTab === 'calendar' && (
+                            <CalendarTab
+                                user={googleUser}
+                                setUser={setGoogleUser}
+                                tasks={tasks} // Pass tasks for read-only view in calendar
+                                onSyncClick={handleSync}
+                                onAddTask={addTask}
+                                onLogin={() => login()}
+                                externalPopupTrigger={calendarPopupTrigger}
+                                isActive={activeTab === 'calendar'}
+                                accentColor={accentColor}
+                            />
+                        )}
                     </div>
                     <div style={{
                         width: '33.333%',

@@ -108,7 +108,10 @@ export default function TopSection({
     onDragEnd,
     upcomingEvents,
     visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-    setVisibleDays
+    visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    setVisibleDays,
+    accentColor = '#3b82f6',
+    setAccentColor
 }) {
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [isEditingGoals, setIsEditingGoals] = useState(false);
@@ -678,6 +681,45 @@ export default function TopSection({
                                 </button>
                             );
                         })}
+                    </div>
+
+                    {/* Color Picker */}
+                    <div style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        marginBottom: '0.75rem',
+                        color: 'var(--text-main)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        marginTop: '1rem'
+                    }}>Theme Color</div>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        {[
+                            '#3b82f6', // Blue
+                            '#ef4444', // Red
+                            '#22c55e', // Green
+                            '#eab308', // Yellow
+                            '#a855f7', // Purple
+                            '#ec4899', // Pink
+                            '#f97316', // Orange
+                            '#64748b', // Slate
+                        ].map(color => (
+                            <button
+                                key={color}
+                                onClick={() => setAccentColor && setAccentColor(color)}
+                                style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    backgroundColor: color,
+                                    border: accentColor === color ? '2px solid white' : '2px solid transparent',
+                                    boxShadow: accentColor === color ? `0 0 0 2px ${color}` : 'none',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                aria-label={`Select color ${color}`}
+                            />
+                        ))}
                     </div>
                 </div>
             )}

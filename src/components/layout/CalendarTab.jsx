@@ -995,6 +995,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     let duration = 30;
                                                     let hasTime = false;
 
+                                                    let color = undefined;
+
                                                     if (t.metadata) {
                                                         if (t.metadata.time) {
                                                             const [h, m] = t.metadata.time.split(':').map(Number);
@@ -1004,8 +1006,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         if (t.metadata.duration) {
                                                             duration = parseInt(t.metadata.duration, 10);
                                                         }
+                                                        if (t.metadata.color) {
+                                                            color = t.metadata.color;
+                                                        }
                                                     }
-                                                    return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text };
+                                                    return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
                                                 })
                                             ];
 

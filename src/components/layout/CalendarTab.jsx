@@ -4,7 +4,7 @@ import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight,
 
 import MiniCalendar from './MiniCalendar';
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive, accentColor = '#3b82f6' }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Helper for event layout
@@ -787,7 +787,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                                                 {visibleItems.map((item, idx) => {
                                                     const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                    const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || accentColor) : undefined);
+                                                    const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
 
                                                     const style = color ? {
                                                         backgroundColor: `${color}4d`, // 30% opacity
@@ -986,7 +986,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                                     {allDay.map((item, idx) => {
                                                         const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || accentColor;
+                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
                                                         return (
                                                             <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
                                                                 position: 'relative',
@@ -1012,7 +1012,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         const top = (item.startMinutes / 60) * 60;
                                                         const height = (item.duration / 60) * 60;
                                                         const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || accentColor;
+                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
 
                                                         return (
                                                             <div key={`t-${idx}`} className={`event-pill ${item.type}`} style={{
@@ -1185,7 +1185,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
                                                         {allDay.map((item, idx) => {
                                                             const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                            const color = customColor || item.color || item.calendarColor || accentColor;
+                                                            const color = customColor || item.color || item.calendarColor || '#3b82f6';
                                                             return (
                                                                 <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
                                                                     position: 'relative',

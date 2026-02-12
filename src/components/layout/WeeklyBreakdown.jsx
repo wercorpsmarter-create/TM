@@ -499,6 +499,7 @@ export default function WeeklyBreakdown({
                         onInteractionStart={onDragStart}
                         onInteractionEnd={onDragEnd}
                         offset={currentWeekOffset}
+                        onOpenCalendarPopup={onOpenCalendarPopup}
                     />
                 ))}
             </div>

@@ -1063,218 +1063,222 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             {
                 showEventModal && createPortal(
                     <>
-                        {/* Transparent backdrop to catch outside clicks if desired, or just let it float */}
                         <div
-                            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'transparent' }}
+                            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(8px)' }}
                             onClick={() => { setShowEventModal(false); setDragStart(null); }}
                         />
 
                         <div style={{
                             position: 'fixed',
-                            top: modalPosition.top,
-                            left: modalPosition.left,
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
                             zIndex: 9999,
-                            width: '448px',
-                            background: 'rgba(255, 255, 255, 0.85)', // Glassmorphic background
-                            backdropFilter: 'blur(20px)',
-                            WebkitBackdropFilter: 'blur(20px)',
-                            borderRadius: '16px',
-                            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)',
-                            border: '1px solid rgba(255, 255, 255, 0.4)',
-                            padding: '16px',
+                            width: '500px',
+                            background: 'rgba(30, 41, 59, 0.85)',
+                            backdropFilter: 'blur(40px)',
+                            WebkitBackdropFilter: 'blur(40px)',
+                            borderRadius: '24px',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                            padding: '0',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '12px',
-                            animation: 'fadeIn 0.1s ease-out'
+                            overflow: 'hidden',
+                            animation: 'popupScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                            color: 'white'
                         }}>
-                            {/* Header Drag Handle / Close */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <div style={{ flex: 1 }}></div>
-                                <button
-                                    onClick={() => { setShowEventModal(false); setDragStart(null); }}
-                                    style={{ background: 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer', color: '#5f6368', padding: '6px', borderRadius: '50%', display: 'flex', transition: 'background 0.2s' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.1)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
-                                >
-                                    <X size={18} />
-                                </button>
-                            </div>
+                            {/* Futuristic Header Gradient Line */}
+                            <div style={{ height: '4px', width: '100%', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899)' }}></div>
 
-                            {/* Title Input */}
-                            <div style={{ marginLeft: '40px' }}>
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    placeholder="Add title"
-                                    value={newEventData.title}
-                                    onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
-                                    style={{
-                                        width: '100%',
-                                        fontSize: '22px',
-                                        padding: '8px',
-                                        border: 'none',
-                                        borderBottom: '2px solid rgba(0,0,0,0.1)',
-                                        background: 'transparent',
-                                        outline: 'none',
-                                        fontFamily: 'Google Sans, Roboto, Arial, sans-serif',
-                                        color: '#1f2937'
-                                    }}
-                                    onFocus={e => e.target.style.borderBottom = '2px solid #1a73e8'}
-                                    onBlur={e => e.target.style.borderBottom = '2px solid rgba(0,0,0,0.1)'}
-                                />
-                                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                                    {['event', 'task', 'appointment'].map(type => (
-                                        <button
-                                            key={type}
-                                            onClick={() => setNewEventData({ ...newEventData, eventType: type })}
-                                            style={{
-                                                background: newEventData.eventType === type ? '#e8f0fe' : 'transparent',
-                                                color: newEventData.eventType === type ? '#1a73e8' : '#5f6368',
-                                                border: 'none',
-                                                padding: '6px 12px',
-                                                borderRadius: '6px',
-                                                fontSize: '13px',
-                                                fontWeight: 500,
-                                                cursor: 'pointer',
-                                                textTransform: 'capitalize',
-                                                transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            {type === 'appointment' ? 'Appointment schedule' : type}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Time Row */}
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                                <div style={{ width: '24px', display: 'flex', justifyContent: 'center', marginTop: '2px' }}>
-                                    <Clock size={20} color="#5f6368" />
-                                </div>
-                                <div style={{ fontSize: '14px', color: '#3c4043', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <div style={{ fontWeight: 500 }}>
-                                        {new Date(newEventData.dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                                        <span style={{ margin: '0 8px', color: '#9ca3af' }}>⋅</span>
-                                        {newEventData.timeStr}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#5f6368' }}>Does not repeat</div>
-                                </div>
-                            </div>
-
-                            {/* Guests Row */}
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                    <Users size={20} color="#5f6368" />
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="Add guests (email addresses)"
-                                    value={newEventData.participants}
-                                    onChange={e => setNewEventData({ ...newEventData, participants: e.target.value })}
-                                    style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: '#3c4043', fontFamily: 'Roboto, Arial, sans-serif', padding: '8px 0' }}
-                                />
-                            </div>
-
-                            {/* Meet Row */}
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                    <Video size={20} color="#5f6368" />
-                                </div>
-                                {!newEventData.addMeet ? (
+                            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {/* Header / Close */}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                     <button
-                                        onClick={() => setNewEventData({ ...newEventData, addMeet: true })}
-                                        style={{
-                                            background: '#1a73e8', color: 'white', border: 'none', borderRadius: '4px',
-                                            padding: '8px 16px', fontSize: '14px', fontWeight: 500, cursor: 'pointer',
-                                            display: 'flex', alignItems: 'center', gap: '8px',
-                                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                                        }}>
-                                        Add Google Meet video conferencing
+                                        onClick={() => { setShowEventModal(false); setDragStart(null); }}
+                                        style={{ background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', color: 'white', padding: '8px', borderRadius: '50%', display: 'flex', transition: 'all 0.2s' }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'rotate(0deg)'; }}
+                                    >
+                                        <X size={20} />
                                     </button>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <button
-                                            style={{
-                                                background: '#1a73e8', color: 'white', border: 'none', borderRadius: '4px',
-                                                padding: '8px 16px', fontSize: '14px', fontWeight: 500, cursor: 'default',
-                                                display: 'flex', alignItems: 'center', gap: '8px',
-                                                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                                            }}>
-                                            <Video size={16} /> Join with Google Meet
-                                        </button>
-                                        <span style={{ fontSize: '12px', color: '#5f6368', marginLeft: '2px' }}>
-                                            Link generated on save
+                                </div>
+
+                                {/* Title Input */}
+                                <div>
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        placeholder="Add title"
+                                        value={newEventData.title}
+                                        onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
+                                        style={{
+                                            width: '100%',
+                                            fontSize: '28px',
+                                            fontWeight: 700,
+                                            padding: '8px 0',
+                                            border: 'none',
+                                            borderBottom: '2px solid rgba(255,255,255,0.1)',
+                                            background: 'transparent',
+                                            outline: 'none',
+                                            color: 'white',
+                                            letterSpacing: '-0.5px'
+                                        }}
+                                        onFocus={e => e.target.style.borderBottom = '2px solid #8b5cf6'}
+                                        onBlur={e => e.target.style.borderBottom = '2px solid rgba(255,255,255,0.1)'}
+                                    />
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                                        {['event', 'task', 'appointment'].map(type => (
                                             <button
-                                                onClick={() => setNewEventData({ ...newEventData, addMeet: false })}
-                                                style={{ border: 'none', background: 'none', color: '#5f6368', cursor: 'pointer', marginLeft: '8px' }}>
-                                                <X size={12} />
+                                                key={type}
+                                                onClick={() => setNewEventData({ ...newEventData, eventType: type })}
+                                                style={{
+                                                    background: newEventData.eventType === type ? 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' : 'rgba(255,255,255,0.05)',
+                                                    color: 'white',
+                                                    border: '1px solid ' + (newEventData.eventType === type ? 'transparent' : 'rgba(255,255,255,0.1)'),
+                                                    padding: '6px 14px',
+                                                    borderRadius: '20px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer',
+                                                    textTransform: 'capitalize',
+                                                    transition: 'all 0.2s',
+                                                    boxShadow: newEventData.eventType === type ? '0 4px 12px rgba(59, 130, 246, 0.4)' : 'none'
+                                                }}
+                                            >
+                                                {type === 'appointment' ? 'Appointment schedule' : type}
                                             </button>
-                                        </span>
+                                        ))}
                                     </div>
-                                )}
-                            </div>
-
-                            {/* Location Row */}
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                    <MapPin size={20} color="#5f6368" />
                                 </div>
-                                <input
-                                    type="text"
-                                    placeholder="Add location"
-                                    value={newEventData.location}
-                                    onChange={e => setNewEventData({ ...newEventData, location: e.target.value })}
-                                    style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: '#3c4043', fontFamily: 'Roboto, Arial, sans-serif', padding: '8px 0' }}
-                                />
-                            </div>
 
-                            {/* Description Row */}
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                                <div style={{ width: '24px', display: 'flex', justifyContent: 'center', marginTop: '2px' }}>
-                                    <AlignLeft size={20} color="#5f6368" />
-                                </div>
-                                <textarea
-                                    placeholder="Add description"
-                                    value={newEventData.description}
-                                    onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
-                                    style={{
-                                        flex: 1, border: 'none', fontSize: '14px', outline: 'none', color: '#3c4043',
-                                        fontFamily: 'Roboto, Arial, sans-serif', resize: 'none', minHeight: '80px',
-                                        background: 'rgba(0,0,0,0.03)', padding: '12px', borderRadius: '8px',
-                                        backdropFilter: 'blur(5px)'
-                                    }}
-                                />
-                            </div>
+                                {/* Details Grid */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                            {/* User Row */}
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '4px', paddingLeft: '2px' }}>
-                                <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                    <CalendarIcon size={18} color="#5f6368" />
-                                </div>
-                                <div style={{ fontSize: '14px', color: '#3c4043', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span>{user?.name || 'User'}</span>
-                                    <span style={{ width: '10px', height: '10px', background: '#039be5', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 0 2px rgba(255,255,255,0.8)' }}></span>
-                                    <span style={{ color: '#5f6368', fontSize: '12px', opacity: 0.8 }}>Busy ⋅ Default visibility ⋅ Notify 30 minutes before</span>
+                                    {/* Time Row */}
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <Clock size={20} color="#94a3b8" />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            <div style={{ fontWeight: 500, fontSize: '15px' }}>
+                                                {new Date(newEventData.dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                <span style={{ margin: '0 8px', color: 'rgba(255,255,255,0.2)' }}>|</span>
+                                                {newEventData.timeStr}
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Does not repeat</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Guests Row */}
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
+                                        <Users size={20} color="#94a3b8" />
+                                        <input
+                                            type="text"
+                                            placeholder="Add guests (email addresses)"
+                                            value={newEventData.participants}
+                                            onChange={e => setNewEventData({ ...newEventData, participants: e.target.value })}
+                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: 'white', padding: '8px 0' }}
+                                        />
+                                    </div>
+
+                                    {/* Meet Row */}
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
+                                        <Video size={20} color="#94a3b8" />
+                                        {!newEventData.addMeet ? (
+                                            <button
+                                                onClick={() => setNewEventData({ ...newEventData, addMeet: true })}
+                                                style={{
+                                                    background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px',
+                                                    padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center'
+                                                }}>
+                                                Add Google Meet
+                                            </button>
+                                        ) : (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                                                <button
+                                                    style={{
+                                                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', border: 'none', borderRadius: '8px',
+                                                        padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'default',
+                                                        display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center',
+                                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                                                    }}>
+                                                    <Video size={14} /> Join with Google Meet
+                                                </button>
+                                                <button
+                                                    onClick={() => setNewEventData({ ...newEventData, addMeet: false })}
+                                                    style={{ border: 'none', background: 'rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}>
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Location Row */}
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
+                                        <MapPin size={20} color="#94a3b8" />
+                                        <input
+                                            type="text"
+                                            placeholder="Add location"
+                                            value={newEventData.location}
+                                            onChange={e => setNewEventData({ ...newEventData, location: e.target.value })}
+                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: 'white', padding: '8px 0' }}
+                                        />
+                                    </div>
+
+                                    {/* Description Row */}
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', padding: '0 12px' }}>
+                                        <AlignLeft size={20} color="#94a3b8" style={{ marginTop: '2px' }} />
+                                        <textarea
+                                            placeholder="Add description"
+                                            value={newEventData.description}
+                                            onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
+                                            style={{
+                                                flex: 1, border: 'none', fontSize: '14px', outline: 'none', color: '#e2e8f0',
+                                                fontFamily: 'inherit', resize: 'none', minHeight: '60px',
+                                                background: 'transparent', padding: '2px 0', lineHeight: '1.5'
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Footer */}
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '16px', gap: '8px' }}>
-                                <button
-                                    onClick={() => alert("More options clicked")}
-                                    style={{ background: 'transparent', border: '1px solid rgba(0,0,0,0.1)', color: '#1a73e8', fontWeight: 500, cursor: 'pointer', padding: '8px 16px', borderRadius: '6px' }}
-                                >
-                                    More options
-                                </button>
-                                <button
-                                    onClick={handleSaveEvent}
-                                    style={{
-                                        background: '#1a73e8', color: 'white', border: 'none', padding: '8px 24px', borderRadius: '6px', fontWeight: 500, cursor: 'pointer',
-                                        boxShadow: '0 2px 6px rgba(26, 115, 232, 0.3)'
-                                    }}
-                                >
-                                    Save
-                                </button>
+                            <div style={{
+                                padding: '16px 24px',
+                                borderTop: '1px solid rgba(255,255,255,0.05)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                background: 'rgba(0,0,0,0.2)'
+                            }}>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                    Creating as <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{user?.name || 'User'}</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button
+                                        onClick={() => alert("More options clicked")}
+                                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontWeight: 500, cursor: 'pointer', fontSize: '13px' }}
+                                    >
+                                        More options
+                                    </button>
+                                    <button
+                                        onClick={handleSaveEvent}
+                                        style={{
+                                            background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '8px 24px',
+                                            borderRadius: '8px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            boxShadow: '0 4px 15px rgba(236, 72, 153, 0.4)',
+                                            transition: 'transform 0.2s'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        Save
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </>,

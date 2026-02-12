@@ -21,6 +21,7 @@ export default function DashboardTab({
     onAddTask,
     onDeleteTask,
     onToggleTask,
+    onUpdateTask,
     onMoveTask,
     onTaskDragStart,
     onTaskDragEnd,
@@ -61,6 +62,7 @@ export default function DashboardTab({
                 onAddTask={onAddTask}
                 onDeleteTask={onDeleteTask}
                 onToggleTask={onToggleTask}
+                onUpdateTask={onUpdateTask}
                 onMoveTask={onMoveTask}
                 onDragStart={onTaskDragStart}
                 onDragEnd={onTaskDragEnd}

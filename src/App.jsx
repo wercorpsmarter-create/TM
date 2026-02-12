@@ -619,6 +619,21 @@ function App() {
         }
     };
 
+    const updateTask = async (taskId, updates) => {
+        try {
+            // Optimistic update
+            setTasks(tasks.map(t =>
+                t.id === taskId ? { ...t, ...updates } : t
+            ));
+
+            // API update
+            await api.updateTask(taskId, updates);
+        } catch (error) {
+            console.error('Error updating task:', error);
+            // Revert state if needed (omitted for brevity, could refetch)
+        }
+    };
+
     const updateGoogleEvent = async (taskId, newDateStr) => {
         if (!googleUser?.access_token || !taskId) return;
         const task = tasks.find(t => t.id === taskId);
@@ -1041,10 +1056,11 @@ function App() {
                             onSyncClick={handleSyncClick}
                             layout={dashboardLayout}
                             setLayout={setDashboardLayout}
+                            onMoveTask={moveTask}
                             onAddTask={(day, text, sync, time) => addTask(day, text, sync, time)}
                             onDeleteTask={deleteTask}
                             onToggleTask={toggleTask}
-                            onMoveTask={moveTask}
+                            onUpdateTask={updateTask}
                             onReorderTasks={reorderTasks}
                             onTaskDragStart={() => setIsTaskInteractionLocked(true)}
                             onTaskDragEnd={() => {

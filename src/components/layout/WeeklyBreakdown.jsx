@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video, ChevronLeft, ChevronRight, MoreHorizontal, StickyNote, X } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -113,11 +114,21 @@ const TimePicker = ({ value, onChange }) => {
     );
 };
 
-const SortableTask = ({ task, onToggleTask, onDeleteTask, isEditing, onInteractionStart, onInteractionEnd }) => {
+const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditing, onInteractionStart, onInteractionEnd }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id,
         data: { task }
     });
+
+    const [showMenu, setShowMenu] = useState(false);
+    const [showNoteInput, setShowNoteInput] = useState(false);
+    const [noteText, setNoteText] = useState(task.metadata?.note || '');
+
+    const handleSaveNote = () => {
+        onUpdateTask(task.id, { metadata: { ...task.metadata, note: noteText } });
+        setShowNoteInput(false);
+        setShowMenu(false);
+    };
 
     const style = {
         transform: CSS.Translate.toString(transform),
@@ -159,44 +170,124 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, isEditing, onInteracti
                 if (onInteractionEnd) onInteractionEnd();
             }}
             className={`compact-task ${task.status === 'Completed' ? 'completed' : ''}`}
+            onMouseEnter={() => setShowMenu(true)}
+            onMouseLeave={() => { if (!showNoteInput) setShowMenu(false); }}
             onClick={(e) => {
                 // Prevent toggle if we just dragged (dnd-kit usually prevents click, but just in case)
                 if (isDragging) return;
+                // Don't toggle if clicking inside the note input
+                if (e.target.closest('.note-input-area')) return;
                 onToggleTask(task.id);
             }}
         >
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-                {task.status === 'Completed' ?
-                    <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
-                    <Circle size={18} color="rgba(0, 0, 0, 0.2)" />
-                }
+            <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+                <div style={{ marginTop: '3px' }}>
+                    {task.status === 'Completed' ?
+                        <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
+                        <Circle size={18} color="rgba(0, 0, 0, 0.2)" />
+                    }
+                </div>
+
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: '0.4rem', marginRight: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.85rem' }}>{task.text}</span>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {(task.metadata?.meetLink || task.metadata?.hangoutLink) && (
+                                <a
+                                    href={task.metadata.meetLink || task.metadata.hangoutLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Join Google Meet"
+                                    className="meet-link-btn"
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: 'rgba(37, 99, 235, 0.1)',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        color: 'var(--primary)',
+                                        textDecoration: 'none'
+                                    }}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                    <Video size={12} style={{ marginRight: '4px' }} />
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>Join</span>
+                                </a>
+                            )}
+
+                            {/* Note Indicator Icon if note exists */}
+                            {task.metadata?.note && !showNoteInput && (
+                                <div title="Has note" style={{ color: 'var(--text-muted)' }}>
+                                    <StickyNote size={12} />
+                                </div>
+                            )}
+
+                            {/* Hover Menu */}
+                            {(showMenu || showNoteInput) && !isDragging && (
+                                <button
+                                    className="btn-icon"
+                                    style={{ padding: '2px', height: 'auto', opacity: 0.7 }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowNoteInput(!showNoteInput);
+                                    }}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                    <MoreHorizontal size={14} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Note text display (if not editing) */}
+                    {task.metadata?.note && !showNoteInput && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
+                            {task.metadata.note}
+                        </div>
+                    )}
+
+                    {/* Note Input Area */}
+                    {showNoteInput && (
+                        <div className="note-input-area" style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }} onClick={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
+                            <textarea
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                placeholder="Add a note..."
+                                style={{
+                                    width: '100%',
+                                    minHeight: '60px',
+                                    fontSize: '0.8rem',
+                                    padding: '8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(0,0,0,0.1)',
+                                    background: 'rgba(255,255,255,0.5)',
+                                    outline: 'none',
+                                    fontFamily: 'inherit',
+                                    resize: 'vertical'
+                                }}
+                                autoFocus
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
+                                <button
+                                    onClick={() => setShowNoteInput(false)}
+                                    style={{ fontSize: '0.7rem', padding: '4px 8px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveNote}
+                                    style={{ fontSize: '0.7rem', padding: '4px 8px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
+                                >
+                                    Save Note
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'space-between', marginRight: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem' }}>{task.text}</span>
-                {(task.metadata?.meetLink || task.metadata?.hangoutLink) && (
-                    <a
-                        href={task.metadata.meetLink || task.metadata.hangoutLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        title="Join Google Meet"
-                        className="meet-link-btn"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            background: 'rgba(37, 99, 235, 0.1)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            color: 'var(--primary)',
-                            textDecoration: 'none'
-                        }}
-                        onPointerDown={(e) => e.stopPropagation()}
-                    >
-                        <Video size={12} style={{ marginRight: '4px' }} />
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>Join</span>
-                    </a>
-                )}
-            </div>
+
             {isEditing && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
@@ -210,7 +301,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, isEditing, onInteracti
     );
 };
 
-const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onInteractionStart, onInteractionEnd, offset = 0, onOpenCalendarPopup }) => {
+const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUpdateTask, onInteractionStart, onInteractionEnd, offset = 0, onOpenCalendarPopup }) => {
     const { setNodeRef } = useDroppable({
         id: dayName,
     });
@@ -377,6 +468,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onIn
                                 task={task}
                                 onToggleTask={onToggleTask}
                                 onDeleteTask={onDeleteTask}
+                                onUpdateTask={onUpdateTask}
                                 isEditing={isEditing}
                                 onInteractionStart={onInteractionStart}
                                 onInteractionEnd={onInteractionEnd}
@@ -406,6 +498,7 @@ export default function WeeklyBreakdown({
     onAddTask,
     onDeleteTask,
     onToggleTask,
+    onUpdateTask,
     onMoveTask,
     onDragStart,
     onDragEnd,
@@ -496,6 +589,7 @@ export default function WeeklyBreakdown({
                         onAddTask={onAddTask}
                         onDeleteTask={onDeleteTask}
                         onToggleTask={onToggleTask}
+                        onUpdateTask={onUpdateTask}
                         onInteractionStart={onDragStart}
                         onInteractionEnd={onDragEnd}
                         offset={currentWeekOffset}

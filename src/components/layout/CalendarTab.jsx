@@ -4,35 +4,47 @@ import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight,
 
 import MiniCalendar from './MiniCalendar';
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive, accentColor = '#3b82f6' }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Helper for event layout
     const layoutEvents = React.useCallback((items) => {
-        const timed = items.filter(item => !((item.type === 'google' && !item.start.dateTime) || (item.type === 'task' && !item.hasTime)));
-        const allDay = items.filter(item => ((item.type === 'google' && !item.start.dateTime) || (item.type === 'task' && !item.hasTime)));
+        if (!items || !Array.isArray(items)) return { allDay: [], timed: [] };
+
+        const timed = items.filter(item => {
+            if (!item) return false;
+            return !((item.type === 'google' && !item.start?.dateTime) || (item.type === 'task' && !item.hasTime));
+        });
+        const allDay = items.filter(item => {
+            if (!item) return false;
+            return ((item.type === 'google' && !item.start?.dateTime) || (item.type === 'task' && !item.hasTime));
+        });
 
         if (timed.length === 0) return { allDay, timed: [] };
 
         // Sort by start time, then duration
-        timed.sort((a, b) => a.startMinutes - b.startMinutes || b.duration - a.duration);
+        timed.sort((a, b) => (a.startMinutes || 0) - (b.startMinutes || 0) || (b.duration || 0) - (a.duration || 0));
 
         const groups = [];
         let currentGroup = [];
         let groupEnd = -1;
 
         timed.forEach(event => {
+            const start = event.startMinutes || 0;
+            const duration = event.duration || 30;
+            const end = start + duration;
+
             if (currentGroup.length === 0) {
                 currentGroup.push(event);
-                groupEnd = event.startMinutes + event.duration;
+                groupEnd = end;
             } else {
-                if (event.startMinutes < groupEnd) {
+                if (start < groupEnd) {
                     currentGroup.push(event);
-                    groupEnd = Math.max(groupEnd, event.startMinutes + event.duration);
+                    groupEnd = Math.max(groupEnd, end);
                 } else {
                     groups.push(currentGroup);
                     currentGroup = [event];
-                    groupEnd = event.startMinutes + event.duration;
+                    groupEnd = end;
                 }
             }
         });
@@ -42,24 +54,27 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         groups.forEach(group => {
             const columns = [];
             group.forEach(event => {
+                const start = event.startMinutes || 0;
+                const duration = event.duration || 30;
+
                 let placed = false;
                 for (let i = 0; i < columns.length; i++) {
-                    if (columns[i] <= event.startMinutes) {
+                    if (columns[i] <= start) {
                         event.colIndex = i;
-                        columns[i] = event.startMinutes + event.duration;
+                        columns[i] = start + duration;
                         placed = true;
                         break;
                     }
                 }
                 if (!placed) {
                     event.colIndex = columns.length;
-                    columns.push(event.startMinutes + event.duration);
+                    columns.push(start + duration);
                 }
             });
 
-            const numCols = columns.length;
+            const numCols = Math.max(1, columns.length);
             group.forEach(event => {
-                event.layoutLeft = (event.colIndex / numCols) * 100;
+                event.layoutLeft = ((event.colIndex || 0) / numCols) * 100;
                 event.layoutWidth = (1 / numCols) * 100;
                 processedTimed.push(event);
             });
@@ -772,7 +787,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                                                 {visibleItems.map((item, idx) => {
                                                     const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                    const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
+                                                    const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || accentColor) : undefined);
 
                                                     const style = color ? {
                                                         backgroundColor: `${color}4d`, // 30% opacity
@@ -971,7 +986,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                                     {allDay.map((item, idx) => {
                                                         const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
+                                                        const color = customColor || item.color || item.calendarColor || accentColor;
                                                         return (
                                                             <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
                                                                 position: 'relative',
@@ -997,7 +1012,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         const top = (item.startMinutes / 60) * 60;
                                                         const height = (item.duration / 60) * 60;
                                                         const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
+                                                        const color = customColor || item.color || item.calendarColor || accentColor;
 
                                                         return (
                                                             <div key={`t-${idx}`} className={`event-pill ${item.type}`} style={{
@@ -1170,7 +1185,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
                                                         {allDay.map((item, idx) => {
                                                             const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                            const color = customColor || item.color || item.calendarColor || '#3b82f6';
+                                                            const color = customColor || item.color || item.calendarColor || accentColor;
                                                             return (
                                                                 <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
                                                                     position: 'relative',
@@ -1195,7 +1210,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         const height = (item.duration / 60) * 60;
                                                         const isExpanded = expandedEventId === (item.id || idx);
                                                         const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
+                                                        const color = customColor || item.color || item.calendarColor || accentColor;
 
                                                         return (
                                                             <div key={idx}

@@ -131,12 +131,20 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
         setShowMenu(false);
     };
 
+    const color = task.metadata?.color;
+
     const style = {
         transform: CSS.Translate.toString(transform),
         transition,
         opacity: isDragging ? 0 : 1,
         zIndex: isDragging ? 999 : 'auto',
-        touchAction: 'none'
+        touchAction: 'none',
+        ...(color ? {
+            backgroundColor: `${color}15`,
+            backdropFilter: 'blur(4px)',
+            borderColor: `${color}40`,
+            borderLeft: `3px solid ${color}`
+        } : {})
     };
 
     return (
@@ -180,7 +188,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                     <div style={{ marginTop: '3px' }}>
                         {task.status === 'Completed' ?
                             <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
-                            <Circle size={18} color="rgba(0, 0, 0, 0.2)" />
+                            <Circle size={18} color={task.metadata?.color || "rgba(0, 0, 0, 0.2)"} />
                         }
                     </div>
 

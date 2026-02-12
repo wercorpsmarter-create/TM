@@ -213,35 +213,36 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                                     </a>
                                 )}
 
-                                {/* Note Icon - Click to View/Edit */}
-                                {task.metadata?.note && (
+                                {/* Note Button - White Glassmorphic - Always visible if note exists, or on hover */}
+                                {(task.metadata?.note || showMenu || isNotePopupOpen) && !isDragging && (
                                     <button
                                         className="btn-icon"
-                                        style={{ padding: '2px', height: 'auto', color: 'var(--primary)', opacity: 0.8 }}
+                                        style={{
+                                            padding: '4px',
+                                            height: 'auto',
+                                            background: 'rgba(255, 255, 255, 0.3)',
+                                            backdropFilter: 'blur(4px)',
+                                            border: '1px solid rgba(255, 255, 255, 0.4)',
+                                            borderRadius: '6px',
+                                            color: task.metadata?.note ? '#3b82f6' : '#64748b', // Blue if note exists, gray otherwise
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                            transition: 'all 0.2s ease',
+                                        }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setIsNotePopupOpen(true);
                                         }}
                                         onPointerDown={(e) => e.stopPropagation()}
-                                        title="View Note"
+                                        title={task.metadata?.note ? "View/Edit Note" : "Add Note"}
                                     >
-                                        <StickyNote size={14} fill="rgba(59, 130, 246, 0.1)" />
-                                    </button>
-                                )}
-
-                                {/* Hover Menu - Click to Add/Edit Note */}
-                                {(showMenu || isNotePopupOpen) && !isDragging && (
-                                    <button
-                                        className="btn-icon"
-                                        style={{ padding: '2px', height: 'auto', opacity: 0.7 }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsNotePopupOpen(true);
-                                        }}
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        title="Edit Note"
-                                    >
-                                        <MoreHorizontal size={14} />
+                                        <StickyNote
+                                            size={14}
+                                            fill={task.metadata?.note ? "rgba(59, 130, 246, 0.2)" : "none"}
+                                            strokeWidth={2}
+                                        />
                                     </button>
                                 )}
                             </div>

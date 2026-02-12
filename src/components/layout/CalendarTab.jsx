@@ -1187,6 +1187,36 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             </button>
                                         ))}
                                     </div>
+
+                                    {/* Color Picker */}
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                                        {[
+                                            { color: '#3b82f6', id: '1' }, // Blue
+                                            { color: '#ef4444', id: '11' }, // Red
+                                            { color: '#22c55e', id: '10' }, // Green
+                                            { color: '#eab308', id: '5' }, // Yellow
+                                            { color: '#a855f7', id: '3' }, // Purple
+                                            { color: '#ec4899', id: '4' }, // Pink
+                                            { color: '#64748b', id: '8' }, // Gray
+                                        ].map((c) => (
+                                            <button
+                                                key={c.color}
+                                                onClick={() => setNewEventData({ ...newEventData, color: c.color })}
+                                                style={{
+                                                    width: '24px',
+                                                    height: '24px',
+                                                    borderRadius: '50%',
+                                                    background: c.color,
+                                                    border: newEventData.color === c.color ? '2px solid white' : 'none',
+                                                    boxShadow: newEventData.color === c.color ? `0 0 0 2px ${c.color}` : 'none',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    position: 'relative'
+                                                }}
+                                                title="Select Color"
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {/* Details Grid */}

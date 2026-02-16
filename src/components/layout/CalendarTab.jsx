@@ -933,19 +933,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         position: 'relative',
                                         marginTop: '10px' // Compensate for the pill extending up
                                     }}>
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '-25px',
-                                            bottom: 0,
-                                            left: 0,
-                                            right: 0,
-                                            backgroundColor: 'rgba(255,255,255,0.4)',
-                                            backdropFilter: 'blur(20px)',
-                                            borderRadius: '30px',
-                                            border: '1px solid rgba(255,255,255,0.6)',
-                                            boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
-                                            zIndex: -1
-                                        }} />
+
                                         {Array.from({ length: 24 }).map((_, i) => (
                                             <div key={i} style={{ height: '60px', position: 'relative' }}>
                                                 <span style={{
@@ -1164,19 +1152,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         position: 'relative',
                                         marginTop: '10px'
                                     }}>
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '-25px',
-                                            bottom: 0,
-                                            left: 0,
-                                            right: 0,
-                                            backgroundColor: 'rgba(255,255,255,0.4)',
-                                            backdropFilter: 'blur(20px)',
-                                            borderRadius: '30px',
-                                            border: '1px solid rgba(255,255,255,0.6)',
-                                            boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
-                                            zIndex: -1
-                                        }} />
+
                                         {Array.from({ length: 24 }).map((_, i) => (
                                             <div key={i} style={{ height: '60px', position: 'relative' }}>
                                                 <span style={{

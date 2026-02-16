@@ -174,6 +174,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     const [loading, setLoading] = useState(false);
     const [selectedEmail, setSelectedEmail] = useState(null);
     const [emailContent, setEmailContent] = useState(null);
+    const [emailAttachments, setEmailAttachments] = useState([]);
     const [suggestedEvent, setSuggestedEvent] = useState(null); // { title, dateStr, timeStr, fullDate }
     const [loadingContent, setLoadingContent] = useState(false);
     const [error, setError] = useState(null);
@@ -452,6 +453,50 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
         }
     };
 
+    const handleDownloadAttachment = async (attachment) => {
+        if (!user?.access_token || !selectedEmail) return;
+
+        try {
+            const response = await fetch(
+                `https://gmail.googleapis.com/gmail/v1/users/me/messages/${selectedEmail.id}/attachments/${attachment.id}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${user.access_token}`
+                    }
+                }
+            );
+
+            if (!response.ok) throw new Error('Failed to fetch attachment');
+
+            const data = await response.json();
+            if (data.data) {
+                // Convert base64url to blob
+                const byteCharacters = atob(data.data.replace(/-/g, '+').replace(/_/g, '/'));
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: attachment.mimeType });
+
+                // Download
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = attachment.filename;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+            }
+        } catch (error) {
+            console.error('Error downloading attachment:', error);
+            alert('Failed to download attachment');
+        }
+    };
+
     const handleEmailClick = async (email) => {
         // Optimistically update UI: mark as read locally first
         setEmails(prev => prev.map(e =>
@@ -462,12 +507,13 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
         setLoadingContent(true);
         setEmailContent(null);
         setSuggestedEvent(null);
+        setEmailAttachments([]);
         setManualTitle(email.subject);
         setManualDate('');
 
         // API call to remove UNREAD label (mark as read)
         try {
-            await fetch(
+            fetch(
                 `https://gmail.googleapis.com/gmail/v1/users/me/messages/${email.id}/modify`,
                 {
                     method: 'POST',
@@ -479,9 +525,9 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                         removeLabelIds: ['UNREAD']
                     })
                 }
-            );
+            ).catch(err => console.error('Failed to mark email as read:', err));
         } catch (err) {
-            console.error('Failed to mark email as read:', err);
+            console.error('Failed to mark email read:', err);
         }
 
         try {
@@ -498,27 +544,53 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
 
             const data = await response.json();
 
-            // Extract body (prefer HTML, fallback to plain text)
-            let body = '';
-            let plainText = ''; // Keep for NLP
-            if (data.payload.parts) {
-                const htmlPart = data.payload.parts.find(p => p.mimeType === 'text/html');
-                const textPart = data.payload.parts.find(p => p.mimeType === 'text/plain');
+            // Helper to recursively extract parts
+            const getParts = (parts) => {
+                let html = '';
+                let text = '';
+                let attachments = [];
 
-                if (htmlPart) {
-                    body = decodeBase64(htmlPart.body.data);
-                }
-                if (textPart) {
-                    plainText = decodeBase64(textPart.body.data);
-                    if (!body) body = plainText;
-                }
+                parts.forEach(part => {
+                    if (part.mimeType === 'text/html' && part.body.data) {
+                        html = decodeBase64(part.body.data);
+                    } else if (part.mimeType === 'text/plain' && part.body.data) {
+                        text = decodeBase64(part.body.data);
+                    } else if (part.filename && part.body.attachmentId) {
+                        attachments.push({
+                            id: part.body.attachmentId,
+                            filename: part.filename,
+                            mimeType: part.mimeType,
+                            size: part.body.size
+                        });
+                    }
+
+                    if (part.parts) {
+                        const sub = getParts(part.parts);
+                        if (!html && sub.html) html = sub.html;
+                        if (!text && sub.text) text = sub.text;
+                        attachments = [...attachments, ...sub.attachments];
+                    }
+                });
+                return { html, text, attachments };
+            };
+
+            let body = '';
+            let plainText = '';
+            let attachments = [];
+
+            if (data.payload.parts) {
+                const extracted = getParts(data.payload.parts);
+                body = extracted.html || extracted.text;
+                plainText = extracted.text;
+                attachments = extracted.attachments;
             } else if (data.payload.body.data) {
                 const decoded = decodeBase64(data.payload.body.data);
                 body = decoded;
-                plainText = decoded; // Assume simple body is text-ish
+                plainText = decoded;
             }
 
             setEmailContent(body);
+            setEmailAttachments(attachments);
 
             const headers = data.payload?.headers || [];
             const messageId = headers.find(h => h.name.toLowerCase() === 'message-id')?.value || '';
@@ -1009,10 +1081,67 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                         <RefreshCw className="spin" size={32} color="#6B7280" />
                                     </div>
                                 ) : (
-                                    <div
-                                        dangerouslySetInnerHTML={{ __html: emailContent || selectedEmail.snippet }}
-                                        style={{ lineHeight: 1.5, fontSize: '0.9rem', color: '#1f2937', zoom: '0.85' }}
-                                    />
+                                    <>
+                                        <div
+                                            dangerouslySetInnerHTML={{ __html: emailContent || selectedEmail.snippet }}
+                                            style={{ lineHeight: 1.5, fontSize: '0.9rem', color: '#1f2937', zoom: '0.85' }}
+                                        />
+
+                                        {/* Attachments */}
+                                        {emailAttachments.length > 0 && (
+                                            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #f1f3f4' }}>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#4B5563', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Paperclip size={16} />
+                                                    Attachments ({emailAttachments.length})
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                                                    {emailAttachments.map((att, idx) => (
+                                                        <div key={idx}
+                                                            onClick={() => handleDownloadAttachment(att)}
+                                                            style={{
+                                                                border: '1px solid #e5e7eb',
+                                                                borderRadius: '8px',
+                                                                padding: '0.75rem',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.75rem',
+                                                                cursor: 'pointer',
+                                                                background: 'white',
+                                                                transition: 'all 0.2s',
+                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                            }}
+                                                            onMouseEnter={e => {
+                                                                e.currentTarget.style.borderColor = '#2563EB';
+                                                                e.currentTarget.style.boxShadow = '0 4px 6px rgba(37, 99, 235, 0.1)';
+                                                            }}
+                                                            onMouseLeave={e => {
+                                                                e.currentTarget.style.borderColor = '#e5e7eb';
+                                                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                width: '32px', height: '32px',
+                                                                background: '#F3F4F6',
+                                                                borderRadius: '6px',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                color: '#6B7280', flexShrink: 0
+                                                            }}>
+                                                                <Paperclip size={16} />
+                                                            </div>
+                                                            <div style={{ overflow: 'hidden' }}>
+                                                                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={att.filename}>
+                                                                    {att.filename}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>
+                                                                    {Math.round(att.size / 1024)} KB
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
 
                                 {/* Reply Section */}

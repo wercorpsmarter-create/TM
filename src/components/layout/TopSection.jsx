@@ -185,9 +185,25 @@ export default function TopSection({
         return { name: day, progress: score, full: full };
     }).filter(Boolean), [tasks, visibleDays]);
 
-    // Overall Progress (Donut) - memoized
-    const completedCount = useMemo(() => tasks.filter(t => t.status === 'Completed').length, [tasks]);
-    const totalCount = tasks.length || 1;
+    // Overall Progress (Donut) - scoped to current Mon–Sun week
+    const weekTasks = useMemo(() => {
+        const d = new Date();
+        const currentDay = d.getDay(); // 0=Sun, 1=Mon, ...
+        const diffFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+        const monday = new Date(d);
+        monday.setDate(d.getDate() - diffFromMonday);
+        monday.setHours(0, 0, 0, 0);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        const monStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+        const sunStr = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`;
+        return tasks.filter(t => {
+            const dateStr = (t.date || '').slice(0, 10); // normalize "2026-02-16T00:00:00Z" → "2026-02-16"
+            return dateStr >= monStr && dateStr <= sunStr;
+        });
+    }, [tasks]);
+    const completedCount = useMemo(() => weekTasks.filter(t => t.status === 'Completed').length, [weekTasks]);
+    const totalCount = weekTasks.length || 1;
     const progressData = useMemo(() => [
         { name: 'Done', value: completedCount },
         { name: 'Pending', value: Math.max(0, totalCount - completedCount) }

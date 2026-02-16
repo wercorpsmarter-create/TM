@@ -739,7 +739,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Calendars</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {calendars.map(cal => (
-                                    <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem', cursor: 'pointer', padding: '4px', borderRadius: '6px' }} className="calendar-item">
+                                    <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem', cursor: 'pointer', padding: '4px', borderRadius: '6px', opacity: selectedCalendarIds.has(cal.id) ? 1 : 0.4, transition: 'opacity 0.2s' }} className="calendar-item">
                                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                             <input
                                                 type="checkbox"

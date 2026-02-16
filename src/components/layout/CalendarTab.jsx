@@ -72,10 +72,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 }
             });
 
-            const numCols = Math.max(1, columns.length);
+            // Stack overlapping events with indentation (waterfall layout)
             group.forEach(event => {
-                event.layoutLeft = ((event.colIndex || 0) / numCols) * 100;
-                event.layoutWidth = (1 / numCols) * 100;
+                const indent = Math.min((event.colIndex || 0), 12) * 8; // 8% indentation per level, capped
+                event.layoutLeft = indent;
+                event.layoutWidth = 100 - indent;
+                event.zIndex = (event.colIndex || 0) + 10; // Base z-index 10
                 processedTimed.push(event);
             });
         });
@@ -122,11 +124,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
     const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
     const [calendars, setCalendars] = useState([]);
     const [selectedCalendarIds, setSelectedCalendarIds] = useState(new Set());
-    const [showSplitView, setShowSplitView] = useState(view === 'day' || view === 'week');
+    const [showSplitView, setShowSplitView] = useState(view === 'day');
 
-    // Auto-open split view when switching to Day or Week view, close otherwise
+    // Auto-open split view when switching to Day view, close otherwise
     useEffect(() => {
-        if (view === 'day' || view === 'week') {
+        if (view === 'day') {
             setShowSplitView(true);
         } else {
             setShowSplitView(false);
@@ -1095,7 +1097,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                 fontSize: '0.75rem',
                                                                 padding: '2px 4px',
                                                                 overflow: 'hidden',
-                                                                zIndex: 10,
+                                                                zIndex: item.zIndex || 10,
                                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
                                                                 display: 'flex',
                                                                 flexDirection: 'column',
@@ -1311,7 +1313,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     left: `${item.layoutLeft}%`,
                                                                     width: `calc(${item.layoutWidth}% - 4px)`,
                                                                     padding: '8px',
-                                                                    zIndex: isExpanded ? 50 : 10,
+                                                                    zIndex: isExpanded ? 50 : (item.zIndex || 10),
                                                                     boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
                                                                     display: 'flex',
                                                                     flexDirection: 'column',

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import { RefreshCcw, Settings2, Check, Plus, Trash2, Pencil, CheckCircle2, GripVertical, Video } from 'lucide-react';
+import { RefreshCcw, Settings2, Check, Plus, Trash2, Pencil, CheckCircle2, GripVertical, Video, Trophy, User, Flag, Briefcase } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -113,12 +113,14 @@ export default function TopSection({
     setAccentColor
 }) {
     const [isCustomizing, setIsCustomizing] = useState(false);
+    const [poppingBubble, setPoppingBubble] = useState(null);
     const [isEditingGoals, setIsEditingGoals] = useState(false);
     const [isEditingMonthlyGoals, setIsEditingMonthlyGoals] = useState(false);
     const [isEditingHabits, setIsEditingHabits] = useState(false);
     const [newGoalText, setNewGoalText] = useState('');
     const [newMonthlyGoalText, setNewMonthlyGoalText] = useState('');
     const [newHabitText, setNewHabitText] = useState('');
+    const [newGoalImportance, setNewGoalImportance] = useState(1);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -200,8 +202,31 @@ export default function TopSection({
 
     const handleAddGoal = (e) => {
         e.preventDefault();
-        onAddGoal(newGoalText);
+        // Correctly sum importance including legacy strings (1pt each)
+        const currentSum = goals.reduce((sum, g) => {
+            const imp = (g && typeof g === 'object') ? (g.importance || 0) : (typeof g === 'string' ? 1 : 0);
+            return sum + imp;
+        }, 0);
+
+        if (!newGoalText.trim()) {
+            alert("Please enter a priority description.");
+            return;
+        }
+
+        if (goals.length >= 5) {
+            alert("Your Priority Ecosystem is full. Please remove an item before adding a new one.");
+            return;
+        }
+
+        if (currentSum + newGoalImportance > 10) {
+            alert(`Cannot add goal. Total importance (${currentSum + newGoalImportance}) would exceed the limit of 10.`);
+            return;
+        }
+
+        onAddGoal(newGoalText.trim(), newGoalImportance);
         setNewGoalText('');
+        setNewGoalImportance(1);
+        setIsEditingGoals(false); // Close editor after adding
     };
 
     const handleAddMonthlyGoal = (e) => {
@@ -219,7 +244,31 @@ export default function TopSection({
 
     const renderWidget = (type) => {
         switch (type) {
-            case 'goals':
+            case 'goals': {
+                const totalImportance = (goals || []).reduce((sum, g) => {
+                    const imp = (g && typeof g === 'object') ? (g.importance || 0) : (typeof g === 'string' ? 1 : 0);
+                    return sum + imp;
+                }, 0);
+
+                // Filter and normalize active goals
+                const ecosystemNodes = (goals || []).filter(g => g).map((g, i) => {
+                    const goalData = typeof g === 'object' ? g : { text: g, importance: 1 };
+                    return {
+                        id: goalData.id || `goal-${i}`,
+                        text: (goalData.text || (typeof g === 'string' ? g : (goalData.title || ''))),
+                        importance: goalData.importance || 1,
+                        index: i
+                    };
+                });
+
+                const bubbleColors = [
+                    { bg: 'rgba(147, 51, 234, 0.3)', border: 'rgba(147, 51, 234, 0.5)', tint: '#d8b4fe', shadow: 'rgba(147, 51, 234, 0.2)' },
+                    { bg: 'rgba(249, 115, 22, 0.3)', border: 'rgba(249, 115, 22, 0.5)', tint: '#fdba74', shadow: 'rgba(249, 115, 22, 0.2)' },
+                    { bg: 'rgba(16, 185, 129, 0.3)', border: 'rgba(16, 185, 129, 0.5)', tint: '#6ee7b7', shadow: 'rgba(16, 185, 129, 0.2)' },
+                    { bg: 'rgba(59, 130, 246, 0.3)', border: 'rgba(59, 130, 246, 0.5)', tint: '#93c5fd', shadow: 'rgba(59, 130, 246, 0.2)' },
+                    { bg: 'rgba(236, 72, 153, 0.3)', border: 'rgba(236, 72, 153, 0.5)', tint: '#f9a8d4', shadow: 'rgba(236, 72, 153, 0.2)' }
+                ];
+
                 return (
                     <SortableWidget
                         id="goals"
@@ -228,45 +277,206 @@ export default function TopSection({
                         onInteractionStart={onDragStart}
                         onInteractionEnd={onDragEnd}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <div className="card-title" style={{ margin: 0 }}>Weekly Goals</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                            <div className="card-title" style={{ margin: 0 }}>Priority Tiers</div>
+                            <div style={{
+                                background: totalImportance > 8 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                color: totalImportance > 8 ? '#fca5a5' : 'rgba(255,255,255,0.6)',
+                                border: '1px solid rgba(255,255,255,0.1)'
+                            }}>
+                                {totalImportance}/10 Points
+                            </div>
                         </div>
 
                         {isEditingGoals && (
-                            <form onSubmit={handleAddGoal} className="task-input-container" style={{ marginBottom: '1.5rem' }}>
-                                <input
-                                    type="text"
-                                    className="glass-input"
-                                    placeholder="Add a goal..."
-                                    value={newGoalText}
-                                    onChange={(e) => setNewGoalText(e.target.value)}
-                                    autoFocus
-                                />
-                                <button type="submit" className="btn-icon">
-                                    <Plus size={18} />
-                                </button>
-                            </form>
+                            <div style={{ marginBottom: '1rem', zIndex: 20, position: 'relative' }}>
+                                <form onSubmit={handleAddGoal} className="task-input-container" style={{ marginBottom: '0.5rem' }}>
+                                    <input
+                                        type="text"
+                                        className="glass-input"
+                                        placeholder="Add to your ecosystem..."
+                                        value={newGoalText}
+                                        onChange={(e) => setNewGoalText(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <button type="submit" className="btn-icon">
+                                        <Plus size={18} />
+                                    </button>
+                                </form>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
+                                    <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Importance Tier:</span>
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                        {[1, 2, 3, 4, 5].map(val => (
+                                            <button
+                                                key={val}
+                                                onClick={() => setNewGoalImportance(val)}
+                                                style={{
+                                                    width: '24px',
+                                                    height: '24px',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid',
+                                                    borderColor: newGoalImportance === val ? '#3b82f6' : 'rgba(255,255,255,0.1)',
+                                                    background: newGoalImportance === val ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.05)',
+                                                    color: newGoalImportance === val ? 'white' : 'rgba(255,255,255,0.4)',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {val}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         )}
 
-                        <ul className="goals-list" style={{ marginBottom: isEditingGoals ? '3rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {goals.map((g, i) => (
-                                <li key={typeof g === 'object' && g?.id != null ? g.id : i} className="goal-item-row" style={{
-                                    background: 'rgba(255, 255, 255, 0.4)',
-                                    border: '1px solid rgba(255, 255, 255, 0.4)',
-                                    borderRadius: '8px',
-                                    padding: '0.75rem',
-                                    marginBottom: 0
-                                }}>
-                                    <span className="goal-num">{i + 1}</span>
-                                    <span style={{ flex: 1 }}>{typeof g === 'string' ? g : (g?.text ?? '')}</span>
-                                    {isEditingGoals && (
-                                        <button onClick={() => onDeleteGoal(i)} className="btn-delete-small">
-                                            <Trash2 size={12} />
-                                        </button>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
+                        <div style={{
+                            position: 'relative',
+                            height: '220px',
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'visible',
+                            marginTop: '10px'
+                        }}>
+                            {ecosystemNodes.length === 0 && !isEditingGoals && (
+                                <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                                    Tap pencil to add priorities
+                                </div>
+                            )}
+                            {(() => {
+                                // Pre-compute circle-packed positions so bubbles cluster at center without overlapping
+                                const gap = 4;
+                                const sorted = ecosystemNodes
+                                    .map((g, origIdx) => ({
+                                        ...g,
+                                        origIdx,
+                                        size: 35 + ((g.importance || 1) * 22),
+                                    }))
+                                    .sort((a, b) => b.size - a.size); // biggest first
+
+                                const placed = []; // { x, y, radius }
+                                const positionMap = {}; // origIdx -> { x, y }
+
+                                sorted.forEach((g, i) => {
+                                    const r = g.size / 2;
+                                    if (i === 0) {
+                                        placed.push({ x: 0, y: 0, r });
+                                        positionMap[g.origIdx] = { x: 0, y: 0 };
+                                        return;
+                                    }
+                                    // Try angles around center, find first non-overlapping spot
+                                    const baseAngle = (i - 1) * (360 / Math.max(sorted.length - 1, 1));
+                                    let bestX = 0, bestY = 0, found = false;
+                                    for (let dist = placed[0].r + r + gap; dist < 300 && !found; dist += 3) {
+                                        for (let a = baseAngle; a < baseAngle + 360 && !found; a += 15) {
+                                            const rad = (a * Math.PI) / 180;
+                                            const cx = Math.cos(rad) * dist;
+                                            const cy = Math.sin(rad) * dist;
+                                            let ok = true;
+                                            for (const p of placed) {
+                                                const dx = cx - p.x;
+                                                const dy = cy - p.y;
+                                                if (Math.sqrt(dx * dx + dy * dy) < p.r + r + gap) {
+                                                    ok = false;
+                                                    break;
+                                                }
+                                            }
+                                            if (ok) {
+                                                bestX = cx;
+                                                bestY = cy;
+                                                found = true;
+                                            }
+                                        }
+                                    }
+                                    placed.push({ x: bestX, y: bestY, r });
+                                    positionMap[g.origIdx] = { x: bestX, y: bestY };
+                                });
+
+                                return ecosystemNodes.map((g, i) => {
+                                    const color = bubbleColors[i % bubbleColors.length];
+                                    const importance = g.importance || 1;
+                                    const size = 35 + (importance * 22);
+                                    const pos = positionMap[i] || { x: 0, y: 0 };
+
+                                    return (
+                                        <div key={g.id || i}
+                                            onClick={() => {
+                                                if (!isEditingGoals || poppingBubble !== null) return;
+                                                setPoppingBubble(i);
+                                                setTimeout(() => {
+                                                    onDeleteGoal(i);
+                                                    setPoppingBubble(null);
+                                                }, 350);
+                                            }}
+                                            style={{
+                                                position: 'absolute',
+                                                width: `${size}px`,
+                                                height: `${size}px`,
+                                                background: color.bg,
+                                                backdropFilter: 'blur(12px)',
+                                                WebkitBackdropFilter: 'blur(12px)',
+                                                border: `1px solid ${color.border}`,
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: 'white',
+                                                padding: '10px',
+                                                zIndex: 10 + importance,
+                                                boxShadow: `0 ${4 + importance}px ${12 + importance * 4}px -${4 + importance}px ${color.shadow}`,
+                                                top: '50%',
+                                                left: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                                marginLeft: `${Math.round(pos.x)}px`,
+                                                marginTop: `${Math.round(pos.y)}px`,
+                                                transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                                cursor: isEditingGoals ? 'pointer' : 'default',
+                                                ...(poppingBubble === i ? {
+                                                    animation: 'bubble-pop 0.35s ease-out forwards',
+                                                    transition: 'none'
+                                                } : {}),
+                                                ...(isEditingGoals && poppingBubble !== i ? {
+                                                    border: `2px dashed ${color.border}`,
+                                                } : {})
+                                            }}>
+                                            <div style={{
+                                                fontSize: size < 60 ? '0.3rem' : '0.45rem',
+                                                fontWeight: 800,
+                                                color: color.tint,
+                                                textTransform: 'uppercase',
+                                                marginBottom: '2px',
+                                                opacity: 0.8
+                                            }}>
+                                                T{importance}
+                                            </div>
+                                            <div style={{
+                                                fontSize: size < 60 ? '0.45rem' : '0.6rem',
+                                                fontWeight: 700,
+                                                textAlign: 'center',
+                                                lineHeight: 1.1,
+                                                color: 'white',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: size < 80 ? 2 : 3,
+                                                WebkitBoxOrient: 'vertical'
+                                            }}>
+                                                {g.text}
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
 
                         {!isCustomizing && (
                             <button
@@ -278,6 +488,7 @@ export default function TopSection({
                         )}
                     </SortableWidget>
                 );
+            }
             case 'monthly_goals':
                 return (
                     <SortableWidget

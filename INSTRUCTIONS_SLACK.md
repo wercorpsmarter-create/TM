@@ -36,9 +36,9 @@ To enable the real Slack integration, you need to create a **Slack App** and con
 2. Add the following lines:
 
 ```env
-SLACK_CLIENT_ID=your_client_id_here
-VITE_SLACK_CLIENT_ID=your_client_id_here
-SLACK_CLIENT_SECRET=your_client_secret_here
+SLACK_CLIENT_ID=10475713882129.10475734989953
+VITE_SLACK_CLIENT_ID=10475713882129.10475734989953
+SLACK_CLIENT_SECRET=4d9accf5af51beeae357633fd1a5552c
 ```
 
 3. Restart your development server:

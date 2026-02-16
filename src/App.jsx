@@ -62,7 +62,7 @@ function App() {
 
     const [tasks, setTasks] = useState([]);
     const [habits, setHabits] = useState([]);
-    const [goals, setGoals] = useState([]);
+    const [goals, setGoals] = useLocalStorage('prohub-data-goals-v2', []);
     const [monthlyGoals, setMonthlyGoals] = useState([]);
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity']);
     const [visibleDays, setVisibleDays] = useLocalStorage('prohub-visible-days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
@@ -190,10 +190,11 @@ function App() {
 
     // Load user data from database when logged in
     useEffect(() => {
-        if (googleUser?.email) {
+        // Only load if we have a user and we haven't just loaded it
+        if (googleUser?.email && !userId) {
             loadUserData();
         }
-    }, [googleUser, subscriptionStatus]);
+    }, [googleUser, userId]);
 
     // Handle browser back/forward navigation
     // Handle browser back/forward navigation and initial load state
@@ -304,12 +305,29 @@ function App() {
                 text: task.title
             }));
 
-            setTasks(transformedTasks);
-            setHabits(habitsData);
-            setGoals(goalsData);
-            setMonthlyGoals(monthlyGoalsData);
-            setDashboardLayout(layoutData);
-            setDashboardLayout(layoutData);
+            setTasks(transformedTasks || []);
+            setHabits(habitsData || []);
+
+            // Normalize goals from DB
+            const dbGoals = (goalsData || []).map((g, i) => {
+                if (typeof g === 'object' && g !== null) {
+                    return { ...g, importance: g.importance || 1 };
+                }
+                return { id: `legacy-${i}`, text: g, importance: 1, position: i };
+            });
+
+            // MERGE strategy: Use DB goals if they exist, otherwise keep local goals
+            // This prevents the DB from overwriting optimistic/local goals with empty data
+            setGoals(prev => {
+                const localGoals = prev || [];
+                // If DB returned goals, use them (they are the canonical source)
+                if (dbGoals.length > 0) return dbGoals;
+                // If DB is empty but we have local goals, keep local
+                return localGoals;
+            });
+
+            setMonthlyGoals(monthlyGoalsData || []);
+            setDashboardLayout(layoutData || ['goals', 'activity']);
         } catch (error) {
             console.error('Error loading user data:', error);
         } finally {
@@ -401,7 +419,7 @@ function App() {
                 alert('Login failed. Please try again.');
             }
         },
-        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly'
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send'
     });
 
     const logout = async () => {
@@ -511,7 +529,7 @@ function App() {
         }
     };
 
-    const pushToGoogle = async (taskText, dateStr, time = null, duration = 60, description = '', location = '', attendees = [], addMeet = false, color = null) => {
+    const pushToGoogle = async (taskText, dateStr, time = null, duration = 60, description = '', location = '', attendees = [], addMeet = false, color = null, calendarId = 'primary') => {
         if (!googleUser || !googleUser.access_token) return;
 
         let eventBody;
@@ -532,24 +550,40 @@ function App() {
                 end: { dateTime: endDateTime.toISOString() }
             };
         } else {
-            // All-day event
+            // All-day event: end date is EXCLUSIVE in Google Calendar API
+            const end = new Date(dateStr);
+            end.setDate(end.getDate() + 1);
+            const endDateStr = end.toISOString().split('T')[0];
+
             eventBody = {
                 summary: taskText,
                 description: description || 'Added via Task Master',
                 location: location,
                 start: { date: dateStr },
-                end: { date: dateStr }
+                end: { date: endDateStr }
             };
         }
 
         if (attendees && attendees.length > 0) {
-            eventBody.attendees = attendees.map(email => ({ email: email.trim() }));
+            eventBody.attendees = attendees
+                .map(email => email.trim())
+                .filter(email => email && email.includes('@'))
+                .map(email => ({
+                    email: email,
+                    responseStatus: 'needsAction'
+                }));
+
+            if (eventBody.attendees.length > 0) {
+                eventBody.guestsCanInviteOthers = true;
+                eventBody.guestsCanSeeOtherGuests = true;
+                eventBody.reminders = { useDefault: true };
+            }
         }
 
         if (addMeet) {
             eventBody.conferenceData = {
                 createRequest: {
-                    requestId: Math.random().toString(36).substring(7),
+                    requestId: `proc-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                     conferenceSolutionKey: { type: "hangoutsMeet" }
                 }
             };
@@ -572,7 +606,12 @@ function App() {
         }
 
         try {
-            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=${attendees.length > 0 ? 'all' : 'none'}`, {
+            // Force 'all' if there are attendees or if we want a meeting link generated reliably
+            const sendUpdatesValue = (eventBody.attendees?.length > 0 || addMeet) ? 'all' : 'none';
+
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1&sendUpdates=${sendUpdatesValue}`;
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${googleUser.access_token}`,
@@ -581,7 +620,12 @@ function App() {
                 body: JSON.stringify(eventBody)
             });
             const data = await response.json();
-            console.log('Synced to Google Calendar w/ details');
+
+            if (data.error) {
+                console.error('Google Calendar API Error:', data.error);
+            } else {
+                console.log('Synced to Google Calendar successfully:', data.summary, data.id);
+            }
             return data;
         } catch (error) {
             console.error('Error syncing to Google:', error);
@@ -589,7 +633,7 @@ function App() {
         }
     };
 
-    const addTask = async (day, text, syncWithGoogle = false, time = null, duration = 30, description = '', location = '', attendees = [], addMeet = false, metadata = {}) => {
+    const addTask = async (day, text, syncWithGoogle = false, time = null, duration = 30, description = '', location = '', attendees = [], addMeet = false, metadata = {}, calendarId = 'primary') => {
         if (!userId) return;
 
         const dateStr = day.includes('-') ? day : getTargetDate(day);
@@ -597,18 +641,17 @@ function App() {
 
         try {
             const newTask = await api.createTask(userId, text, dateStr, 'Pending', { time, duration, description, location, attendees: JSON.stringify(attendees), addMeet, color });
-            setTasks([...tasks, {
+            setTasks(prev => [...prev, {
                 ...newTask,
                 day,
-                text: newTask.title
+                text: newTask.title || newTask.text
             }]);
 
-            if (syncWithGoogle) {
-                const googleEvent = await pushToGoogle(text, dateStr, time, duration, description, location, attendees, addMeet, color);
+            if (syncWithGoogle && googleUser?.access_token) {
+                const googleEvent = await pushToGoogle(text, dateStr, time, duration, description, location, attendees, addMeet, color, calendarId);
                 if (googleEvent) {
                     setUpcomingEvents(prev => {
                         const newEvents = [...prev, googleEvent];
-                        // Sort by start time (handling both date and dateTime)
                         return newEvents.sort((a, b) => {
                             const startA = new Date(a.start.dateTime || a.start.date);
                             const startB = new Date(b.start.dateTime || b.start.date);
@@ -756,14 +799,23 @@ function App() {
         }
     };
 
-    const addGoal = async (text) => {
+    const addGoal = async (text, importance = 1) => {
         if (!text.trim() || !userId) return;
 
+        // Add goal immediately (backed by localStorage)
+        const tempId = `temp-${Date.now()}`;
+        const newGoalObj = { id: tempId, text: text.trim(), importance, position: (goals || []).length };
+        setGoals(prev => [...(prev || []), newGoalObj]);
+
         try {
-            const newGoal = await api.createGoal(userId, text, goals.length);
-            setGoals([...goals, newGoal]);
+            const savedGoal = await api.createGoal(userId, text, (goals || []).length, importance);
+            if (savedGoal) {
+                // Replace temp ID with real DB ID
+                setGoals(prev => (prev || []).map(g => g.id === tempId ? { ...savedGoal, importance: savedGoal.importance || importance } : g));
+            }
         } catch (error) {
-            console.error('Error adding goal:', error);
+            // Keep the goal locally even if DB save fails — it's in localStorage
+            console.error('Error saving goal to DB (kept locally):', error);
         }
     };
 
@@ -1100,7 +1152,7 @@ function App() {
                             layout={dashboardLayout}
                             setLayout={setDashboardLayout}
                             onMoveTask={moveTask}
-                            onAddTask={(day, text, sync, time) => addTask(day, text, sync, time)}
+                            onAddTask={(...args) => addTask(...args)}
                             onDeleteTask={deleteTask}
                             onToggleTask={toggleTask}
                             onUpdateTask={updateTask}
@@ -1117,12 +1169,7 @@ function App() {
                             currentWeekOffset={currentWeekOffset}
                             onNextWeek={() => setCurrentWeekOffset(prev => prev + 1)}
                             onPrevWeek={() => setCurrentWeekOffset(prev => prev - 1)}
-                            onOpenCalendarPopup={() => {
-                                setActiveTab('calendar');
-                                // We need to signal CalendarTab to open the modal
-                                // This is a bit hacky, normally we'd pass a prop, but for now specific state
-                                setCalendarPopupTrigger(Date.now());
-                            }}
+                            onOpenCalendarPopup={handleOpenCalendarPopup}
                         />
                     </div>
                     <div style={{
@@ -1142,6 +1189,9 @@ function App() {
                                 externalPopupTrigger={calendarPopupTrigger}
                                 isActive={activeTab === 'calendar'}
                                 accentColor={accentColor}
+                                onDeleteTask={deleteTask}
+                                onToggleTask={toggleTask}
+                                onUpdateTask={updateTask}
                             />
                         )}
                     </div>
@@ -1154,6 +1204,7 @@ function App() {
                     }}>
                         <EmailTab
                             user={googleUser}
+                            isActive={activeTab === 'emails'}
                             onRefresh={() => {
                                 // Optional: trigger any refresh logic
                             }}

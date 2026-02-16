@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users } from 'lucide-react';
+import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users, Plus, Trash2, CheckCircle, Circle, Columns } from 'lucide-react';
 
 import MiniCalendar from './MiniCalendar';
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Helper for event layout
@@ -82,6 +82,32 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
         return { allDay, timed: processedTimed };
     }, []);
+
+    const handleEventClick = (e, item, dateObj) => {
+        e.stopPropagation();
+        setExpandedEventId(expandedEventId === item.id ? null : item.id);
+
+        // Add as task
+        if (item.type === 'google') { // Only valid for google events to be "imported" as tasks? Or duplicate generic ones? let's do all.
+            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+            const color = customColor || item.color || item.calendarColor || '#3b82f6';
+            const title = item.title || item.summary;
+
+            // Format date YYYY-MM-DD
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            const dateStr = `${y}-${m}-${d}`;
+
+            // Check if already exists to avoid spamming? User said "clicks... a subtitle is created".
+            // Let's check simply by title+date
+            const exists = tasks.some(t => t.text === title && t.date === dateStr);
+            if (!exists) {
+                onAddTask(dateStr, title, false, null, 30, '', '', [], false, { color });
+            }
+        }
+    };
+
     const [view, setView] = useState(() => localStorage.getItem('calendar_view') || 'month'); // 'month', 'week', 'day'
 
     // Save view to localStorage whenever it changes
@@ -96,10 +122,26 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
     const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
     const [calendars, setCalendars] = useState([]);
     const [selectedCalendarIds, setSelectedCalendarIds] = useState(new Set());
+    const [showSplitView, setShowSplitView] = useState(view === 'day' || view === 'week');
+
+    // Auto-open split view when switching to Day or Week view, close otherwise
+    useEffect(() => {
+        if (view === 'day' || view === 'week') {
+            setShowSplitView(true);
+        } else {
+            setShowSplitView(false);
+        }
+    }, [view]);
+
+    const [newTaskText, setNewTaskText] = useState('');
+    const [newTaskColor, setNewTaskColor] = useState('#3b82f6');
+    const [showTaskColorPicker, setShowTaskColorPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(() => {
         const saved = localStorage.getItem('calendar_show_sidebar');
         return saved !== null ? JSON.parse(saved) : true;
     });
+
+    const [memberInput, setMemberInput] = useState('');
 
     useEffect(() => {
         localStorage.setItem('calendar_show_sidebar', JSON.stringify(showSidebar));
@@ -107,7 +149,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
     const [newEventData, setNewEventData] = useState({
         title: '',
-        participants: '',
+        participants: [], // Array for member chips
         location: '',
         description: '',
         dateStr: '',
@@ -115,7 +157,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         duration: 30,
         eventType: 'event', // 'event', 'task', 'appointment'
         addMeet: false,
-        color: '#3b82f6'
+        allDay: false,
+        color: '#3b82f6',
+        calendarId: 'primary' // Default to primary calendar
     });
 
     const scrollContainerRef = React.useRef(null);
@@ -175,10 +219,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 title: title || '',
                 dateStr: dateStr || new Date().toISOString().split('T')[0],
                 timeStr: timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-                participants: '',
+                participants: [],
                 location: '',
                 description: '',
-                addMeet: false
+                addMeet: false,
+                allDay: false,
+                calendarId: 'primary'
             }));
 
             // Position modal in center
@@ -270,7 +316,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
         setNewEventData({
             title: '',
-            participants: '',
+            participants: [],
             location: '',
             description: '',
             dateStr,
@@ -278,7 +324,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             duration: endMinutes - startMinutes,
             eventType: 'event',
             addMeet: false,
-            color: '#3b82f6' // Default color for new events
+            allDay: false,
+            color: '#3b82f6', // Default color for new events
+            calendarId: 'primary'
         });
         setShowEventModal(true);
         setIsDragging(false);
@@ -287,9 +335,15 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
     const handleSaveEvent = async () => {
         if (!newEventData.title) return;
 
+        const attendeesList = Array.isArray(newEventData.participants)
+            ? newEventData.participants
+            : (newEventData.participants
+                ? newEventData.participants.split(/[,;]+/).map(p => p.trim()).filter(p => p)
+                : []);
+
         let description = '';
-        if (newEventData.participants) {
-            description += `Participants: ${newEventData.participants}\n`;
+        if (attendeesList && attendeesList.length > 0) {
+            description += `Participants: ${attendeesList.join(', ')}\n`;
         }
         if (newEventData.location) {
             description += `Location: ${newEventData.location}\n`;
@@ -297,10 +351,6 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         if (newEventData.description) {
             description += `\n${newEventData.description}`;
         }
-
-        const attendeesList = newEventData.participants
-            ? newEventData.participants.split(/[,;]+/).map(p => p.trim()).filter(p => p)
-            : [];
 
         // Construct start and end Date objects for the event
         const [year, month, day] = newEventData.dateStr.split('-').map(Number);
@@ -337,19 +387,21 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 newEventData.dateStr,
                 newEventData.title,
                 true,
-                newEventData.timeStr,
+                newEventData.allDay ? null : newEventData.timeStr,
                 newEventData.duration, // duration
                 description,
                 newEventData.location,
                 attendeesList,
                 newEventData.addMeet,
-                { color: newEventData.color } // Pass metadata object with color
+                { color: newEventData.color }, // Pass metadata object with color
+                newEventData.calendarId || 'primary' // Pass the selected calendar ID
             );
         }
 
         setShowEventModal(false);
         setDragStart(null);
         setDragCurrent(null);
+        setMemberInput('');
     };
 
     const logout = () => {
@@ -624,6 +676,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             </button>
                         ))}
                     </div>
+
+
 
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button onClick={handlePrev} className="btn-icon" style={{ width: '32px', height: '32px' }}>
@@ -1272,7 +1326,6 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                                         return (
                                                             <div key={idx}
-                                                                onClick={() => setExpandedEventId(isExpanded ? null : (item.id || idx))}
                                                                 className={`event-pill ${item.type}`}
                                                                 style={{
                                                                     position: 'absolute',
@@ -1294,6 +1347,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     color: color ? '#000' : undefined,
                                                                     borderRadius: '6px'
                                                                 }}
+                                                                onClick={(e) => handleEventClick(e, item, currentDate)}
                                                             >
                                                                 <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
                                                                 <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.5rem' }}>
@@ -1319,12 +1373,199 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 </>
                                             );
                                         })()}
-                                    </div>
+                                    </div >
+                                    {/* Task List Sidebar Logic for Day View - Click handling */}
                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
+
+                {showSplitView && (
+                    <div className="glass-card static" style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: '0 0 0.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-main)', paddingLeft: '0.5rem', paddingTop: '0.25rem' }}>Task List</h3>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.5rem' }}>
+                                {currentDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
+                            </div>
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 0' }}>
+                            {tasks.filter(t => {
+                                const year = currentDate.getFullYear();
+                                const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                const day = String(currentDate.getDate()).padStart(2, '0');
+                                const isoDate = `${year}-${month}-${day}`;
+                                return t.date === isoDate;
+                            }).map(task => {
+                                const taskColor = task.metadata?.color;
+                                return (
+                                    <div key={task.id} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.4rem 0.75rem',
+                                        background: taskColor ? `${taskColor}1a` : 'white', // lighter background (10% opacity) for list items or 4d (30%). Let's use 1a (10%) for readability or 4d if matching plan. Plan is 4d. Let's try 33 (20%)
+                                        // Actually, let's match the plan style: 30% opacity bg, solid left border
+                                        backgroundColor: taskColor ? `${taskColor}4d` : 'white',
+                                        borderRadius: '8px',
+                                        marginBottom: '0.5rem',
+                                        border: taskColor ? `1px solid ${taskColor}66` : '1px solid rgba(0,0,0,0.05)',
+                                        borderLeft: taskColor ? `4px solid ${taskColor}` : undefined,
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                                    }}>
+                                        <button
+                                            onClick={() => onToggleTask && onToggleTask(task.id)}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+                                        >
+                                            {task.completed ? <CheckCircle size={18} color="var(--primary)" fill="var(--primary)" fillOpacity={0.2} /> : <Circle size={18} color="var(--text-muted)" />}
+                                        </button>
+                                        <span style={{
+                                            flex: 1,
+                                            fontSize: '0.9rem',
+                                            color: task.completed ? 'var(--text-muted)' : 'var(--text-main)',
+                                            textDecoration: task.completed ? 'line-through' : 'none'
+                                        }}>
+                                            {task.text}
+                                        </span>
+                                        <button
+                                            onClick={() => onDeleteTask && onDeleteTask(task.id)}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', opacity: 0.4, transition: 'opacity 0.2s' }}
+                                            onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                                            onMouseLeave={e => e.currentTarget.style.opacity = 0.4}
+                                        >
+                                            <Trash2 size={14} color="#ef4444" />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                            {tasks.filter(t => {
+                                const year = currentDate.getFullYear();
+                                const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                const day = String(currentDate.getDate()).padStart(2, '0');
+                                const isoDate = `${year}-${month}-${day}`;
+                                return t.date === isoDate;
+                            }).length === 0 && (
+                                    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                        No tasks for this day.
+                                    </div>
+                                )}
+                        </div>
+                        <div style={{ padding: '0.25rem 0', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (!newTaskText.trim()) return;
+                                    const year = currentDate.getFullYear();
+                                    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                    const day = String(currentDate.getDate()).padStart(2, '0');
+                                    const isoDate = `${year}-${month}-${day}`;
+                                    onAddTask(isoDate, newTaskText, false, null, 30, '', '', [], false, { color: newTaskColor });
+                                    setNewTaskText('');
+                                    setNewTaskColor('#3b82f6'); // Reset to default
+                                    setShowTaskColorPicker(false);
+                                }}
+                                style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}
+                            >
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        type="button" // Placeholder to remove the old button logic block so I can replace the whole container structure cleanly
+                                        style={{ display: 'none' }}
+                                    ></button>
+
+                                    {showTaskColorPicker && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            bottom: '100%',
+                                            left: 0,
+                                            marginBottom: '0.5rem',
+                                            background: 'white',
+                                            padding: '0.5rem',
+                                            borderRadius: '12px',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                            display: 'flex',
+                                            gap: '0.5rem',
+                                            zIndex: 20,
+                                            border: '1px solid rgba(0,0,0,0.05)'
+                                        }}>
+                                            {['#3b82f6', '#ef4444', '#64748b', '#ffffff', '#06b6d4', '#10b981'].map(c => (
+                                                <button
+                                                    key={c}
+                                                    type="button"
+                                                    onClick={() => { setNewTaskColor(c); setShowTaskColorPicker(false); }}
+                                                    style={{
+                                                        width: '24px',
+                                                        height: '24px',
+                                                        borderRadius: '50%',
+                                                        background: c,
+                                                        border: c === '#ffffff' ? '1px solid #e2e8f0' : 'none',
+                                                        cursor: 'pointer',
+                                                        outline: newTaskColor === c ? '2px solid var(--text-main)' : 'none',
+                                                        outlineOffset: '2px'
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: '0.5rem 0.75rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(0,0,0,0.1)',
+                                        background: 'white',
+                                        gap: '0.5rem'
+                                    }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowTaskColorPicker(!showTaskColorPicker)}
+                                            style={{
+                                                width: '12px',
+                                                height: '12px',
+                                                borderRadius: '50%',
+                                                background: newTaskColor,
+                                                border: newTaskColor === '#ffffff' ? '1px solid #e2e8f0' : 'none',
+                                                cursor: 'pointer',
+                                                padding: 0,
+                                                flexShrink: 0
+                                            }}
+                                        />
+                                        <input
+                                            value={newTaskText}
+                                            onChange={e => setNewTaskText(e.target.value)}
+                                            placeholder="Add a task..."
+                                            style={{
+                                                flex: 1,
+                                                border: 'none',
+                                                outline: 'none',
+                                                fontSize: '0.9rem',
+                                                background: 'transparent',
+                                                padding: 0
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    type="submit"
+                                    style={{
+                                        background: 'var(--primary)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        width: '36px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <Plus size={18} />
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Google Calendar Style Modal */}
@@ -1333,7 +1574,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     <>
                         <div
                             style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}
-                            onClick={() => { setShowEventModal(false); setDragStart(null); }}
+                            onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
                         />
 
                         <div style={{
@@ -1355,234 +1596,308 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             animation: 'popupScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                             color: '#1e293b'
                         }}>
-                            {/* Header Gradient Line */}
-                            <div style={{ height: '4px', width: '100%', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899)' }}></div>
-
-                            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                {/* Header / Close */}
-                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            {/* Notion-style Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#37352f' }}>Page</span>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     <button
-                                        onClick={() => { setShowEventModal(false); setDragStart(null); }}
-                                        style={{ background: 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer', color: '#64748b', padding: '8px', borderRadius: '50%', display: 'flex', transition: 'all 0.2s' }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'rotate(0deg)'; }}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(55, 53, 47, 0.45)', padding: '4px', display: 'flex' }}
                                     >
-                                        <X size={20} />
+                                        <div style={{ width: '16px', height: '16px', border: '1.5px solid currentColor', borderRadius: '2px' }} />
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(55, 53, 47, 0.45)', padding: '4px', display: 'flex' }}
+                                    >
+                                        <X size={18} />
                                     </button>
                                 </div>
+                            </div>
 
-                                {/* Title Input */}
-                                <div>
-                                    <input
-                                        autoFocus
-                                        type="text"
-                                        placeholder="Add title"
-                                        value={newEventData.title}
-                                        onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
-                                        style={{
-                                            width: '100%',
-                                            fontSize: '24px',
-                                            fontWeight: 700,
-                                            padding: '8px 0',
-                                            border: 'none',
-                                            borderBottom: '2px solid rgba(0,0,0,0.1)',
-                                            background: 'transparent',
-                                            outline: 'none',
-                                            color: '#1e293b',
-                                            letterSpacing: '-0.5px'
-                                        }}
-                                        onFocus={e => e.target.style.borderBottom = '2px solid #3b82f6'}
-                                        onBlur={e => e.target.style.borderBottom = '2px solid rgba(0,0,0,0.1)'}
-                                    />
-                                    <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                                        {['event', 'task', 'appointment'].map(type => (
-                                            <button
-                                                key={type}
-                                                onClick={() => setNewEventData({ ...newEventData, eventType: type })}
-                                                style={{
-                                                    background: newEventData.eventType === type ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'rgba(0,0,0,0.05)',
-                                                    color: newEventData.eventType === type ? 'white' : '#64748b',
-                                                    border: 'none',
-                                                    padding: '6px 14px',
-                                                    borderRadius: '20px',
-                                                    fontSize: '12px',
-                                                    fontWeight: 600,
-                                                    cursor: 'pointer',
-                                                    textTransform: 'capitalize',
-                                                    transition: 'all 0.2s',
-                                                    boxShadow: newEventData.eventType === type ? '0 4px 12px rgba(59, 130, 246, 0.4)' : 'none'
-                                                }}
-                                            >
-                                                {type === 'appointment' ? 'Appointment schedule' : type}
-                                            </button>
-                                        ))}
-                                    </div>
+                            <div style={{ padding: '0 48px 24px 48px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
+                                {/* Title */}
+                                <div style={{ marginTop: '32px' }}>
 
-                                    {/* Color Picker */}
-                                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                                        {[
-                                            { color: '#3b82f6', id: '1' }, // Blue
-                                            { color: '#ef4444', id: '11' }, // Red
-                                            { color: '#22c55e', id: '10' }, // Green
-                                            { color: '#eab308', id: '5' }, // Yellow
-                                            { color: '#a855f7', id: '3' }, // Purple
-                                            { color: '#ec4899', id: '4' }, // Pink
-                                            { color: '#64748b', id: '8' }, // Gray
-                                        ].map((c) => (
-                                            <button
-                                                key={c.color}
-                                                onClick={() => setNewEventData({ ...newEventData, color: c.color })}
-                                                style={{
-                                                    width: '24px',
-                                                    height: '24px',
-                                                    borderRadius: '50%',
-                                                    background: c.color,
-                                                    border: newEventData.color === c.color ? '2px solid white' : 'none',
-                                                    boxShadow: newEventData.color === c.color ? `0 0 0 2px ${c.color}` : 'none',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    position: 'relative'
-                                                }}
-                                                title="Select Color"
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Details Grid */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                                    {/* Time Row */}
-                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.5)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }}>
-                                        <Clock size={20} color="#64748b" />
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                            <div style={{ fontWeight: 600, fontSize: '15px', color: '#334155' }}>
-                                                {new Date(newEventData.dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                                <span style={{ margin: '0 8px', color: '#cbd5e1' }}>|</span>
-                                                {newEventData.timeStr}
-                                            </div>
-                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Does not repeat</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Guests Row */}
-                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
-                                        <Users size={20} color="#64748b" />
+                                    {/* Title Input */}
+                                    <div>
                                         <input
-                                            type="text"
-                                            placeholder="Add guests (email addresses)"
-                                            value={newEventData.participants}
-                                            onChange={e => setNewEventData({ ...newEventData, participants: e.target.value })}
-                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: '#1e293b', padding: '8px 0' }}
-                                        />
-                                    </div>
-
-                                    {/* Meet Row */}
-                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
-                                        <Video size={20} color="#64748b" />
-                                        {!newEventData.addMeet ? (
-                                            <button
-                                                onClick={() => setNewEventData({ ...newEventData, addMeet: true })}
-                                                style={{
-                                                    background: '#eff6ff', color: '#2563eb', border: '1px solid #dbeafe', borderRadius: '8px',
-                                                    padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                                                    display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center'
-                                                }}>
-                                                Add Google Meet
-                                            </button>
-                                        ) : (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                                                <button
-                                                    style={{
-                                                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', border: 'none', borderRadius: '8px',
-                                                        padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'default',
-                                                        display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center',
-                                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
-                                                    }}>
-                                                    <Video size={14} /> Join with Google Meet
-                                                </button>
-                                                <button
-                                                    onClick={() => setNewEventData({ ...newEventData, addMeet: false })}
-                                                    style={{ border: 'none', background: 'rgba(0,0,0,0.05)', color: '#64748b', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}>
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Location Row */}
-                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '0 12px' }}>
-                                        <MapPin size={20} color="#64748b" />
-                                        <input
-                                            type="text"
-                                            placeholder="Add location"
-                                            value={newEventData.location}
-                                            onChange={e => setNewEventData({ ...newEventData, location: e.target.value })}
-                                            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none', color: '#1e293b', padding: '8px 0' }}
-                                        />
-                                    </div>
-
-                                    {/* Description Row */}
-                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', padding: '0 12px' }}>
-                                        <AlignLeft size={20} color="#64748b" style={{ marginTop: '2px' }} />
-                                        <textarea
-                                            placeholder="Add description"
-                                            value={newEventData.description}
-                                            onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
+                                            autoFocus
+                                            placeholder="Title"
+                                            value={newEventData.title}
+                                            onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
                                             style={{
-                                                flex: 1, border: 'none', fontSize: '14px', outline: 'none', color: '#1e293b',
-                                                fontFamily: 'inherit', resize: 'none', minHeight: '60px',
-                                                background: 'transparent', padding: '2px 0', lineHeight: '1.5'
+                                                fontSize: '36px',
+                                                fontWeight: 700,
+                                                border: 'none',
+                                                outline: 'none',
+                                                width: '100%',
+                                                color: '#37352f',
+                                                padding: 0,
+                                                background: 'transparent',
+                                                lineHeight: 1.2,
+                                                marginBottom: '24px'
                                             }}
                                         />
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Footer */}
-                            <div style={{
-                                padding: '16px 24px',
-                                borderTop: '1px solid rgba(0,0,0,0.05)',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                background: 'rgba(255,255,255,0.5)'
-                            }}>
-                                <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                    Creating as <span style={{ color: '#334155', fontWeight: 600 }}>{user?.name || 'User'}</span>
-                                </div>
-                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    {/* Properties Grid */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {/* Date Property */}
+                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}>
+                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                </svg>
+                                                <span>日付</span>
+                                            </div>
+                                            <div style={{ fontSize: '14px', color: '#37352f', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                <input
+                                                    type="date"
+                                                    value={newEventData.dateStr}
+                                                    onChange={e => setNewEventData({ ...newEventData, dateStr: e.target.value })}
+                                                    style={{
+                                                        border: 'none',
+                                                        background: 'transparent',
+                                                        fontSize: '14px',
+                                                        color: '#37352f',
+                                                        outline: 'none',
+                                                        cursor: 'pointer',
+                                                        padding: '2px 4px',
+                                                        borderRadius: '4px'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(55, 53, 47, 0.06)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                />
+                                                {!newEventData.allDay && (
+                                                    <input
+                                                        type="time"
+                                                        value={newEventData.timeStr || ''}
+                                                        onChange={e => setNewEventData({ ...newEventData, timeStr: e.target.value })}
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            fontSize: '14px',
+                                                            color: 'rgba(55,53,47,0.65)',
+                                                            outline: 'none',
+                                                            cursor: 'pointer',
+                                                            padding: '2px 4px',
+                                                            borderRadius: '4px'
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(55, 53, 47, 0.06)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* All-day Property */}
+                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}>
+                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
+                                                <Clock size={16} />
+                                                <span>All-day</span>
+                                            </div>
+                                            <div
+                                                onClick={() => setNewEventData({ ...newEventData, allDay: !newEventData.allDay })}
+                                                style={{
+                                                    width: '32px', height: '18px',
+                                                    background: newEventData.allDay ? '#2eaadc' : 'rgba(55, 53, 47, 0.16)',
+                                                    borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.2s'
+                                                }}
+                                            >
+                                                <div style={{
+                                                    width: '14px', height: '14px', background: 'white', borderRadius: '50%',
+                                                    position: 'absolute', top: '2px',
+                                                    left: newEventData.allDay ? '16px' : '2px',
+                                                    transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                                }} />
+                                            </div>
+                                        </div>
+
+                                        {/* Calendar Property */}
+                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}>
+                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="14" width="7" height="7"></rect>
+                                                    <rect x="3" y="14" width="7" height="7"></rect>
+                                                </svg>
+                                                <span>Calendar</span>
+                                            </div>
+                                            <select
+                                                value={newEventData.calendarId || 'primary'}
+                                                onChange={e => setNewEventData({ ...newEventData, calendarId: e.target.value })}
+                                                style={{
+                                                    fontSize: '14px',
+                                                    color: '#37352f',
+                                                    border: 'none',
+                                                    background: 'transparent',
+                                                    outline: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: '2px 4px',
+                                                    borderRadius: '4px',
+                                                    appearance: 'none',
+                                                    WebkitAppearance: 'none'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(55, 53, 47, 0.06)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                {calendars.length > 0 ? (
+                                                    calendars.map(cal => (
+                                                        <option key={cal.id} value={cal.id}>
+                                                            {cal.summary || cal.id}
+                                                        </option>
+                                                    ))
+                                                ) : (
+                                                    <option value="primary">Primary Calendar</option>
+                                                )}
+                                            </select>
+                                        </div>
+
+                                        {/* Members Property */}
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', minHeight: '32px', paddingTop: '4px' }}>
+                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px', height: '32px' }}>
+                                                <Users size={16} />
+                                                <span>参加者</span>
+                                            </div>
+                                            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                                {Array.isArray(newEventData.participants) && newEventData.participants.map((email, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                            background: 'rgba(55, 53, 47, 0.08)',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '12px',
+                                                            fontSize: '13px',
+                                                            color: '#37352f',
+                                                            whiteSpace: 'nowrap'
+                                                        }}
+                                                    >
+                                                        {email}
+                                                        <button
+                                                            onClick={() => {
+                                                                const newParticipants = newEventData.participants.filter((_, i) => i !== idx);
+                                                                setNewEventData({ ...newEventData, participants: newParticipants });
+                                                            }}
+                                                            style={{
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                padding: '0',
+                                                                display: 'flex',
+                                                                color: 'rgba(55, 53, 47, 0.45)'
+                                                            }}
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <input
+                                                    placeholder={newEventData.participants?.length > 0 ? "" : "Add members..."}
+                                                    value={memberInput}
+                                                    onChange={e => setMemberInput(e.target.value)}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter' && memberInput.trim()) {
+                                                            e.preventDefault();
+                                                            const newMembers = [...(newEventData.participants || []), memberInput.trim()];
+                                                            setNewEventData({ ...newEventData, participants: newMembers });
+                                                            setMemberInput('');
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        fontSize: '14px',
+                                                        color: '#37352f',
+                                                        border: 'none',
+                                                        background: 'transparent',
+                                                        outline: 'none',
+                                                        flex: 1,
+                                                        minWidth: '100px',
+                                                        padding: '4px 0'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Tags Property */}
+                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}>
+                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                                                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                                                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                                                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                                </svg>
+                                                <span>タグ</span>
+                                            </div>
+                                            <div style={{ fontSize: '14px', color: 'rgba(55, 53, 47, 0.45)' }}>Empty</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Divider */}
+                                    <div style={{ height: '1px', background: 'rgba(55, 53, 47, 0.09)', margin: '16px 0' }} />
+
+                                    {/* Add Google Meet Button */}
                                     <button
-                                        onClick={() => alert("More options clicked")}
-                                        style={{ background: 'transparent', border: 'none', color: '#64748b', fontWeight: 500, cursor: 'pointer', fontSize: '13px' }}
-                                    >
-                                        More options
-                                    </button>
-                                    <button
-                                        onClick={handleSaveEvent}
+                                        onClick={() => setNewEventData({ ...newEventData, addMeet: !newEventData.addMeet })}
                                         style={{
-                                            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '8px 24px',
-                                            borderRadius: '8px',
-                                            fontWeight: 600,
+                                            width: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            padding: '8px',
+                                            borderRadius: '6px',
+                                            background: newEventData.addMeet ? 'rgba(37, 99, 235, 0.1)' : 'white',
+                                            border: `1px solid ${newEventData.addMeet ? '#2563eb' : 'rgba(55, 53, 47, 0.16)'}`,
+                                            color: newEventData.addMeet ? '#2563eb' : '#37352f',
+                                            fontSize: '14px',
+                                            fontWeight: 500,
                                             cursor: 'pointer',
-                                            boxShadow: '0 4px 15px rgba(15, 23, 42, 0.3)',
-                                            transition: 'transform 0.2s'
+                                            transition: 'all 0.1s'
                                         }}
-                                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                        onMouseEnter={e => {
+                                            if (!newEventData.addMeet) e.currentTarget.style.background = 'rgba(55, 53, 47, 0.04)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            if (!newEventData.addMeet) e.currentTarget.style.background = 'white';
+                                        }}
                                     >
-                                        Save
+                                        <Video size={16} />
+                                        {newEventData.addMeet ? 'Google Meet details added' : 'Add Google Meet video conferencing'}
                                     </button>
+
+                                    {/* Save Button */}
+                                    <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <button
+                                            onClick={handleSaveEvent}
+                                            style={{
+                                                background: '#37352f',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                padding: '6px 12px',
+                                                fontSize: '14px',
+                                                fontWeight: 500,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Done
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </>,
-                    document.body
-                )
+                    </>
+                    , document.body)
             }
-        </div >
+        </div>
     );
 }

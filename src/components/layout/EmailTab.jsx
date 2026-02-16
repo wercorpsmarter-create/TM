@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import {
     Mail, RefreshCw, ExternalLink, Inbox, Clock, User,
-    Star, ChevronLeft, ChevronRight, Filter, StarOff
+    Star, ChevronLeft, ChevronRight, Filter, StarOff, Plus, Reply, Send, X,
+    Maximize2, Minimize2, Type, Paperclip, MoreVertical, Trash2, Bold, Italic, Underline, Link2, Smile, Image
 } from 'lucide-react';
 
 const extractEventDetails = (subject, body, emailDate, tasks = [], upcomingEvents = []) => {
@@ -167,7 +168,7 @@ const extractEventDetails = (subject, body, emailDate, tasks = [], upcomingEvent
     return null;
 };
 
-export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcomingEvents = [] }) {
+export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcomingEvents = [], isActive }) {
     const [activeTab, setActiveTab] = useState('inbox'); // 'inbox' or 'starred'
     const [emails, setEmails] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -181,6 +182,20 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     const [manualTitle, setManualTitle] = useState('');
     const [manualDate, setManualDate] = useState('');
     const observerRef = useRef();
+
+    // Reply/Compose States
+    const [isComposing, setIsComposing] = useState(false);
+    const [composeTo, setComposeTo] = useState('');
+    const [composeCc, setComposeCc] = useState('');
+    const [composeBcc, setComposeBcc] = useState('');
+    const [showCc, setShowCc] = useState(false);
+    const [showBcc, setShowBcc] = useState(false);
+    const [composeSubject, setComposeSubject] = useState('');
+    const [composeBody, setComposeBody] = useState('');
+    const [composeThreadId, setComposeThreadId] = useState(null);
+    const [composeInReplyTo, setComposeInReplyTo] = useState(null);
+    const [composeReferences, setComposeReferences] = useState(null);
+    const [isSending, setIsSending] = useState(false);
 
     // Reset and fetch when tab or user changes
     useEffect(() => {
@@ -347,6 +362,12 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
         return emailMatch ? emailMatch[1] : fromField;
     };
 
+    const extractEmail = (fromField) => {
+        const match = fromField?.match(/<(.+?)>/);
+        if (match) return match[1].trim();
+        return fromField?.trim();
+    };
+
     const decodeBase64 = (data) => {
         // Base64Url decode
         const base64 = data.replace(/-/g, '+').replace(/_/g, '/');
@@ -358,7 +379,78 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
         return new TextDecoder().decode(bytes);
     };
 
-    // extractEventDetails was moved outside
+    const sendEmail = async ({ to, cc, bcc, subject, body, threadId, inReplyTo, references }) => {
+        if (!user?.access_token) return;
+        setIsSending(true);
+
+        try {
+            // Build RFC822 message
+            let emailLines = [];
+            emailLines.push(`To: ${to}`);
+            if (cc) emailLines.push(`Cc: ${cc}`);
+            if (bcc) emailLines.push(`Bcc: ${bcc}`);
+            emailLines.push(`Subject: ${subject}`);
+            if (threadId) {
+                if (inReplyTo) emailLines.push(`In-Reply-To: ${inReplyTo}`);
+                const combinedRefs = references ? `${references} ${inReplyTo}` : inReplyTo;
+                if (combinedRefs) emailLines.push(`References: ${combinedRefs}`);
+            }
+            emailLines.push("Content-Type: text/html; charset=utf-8");
+            emailLines.push("");
+            // Simple conversion of newlines to <br> for body if it's not already HTML
+            const htmlBody = body.includes('<') && body.includes('>') ? body : body.replace(/\n/g, '<br>');
+            emailLines.push(htmlBody);
+
+            const emailText = emailLines.join("\r\n");
+
+            // Base64Url encode with UTF-8 support
+            const encodedEmail = btoa(unescape(encodeURIComponent(emailText)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+
+            const response = await fetch(
+                'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${user.access_token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        raw: encodedEmail,
+                        threadId: threadId
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error?.message || 'Failed to send email');
+            }
+
+            alert('Email sent successfully!');
+            setIsComposing(false);
+            setComposeTo('');
+            setComposeCc('');
+            setComposeBcc('');
+            setShowCc(false);
+            setShowBcc(false);
+            setComposeSubject('');
+            setComposeBody('');
+            setComposeThreadId(null);
+            setComposeInReplyTo(null);
+            setComposeReferences(null);
+
+            // Refresh to see the new email if it appears in inbox/sent
+            handleRefresh();
+        } catch (err) {
+            console.error('Send Error:', err);
+            alert('Failed to send email: ' + err.message);
+        } finally {
+            setIsSending(false);
+        }
+    };
 
     const handleEmailClick = async (email) => {
         // Optimistically update UI: mark as read locally first
@@ -428,6 +520,12 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
 
             setEmailContent(body);
 
+            const headers = data.payload?.headers || [];
+            const messageId = headers.find(h => h.name.toLowerCase() === 'message-id')?.value || '';
+            const references = headers.find(h => h.name.toLowerCase() === 'references')?.value || '';
+
+            setSelectedEmail(prev => ({ ...prev, messageId, references }));
+
             // Try to extract event (reuse logic)
             const suggestion = extractEventDetails(email.subject, plainText || body.replace(/<[^>]*>?/gm, ''), email.date, tasks, upcomingEvents);
             setSuggestedEvent(suggestion);
@@ -464,10 +562,26 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
 
         // Let's try to pass the day name (e.g., "Monday") if it within the week, otherwise specific date string
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayLabel = days[suggestedEvent.fullDate.getDay()];
+        const dayLabel = days[option.date.getDay()];
 
-        onAddTask(dayLabel, suggestedEvent.title, true, suggestedEvent.timeStr);
-        alert(`Event added to ${dayLabel}!`);
+        const senderEmail = extractEmail(selectedEmail.from);
+        const attendees = senderEmail ? [senderEmail] : [];
+        const description = `From email: ${selectedEmail.subject}\nSent by: ${selectedEmail.from}`;
+
+        onAddTask(
+            dayLabel,
+            suggestedEvent.title,
+            true, // sync
+            option.timeStr || null,
+            60, // duration
+            description,
+            '', // location
+            attendees,
+            true, // addMeet: defaulted to true for email meetings
+            {}, // metadata
+            'primary' // calendarId
+        );
+        alert(`Event added to ${dayLabel} and invitation sent to ${senderEmail || 'sender'}!`);
     };
 
     const closePopup = () => {
@@ -542,7 +656,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     }
 
     return (
-        <div style={{ height: '100%', display: 'flex', overflow: 'hidden', gap: '0' }}>
+        <div style={{ height: '100%', display: 'flex', overflow: 'hidden', gap: '0', position: 'relative' }}>
 
             {/* LEFT PANE: Email List */}
             <div style={{
@@ -579,9 +693,44 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                 <Mail size={32} />
                                 Emails
                             </h1>
-                            <button onClick={handleRefresh} className="btn-icon" style={{ color: '#4B5563' }}>
-                                <RefreshCw size={20} className={loading ? 'spin' : ''} />
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                {!selectedEmail && (
+                                    <button
+                                        onClick={() => {
+                                            setIsComposing(true);
+                                            setComposeTo('');
+                                            setComposeCc('');
+                                            setComposeBcc('');
+                                            setShowCc(false);
+                                            setShowBcc(false);
+                                            setComposeSubject('');
+                                            setComposeBody('');
+                                        }}
+                                        style={{
+                                            background: '#2563EB',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '0.5rem 1rem',
+                                            borderRadius: '12px',
+                                            fontWeight: 600,
+                                            fontSize: '0.85rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+                                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                    >
+                                        <Plus size={18} /> Compose
+                                    </button>
+                                )}
+                                <button onClick={handleRefresh} className="btn-icon" style={{ color: '#4B5563', padding: '0.5rem', borderRadius: '10px', display: 'flex' }}>
+                                    <RefreshCw size={20} className={loading ? 'spin' : ''} />
+                                </button>
+                            </div>
                         </div>
 
                         <div style={{
@@ -802,12 +951,52 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                     <span>{selectedEmail.date.toLocaleString()}</span>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button onClick={() => openInGmail(selectedEmail)} title="Open in Gmail" style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer' }}>
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                <button
+                                    onClick={() => {
+                                        setComposeTo(extractEmail(selectedEmail.from));
+                                        setComposeCc('');
+                                        setComposeBcc('');
+                                        setShowCc(false);
+                                        setShowBcc(false);
+                                        setComposeSubject(selectedEmail.subject.startsWith('Re:') ? selectedEmail.subject : `Re: ${selectedEmail.subject}`);
+                                        setComposeBody('');
+                                        setComposeThreadId(selectedEmail.threadId);
+                                        setComposeInReplyTo(selectedEmail.messageId);
+                                        setComposeReferences(selectedEmail.references);
+                                        setIsComposing(true);
+                                    }}
+                                    title="Reply"
+                                    style={{
+                                        background: 'rgba(37, 99, 235, 0.1)',
+                                        border: '1px solid rgba(37, 99, 235, 0.2)',
+                                        color: '#2563EB',
+                                        padding: '0.5rem 0.75rem',
+                                        borderRadius: '10px',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = 'rgba(37, 99, 235, 0.15)';
+                                        e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.3)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = 'rgba(37, 99, 235, 0.1)';
+                                        e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.2)';
+                                    }}
+                                >
+                                    <Reply size={16} /> Reply
+                                </button>
+                                <button onClick={() => openInGmail(selectedEmail)} title="Open in Gmail" style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', padding: '0.5rem', borderRadius: '10px' }}>
                                     <ExternalLink size={20} />
                                 </button>
-                                <button onClick={closePopup} title="Close" style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer' }}>
-                                    <div style={{ fontSize: '1.5rem', lineHeight: 0.5 }}>×</div>
+                                <button onClick={closePopup} title="Close" style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: '0.5rem', borderRadius: '10px' }}>
+                                    <X size={24} />
                                 </button>
                             </div>
                         </div>
@@ -825,9 +1014,51 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                         style={{ lineHeight: 1.5, fontSize: '0.9rem', color: '#1f2937', zoom: '0.85' }}
                                     />
                                 )}
+
+                                {/* Reply Section */}
+                                <div style={{
+                                    marginTop: '2.5rem',
+                                    paddingTop: '1.5rem',
+                                    borderTop: '1px solid #f1f3f4'
+                                }}>
+                                    <button
+                                        onClick={() => {
+                                            setComposeTo(extractEmail(selectedEmail.from));
+                                            setComposeCc('');
+                                            setComposeBcc('');
+                                            setShowCc(false);
+                                            setShowBcc(false);
+                                            setComposeSubject(selectedEmail.subject.startsWith('Re:') ? selectedEmail.subject : `Re: ${selectedEmail.subject}`);
+                                            setComposeBody('');
+                                            setComposeThreadId(selectedEmail.threadId);
+                                            setComposeInReplyTo(selectedEmail.messageId);
+                                            setComposeReferences(selectedEmail.references);
+                                            setIsComposing(true);
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.6rem',
+                                            padding: '0.5rem 1.5rem',
+                                            borderRadius: '100px',
+                                            border: '1px solid #dadce0',
+                                            background: 'white',
+                                            color: '#3c4043',
+                                            fontSize: '0.875rem',
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                    >
+                                        <Reply size={16} /> Reply
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
+
 
                     {/* Sidebar: Plan & Suggestions */}
                     <div style={{
@@ -1008,7 +1239,232 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                         )}
                     </div>
                 </div>
-            )}
+            )
+            }
+
+            {
+                isComposing && isActive && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 2000,
+                        width: '512px',
+                        background: 'white',
+                        borderRadius: '8px',
+                        boxShadow: '0 12px 24px rgba(0,0,0,0.15), 0 5px 15px rgba(0,0,0,0.1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        border: '1px solid #dadce0',
+                        animation: 'fadeInScale 0.2s ease-out'
+                    }}>
+                        <style>{`
+                            @keyframes fadeInScale {
+                                from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+                                to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                            }
+                        `}</style>
+                        {/* Header */}
+                        <div style={{
+                            padding: '0.65rem 1rem',
+                            background: '#041e49',
+                            color: 'white',
+                            borderRadius: '8px 8px 0 0',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'default'
+                        }}>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>New Message</span>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <button style={{ background: 'none', border: 'none', color: 'white', padding: '0.25rem', cursor: 'pointer', display: 'flex', opacity: 0.8 }}><Minimize2 size={16} /></button>
+                                <button style={{ background: 'none', border: 'none', color: 'white', padding: '0.25rem', cursor: 'pointer', display: 'flex', opacity: 0.8 }}><Maximize2 size={16} /></button>
+                                <button
+                                    onClick={() => setIsComposing(false)}
+                                    style={{ background: 'none', border: 'none', color: 'white', padding: '0.25rem', cursor: 'pointer', display: 'flex', opacity: 0.8 }}
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Inputs */}
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <div style={{
+                                padding: '0.5rem 1rem',
+                                borderBottom: '1px solid #f1f3f4',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                            }}>
+                                <span style={{ color: '#444746', fontSize: '0.875rem', minWidth: '20px' }}>To</span>
+                                <input
+                                    type="email"
+                                    value={composeTo}
+                                    onChange={(e) => setComposeTo(e.target.value)}
+                                    style={{
+                                        flex: 1,
+                                        border: 'none',
+                                        outline: 'none',
+                                        fontSize: '0.875rem',
+                                        color: '#202124'
+                                    }}
+                                />
+                                <div style={{ display: 'flex', gap: '0.5rem', color: '#444746', fontSize: '0.75rem', fontWeight: 500 }}>
+                                    {!showCc && <span onClick={() => setShowCc(true)} style={{ cursor: 'pointer' }}>Cc</span>}
+                                    {!showBcc && <span onClick={() => setShowBcc(true)} style={{ cursor: 'pointer' }}>Bcc</span>}
+                                </div>
+                            </div>
+
+                            {showCc && (
+                                <div style={{
+                                    padding: '0.5rem 1rem',
+                                    borderBottom: '1px solid #f1f3f4',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}>
+                                    <span style={{ color: '#444746', fontSize: '0.875rem', marginRight: '0.5rem', minWidth: '20px' }}>Cc</span>
+                                    <input
+                                        type="email"
+                                        value={composeCc}
+                                        onChange={(e) => setComposeCc(e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            border: 'none',
+                                            outline: 'none',
+                                            fontSize: '0.875rem',
+                                            color: '#202124'
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {showBcc && (
+                                <div style={{
+                                    padding: '0.5rem 1rem',
+                                    borderBottom: '1px solid #f1f3f4',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}>
+                                    <span style={{ color: '#444746', fontSize: '0.875rem', marginRight: '0.5rem', minWidth: '20px' }}>Bcc</span>
+                                    <input
+                                        type="email"
+                                        value={composeBcc}
+                                        onChange={(e) => setComposeBcc(e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            border: 'none',
+                                            outline: 'none',
+                                            fontSize: '0.875rem',
+                                            color: '#202124'
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            <div style={{
+                                padding: '0.5rem 1rem',
+                                borderBottom: '1px solid #f1f3f4',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}>
+                                <input
+                                    type="text"
+                                    placeholder="Subject"
+                                    value={composeSubject}
+                                    onChange={(e) => setComposeSubject(e.target.value)}
+                                    style={{
+                                        flex: 1,
+                                        border: 'none',
+                                        outline: 'none',
+                                        fontSize: '0.875rem',
+                                        color: '#202124'
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <textarea
+                            autoFocus
+                            value={composeBody}
+                            onChange={(e) => setComposeBody(e.target.value)}
+                            style={{
+                                width: '100%',
+                                height: '350px',
+                                minHeight: '200px',
+                                padding: '1rem',
+                                border: 'none',
+                                fontSize: '0.9rem',
+                                color: '#202124',
+                                outline: 'none',
+                                resize: 'none',
+                                fontFamily: 'Arial, sans-serif'
+                            }}
+                        />
+
+                        {/* Footer Toolbar */}
+                        <div style={{ padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <button
+                                    disabled={isSending || !composeTo.trim() || !composeSubject.trim()}
+                                    onClick={() => sendEmail({
+                                        to: composeTo,
+                                        cc: composeCc,
+                                        bcc: composeBcc,
+                                        subject: composeSubject,
+                                        body: composeBody,
+                                        threadId: composeThreadId,
+                                        inReplyTo: composeInReplyTo,
+                                        references: composeReferences
+                                    })}
+                                    style={{
+                                        background: '#0b57d0',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '0.6rem 1.6rem',
+                                        borderRadius: '100px',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem',
+                                        cursor: (isSending || !composeTo.trim() || !composeSubject.trim()) ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={e => { if (!isSending && composeTo.trim()) e.currentTarget.style.background = '#084bb5'; }}
+                                    onMouseLeave={e => { if (!isSending && composeTo.trim()) e.currentTarget.style.background = '#0b57d0'; }}
+                                >
+                                    {isSending ? <RefreshCw className="spin" size={16} /> : 'Send'}
+                                </button>
+
+                                <div style={{ display: 'flex', gap: '0.1rem', color: '#444746' }}>
+                                    {[Type, Paperclip, Link2, Smile, Image].map((Icon, idx) => (
+                                        <button key={idx} style={{ background: 'none', border: 'none', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', display: 'flex' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                                            <Icon size={18} />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <button
+                                    onClick={() => {
+                                        if (confirm('Discard draft?')) {
+                                            setIsComposing(false);
+                                        }
+                                    }}
+                                    style={{ background: 'none', border: 'none', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#f1f3f4'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                >
+                                    <Trash2 size={18} color="#444746" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
         </div>
     );
 }

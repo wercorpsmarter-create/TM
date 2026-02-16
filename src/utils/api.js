@@ -68,7 +68,8 @@ const syncLocalDataToSupabase = async (userId) => {
                 id: g.id,
                 user_id: userId,
                 text: g.text,
-                position: g.position
+                position: g.position,
+                importance: g.importance || 1
             })));
             if (error) console.error('[Migration] Goal error:', error);
         }
@@ -367,19 +368,34 @@ export const api = {
         return goals.filter(g => g.userId === userId);
     },
 
-    async createGoal(userId, text, position) {
+    async createGoal(userId, text, position, importance = 1) {
         if (supabase) {
-            const { data, error } = await supabase.from('goals').insert([{
+            // Try with importance column first
+            let { data, error } = await supabase.from('goals').insert([{
                 user_id: userId,
                 text,
-                position
+                position,
+                importance
             }]).select().single();
+
+            // If it fails (e.g. importance column doesn't exist), retry without it
+            if (error) {
+                console.warn('Goal insert with importance failed, retrying without:', error.message);
+                const retry = await supabase.from('goals').insert([{
+                    user_id: userId,
+                    text,
+                    position
+                }]).select().single();
+                data = retry.data;
+                error = retry.error;
+            }
+
             if (error) throw error;
-            return { ...data, userId: data.user_id };
+            return { ...data, userId: data.user_id, importance: data.importance || importance };
         }
         await delay(200);
         const goals = getLocalStore('prohub-data-goals');
-        const newGoal = { id: Date.now().toString(), userId, text, position };
+        const newGoal = { id: Date.now().toString(), userId, text, position, importance };
         goals.push(newGoal);
         setLocalStore('prohub-data-goals', goals);
         return newGoal;

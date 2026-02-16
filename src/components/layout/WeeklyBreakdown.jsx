@@ -437,7 +437,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
                 });
             }
         } else {
-            onAddTask(dayName, inputValue, syncToGoogle, taskTime || null);
+            onAddTask(columnDateStr, inputValue, syncToGoogle, taskTime || null);
         }
 
         setInputValue('');

@@ -1,23 +1,39 @@
-import React, { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import React, { useState, useMemo, useEffect } from 'react';
+
 import { RefreshCcw, Settings2, Check, Plus, Trash2, Pencil, CheckCircle2, GripVertical, Video, Trophy, User, Flag, Briefcase } from 'lucide-react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable, defaultAnimateLayoutChanges } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const SortableWidget = ({ id, children, isCustomizing, onInteractionStart, onInteractionEnd }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+const animateLayoutChanges = (args) => defaultAnimateLayoutChanges({ ...args, wasDragging: true });
+
+const SortableWidget = ({ id, children, isCustomizing, onInteractionStart, onInteractionEnd, isDragOverlay }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id,
+        animateLayoutChanges
+    });
 
     const style = {
-        transform: CSS.Translate.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 50 : 1,
+        transform: CSS.Transform.toString(transform),
+        transition: transition || 'transform 250ms cubic-bezier(0.25, 1, 0.5, 1)',
+        opacity: isDragging ? 0.3 : 1,
+        zIndex: isDragging ? 0 : 1,
         position: 'relative',
-        touchAction: 'none'
+        touchAction: 'none',
+        willChange: isDragging ? 'transform' : 'auto',
     };
+
+    // Style for the floating overlay copy
+    const overlayStyle = isDragOverlay ? {
+        position: 'relative',
+        transform: 'scale(1.03)',
+        boxShadow: '0 20px 60px -10px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(96, 165, 250, 0.3)',
+        zIndex: 999,
+        cursor: 'grabbing',
+        opacity: 0.95,
+    } : {};
 
     const handlers = isCustomizing ? {
         ...attributes,
@@ -36,7 +52,7 @@ const SortableWidget = ({ id, children, isCustomizing, onInteractionStart, onInt
     return (
         <div
             ref={setNodeRef}
-            style={{ ...style, cursor: isCustomizing ? 'grab' : 'default' }}
+            style={{ ...style, ...overlayStyle, cursor: isCustomizing ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
             className={`glass-card widget-item ${isCustomizing ? 'customizing' : ''}`}
             {...handlers}
         >
@@ -114,6 +130,7 @@ export default function TopSection({
 }) {
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [poppingBubble, setPoppingBubble] = useState(null);
+    const [activeDragId, setActiveDragId] = useState(null);
     const [isEditingGoals, setIsEditingGoals] = useState(false);
     const [isEditingMonthlyGoals, setIsEditingMonthlyGoals] = useState(false);
     const [isEditingHabits, setIsEditingHabits] = useState(false);
@@ -125,7 +142,7 @@ export default function TopSection({
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 8,
+                distance: 5,
             },
         }),
         useSensor(KeyboardSensor, {
@@ -133,8 +150,9 @@ export default function TopSection({
         })
     );
 
-    // Weekly Overview (Activity Score)
-    const chartData = DAYS_SHORT.map((day, idx) => {
+
+    // Weekly Overview (Activity Score) - memoized to prevent re-animation
+    const chartData = useMemo(() => DAYS_SHORT.map((day, idx) => {
         const fullDayName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][idx];
 
         // Skip if day is not visible
@@ -165,15 +183,15 @@ export default function TopSection({
         const score = hasTasks ? (dayCompleted / dayTasks.length) * 100 : 0;
         const full = hasTasks ? 100 : 0;
         return { name: day, progress: score, full: full };
-    }).filter(Boolean); // Remove null entries
+    }).filter(Boolean), [tasks, visibleDays]);
 
-    // Overall Progress (Donut)
-    const completedCount = tasks.filter(t => t.status === 'Completed').length;
+    // Overall Progress (Donut) - memoized
+    const completedCount = useMemo(() => tasks.filter(t => t.status === 'Completed').length, [tasks]);
     const totalCount = tasks.length || 1;
-    const progressData = [
+    const progressData = useMemo(() => [
         { name: 'Done', value: completedCount },
         { name: 'Pending', value: Math.max(0, totalCount - completedCount) }
-    ];
+    ], [completedCount, totalCount]);
 
     const handleHabitToggle = (habitId, dayIdx) => {
         const habit = habits.find(h => h.id === habitId);
@@ -184,7 +202,8 @@ export default function TopSection({
         }
     };
 
-    const handleDragStart = () => {
+    const handleDragStart = (event) => {
+        setActiveDragId(event.active.id);
         if (onDragStart) onDragStart();
     };
 
@@ -197,6 +216,12 @@ export default function TopSection({
             setLayout(arrayMove(layout, oldIndex, newIndex));
         }
 
+        setActiveDragId(null);
+        if (onDragEnd) onDragEnd();
+    };
+
+    const handleDragCancel = () => {
+        setActiveDragId(null);
         if (onDragEnd) onDragEnd();
     };
 
@@ -261,13 +286,7 @@ export default function TopSection({
                     };
                 });
 
-                const bubbleColors = [
-                    { bg: 'rgba(147, 51, 234, 0.3)', border: 'rgba(147, 51, 234, 0.5)', tint: '#d8b4fe', shadow: 'rgba(147, 51, 234, 0.2)' },
-                    { bg: 'rgba(249, 115, 22, 0.3)', border: 'rgba(249, 115, 22, 0.5)', tint: '#fdba74', shadow: 'rgba(249, 115, 22, 0.2)' },
-                    { bg: 'rgba(16, 185, 129, 0.3)', border: 'rgba(16, 185, 129, 0.5)', tint: '#6ee7b7', shadow: 'rgba(16, 185, 129, 0.2)' },
-                    { bg: 'rgba(59, 130, 246, 0.3)', border: 'rgba(59, 130, 246, 0.5)', tint: '#93c5fd', shadow: 'rgba(59, 130, 246, 0.2)' },
-                    { bg: 'rgba(236, 72, 153, 0.3)', border: 'rgba(236, 72, 153, 0.5)', tint: '#f9a8d4', shadow: 'rgba(236, 72, 153, 0.2)' }
-                ];
+                const bubbleColor = { bg: 'rgba(100, 116, 139, 0.25)', border: 'rgba(100, 116, 139, 0.4)', tint: '#94a3b8', shadow: 'rgba(100, 116, 139, 0.15)' };
 
                 return (
                     <SortableWidget
@@ -278,18 +297,7 @@ export default function TopSection({
                         onInteractionEnd={onDragEnd}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                            <div className="card-title" style={{ margin: 0 }}>Priority Tiers</div>
-                            <div style={{
-                                background: totalImportance > 8 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-                                padding: '2px 8px',
-                                borderRadius: '10px',
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                color: totalImportance > 8 ? '#fca5a5' : 'rgba(255,255,255,0.6)',
-                                border: '1px solid rgba(255,255,255,0.1)'
-                            }}>
-                                {totalImportance}/10 Points
-                            </div>
+                            <div className="card-title" style={{ margin: 0 }}>Weekly Goals</div>
                         </div>
 
                         {isEditingGoals && (
@@ -308,7 +316,7 @@ export default function TopSection({
                                     </button>
                                 </form>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
-                                    <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Importance Tier:</span>
+                                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600 }}>重要度</span>
                                     <div style={{ display: 'flex', gap: '4px' }}>
                                         {[1, 2, 3, 4, 5].map(val => (
                                             <button
@@ -319,9 +327,9 @@ export default function TopSection({
                                                     height: '24px',
                                                     borderRadius: '6px',
                                                     border: '1px solid',
-                                                    borderColor: newGoalImportance === val ? '#3b82f6' : 'rgba(255,255,255,0.1)',
-                                                    background: newGoalImportance === val ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.05)',
-                                                    color: newGoalImportance === val ? 'white' : 'rgba(255,255,255,0.4)',
+                                                    borderColor: newGoalImportance === val ? '#3b82f6' : '#cbd5e1',
+                                                    background: newGoalImportance === val ? 'rgba(59, 130, 246, 0.3)' : 'rgba(148, 163, 184, 0.1)',
+                                                    color: newGoalImportance === val ? 'white' : '#94a3b8',
                                                     fontSize: '0.7rem',
                                                     fontWeight: 700,
                                                     cursor: 'pointer',
@@ -338,13 +346,12 @@ export default function TopSection({
 
                         <div style={{
                             position: 'relative',
-                            height: '220px',
+                            height: '180px',
                             width: '100%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             overflow: 'visible',
-                            marginTop: '10px'
                         }}>
                             {ecosystemNodes.length === 0 && !isEditingGoals && (
                                 <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem', fontStyle: 'italic' }}>
@@ -353,7 +360,7 @@ export default function TopSection({
                             )}
                             {(() => {
                                 // Pre-compute circle-packed positions so bubbles cluster at center without overlapping
-                                const gap = 4;
+                                const gap = 2;
                                 const sorted = ecosystemNodes
                                     .map((g, origIdx) => ({
                                         ...g,
@@ -401,7 +408,7 @@ export default function TopSection({
                                 });
 
                                 return ecosystemNodes.map((g, i) => {
-                                    const color = bubbleColors[i % bubbleColors.length];
+                                    const color = bubbleColor;
                                     const importance = g.importance || 1;
                                     const size = 35 + (importance * 22);
                                     const pos = positionMap[i] || { x: 0, y: 0 };
@@ -409,12 +416,12 @@ export default function TopSection({
                                     return (
                                         <div key={g.id || i}
                                             onClick={() => {
-                                                if (!isEditingGoals || poppingBubble !== null) return;
+                                                if (poppingBubble !== null) return;
                                                 setPoppingBubble(i);
                                                 setTimeout(() => {
                                                     onDeleteGoal(i);
                                                     setPoppingBubble(null);
-                                                }, 350);
+                                                }, 500);
                                             }}
                                             style={{
                                                 position: 'absolute',
@@ -439,9 +446,9 @@ export default function TopSection({
                                                 marginLeft: `${Math.round(pos.x)}px`,
                                                 marginTop: `${Math.round(pos.y)}px`,
                                                 transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                                                cursor: isEditingGoals ? 'pointer' : 'default',
+                                                cursor: 'pointer',
                                                 ...(poppingBubble === i ? {
-                                                    animation: 'bubble-pop 0.35s ease-out forwards',
+                                                    animation: 'bubble-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                                                     transition: 'none'
                                                 } : {}),
                                                 ...(isEditingGoals && poppingBubble !== i ? {
@@ -558,23 +565,34 @@ export default function TopSection({
                         onInteractionEnd={onDragEnd}
                     >
                         <div className="card-title">Activity Score</div>
-                        <div style={{ height: '150px' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} barCategoryGap="20%">
-                                    <XAxis xAxisId="0" dataKey="name" fontSize={10} axisLine={{ stroke: 'rgba(71, 85, 105, 0.2)', strokeWidth: 1 }} tickLine={false} />
-                                    <XAxis xAxisId="1" dataKey="name" hide />
-                                    <YAxis hide domain={[0, 100]} />
-                                    <Tooltip
-                                        contentStyle={{ background: 'rgba(255, 255, 255, 0.8)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
-                                        itemStyle={{ color: '#0f172a' }}
-                                        cursor={{ fill: 'transparent' }}
-                                    />
-                                    {/* Background Bar (Static) */}
-                                    <Bar xAxisId="0" dataKey="full" fill="rgba(71, 85, 105, 0.1)" radius={[6, 6, 0, 0]} isAnimationActive={false} />
-                                    {/* Foreground Bar (Animated) */}
-                                    <Bar xAxisId="1" dataKey="progress" fill="#475569" radius={[6, 6, 0, 0]} isAnimationActive={true} animationDuration={1000} animationEasing="linear" animationBegin={0} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <div style={{ height: '150px', display: 'flex', alignItems: 'flex-end', gap: '6px', padding: '10px 0' }}>
+                            {chartData.map((d, i) => (
+                                <div key={d.name} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
+                                    <div style={{ flex: 1, width: '100%', position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
+                                        {/* Background bar */}
+                                        <div style={{
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            left: '15%',
+                                            width: '70%',
+                                            height: d.full > 0 ? '100%' : '0%',
+                                            background: 'rgba(71, 85, 105, 0.08)',
+                                            borderRadius: '6px 6px 0 0',
+                                        }} />
+                                        {/* Progress bar */}
+                                        <div className="bar-progress" style={{
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            left: '15%',
+                                            width: '70%',
+                                            height: `${d.progress}%`,
+                                            background: '#475569',
+                                            borderRadius: '6px 6px 0 0',
+                                        }} />
+                                    </div>
+                                    <span style={{ fontSize: '0.6rem', color: 'rgba(71, 85, 105, 0.6)', marginTop: '4px', fontWeight: 500 }}>{d.name}</span>
+                                </div>
+                            ))}
                         </div>
                     </SortableWidget>
                 );
@@ -660,28 +678,36 @@ export default function TopSection({
                         onInteractionEnd={onDragEnd}
                     >
                         <div className="card-title">Weekly Overview</div>
-                        <div style={{ height: '150px', position: 'relative' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={progressData}
-                                        innerRadius={45}
-                                        outerRadius={60}
-                                        paddingAngle={0}
-                                        dataKey="value"
-                                        startAngle={90}
-                                        endAngle={450}
-                                        stroke="none"
-                                        isAnimationActive={true}
-                                        animationDuration={1000}
-                                        animationEasing="linear"
-                                        animationBegin={0}
-                                    >
-                                        <Cell fill="#475569" />
-                                        <Cell fill="rgba(0, 0, 0, 0.05)" />
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
+                        <div style={{ height: '150px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {(() => {
+                                const pct = isNaN(completedCount / totalCount) ? 0 : (completedCount / totalCount);
+                                const radius = 50;
+                                const stroke = 20;
+                                const circumference = 2 * Math.PI * radius;
+                                const offset = circumference * (1 - pct);
+                                return (
+                                    <svg width="140" height="140" viewBox="0 0 140 140" style={{ transform: 'rotate(-90deg)' }}>
+                                        {/* Background ring */}
+                                        <circle
+                                            cx="70" cy="70" r={radius}
+                                            fill="none"
+                                            stroke="rgba(0, 0, 0, 0.05)"
+                                            strokeWidth={stroke}
+                                        />
+                                        {/* Progress ring */}
+                                        <circle
+                                            cx="70" cy="70" r={radius}
+                                            fill="none"
+                                            stroke="#475569"
+                                            strokeWidth={stroke}
+                                            strokeLinecap="butt"
+                                            strokeDasharray={circumference}
+                                            strokeDashoffset={offset}
+                                            className="donut-progress"
+                                        />
+                                    </svg>
+                                );
+                            })()}
                             <div className="weekly-overview-pct" style={{
                                 position: 'absolute',
                                 top: '50%',
@@ -936,10 +962,31 @@ export default function TopSection({
                     collisionDetection={closestCenter}
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
+                    onDragCancel={handleDragCancel}
                 >
                     <SortableContext items={layout} strategy={rectSortingStrategy}>
                         {layout.map((type) => renderWidget(type))}
                     </SortableContext>
+                    <DragOverlay
+                        dropAnimation={{
+                            duration: 300,
+                            easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+                        }}
+                    >
+                        {activeDragId ? (
+                            <div
+                                className="glass-card widget-item"
+                                style={{
+                                    transform: 'scale(1.03)',
+                                    boxShadow: '0 20px 60px -10px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(96, 165, 250, 0.3)',
+                                    cursor: 'grabbing',
+                                    opacity: 0.95,
+                                }}
+                            >
+                                {renderWidget(activeDragId)}
+                            </div>
+                        ) : null}
+                    </DragOverlay>
                 </DndContext>
             </div>
         </div>

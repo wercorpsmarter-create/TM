@@ -14,7 +14,7 @@ export default function TaskAnalytics({ tasks }) {
     return (
         <div className="card">
             <h3 className="card-title"><BarChart2 size={20} /> Analytics</h3>
-            <div style={{ height: '240px', width: '100%' }}>
+            <div className="chart-fade-in" style={{ height: '240px', width: '100%' }}>
                 {data.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -24,6 +24,7 @@ export default function TaskAnalytics({ tasks }) {
                                 outerRadius={80}
                                 paddingAngle={5}
                                 dataKey="value"
+                                isAnimationActive={false}
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

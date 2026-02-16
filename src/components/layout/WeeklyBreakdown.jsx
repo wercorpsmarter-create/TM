@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video, ChevronLeft, ChevronRight, MoreHorizontal, StickyNote, X } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
@@ -419,10 +418,10 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
 
     const completed = dayTasks.filter(t => t.status === 'Completed').length;
     const total = dayTasks.length || 1;
-    const progressData = [
+    const progressData = useMemo(() => [
         { name: 'Done', value: completed },
         { name: 'Pending', value: Math.max(0, total - completed) }
-    ];
+    ], [completed, total]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -462,28 +461,20 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
             <div className="glass-card" style={{ padding: '1rem', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
 
                 {/* Daily Progress Donut */}
-                <div className="donut-container" style={{ height: '100px', marginBottom: '1rem' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={progressData}
-                                innerRadius={25}
-                                outerRadius={35}
-                                paddingAngle={0}
-                                dataKey="value"
-                                startAngle={90}
-                                endAngle={450}
-                                stroke="none"
-                                isAnimationActive={true}
-                                animationDuration={1000}
-                                animationEasing="linear"
-                                animationBegin={0}
-                            >
-                                <Cell fill="#475569" />
-                                <Cell fill="rgba(0, 0, 0, 0.05)" />
-                            </Pie>
-                        </PieChart>
-                    </ResponsiveContainer>
+                <div className="donut-container" style={{ height: '100px', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {(() => {
+                        const pct = total > 0 ? (completed / total) : 0;
+                        const radius = 30;
+                        const strokeW = 12;
+                        const circumference = 2 * Math.PI * radius;
+                        const dashOffset = circumference * (1 - pct);
+                        return (
+                            <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)' }}>
+                                <circle cx="40" cy="40" r={radius} fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth={strokeW} />
+                                <circle cx="40" cy="40" r={radius} fill="none" stroke="#475569" strokeWidth={strokeW} strokeLinecap="butt" strokeDasharray={circumference} strokeDashoffset={dashOffset} className="donut-progress" />
+                            </svg>
+                        );
+                    })()}
                 </div>
 
                 {/* Add Task Input */}

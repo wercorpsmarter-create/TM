@@ -646,7 +646,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            padding: '1rem'
+            padding: '1rem 0.5rem'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -1101,11 +1101,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
                                                                 display: 'flex',
                                                                 flexDirection: 'column',
-                                                                backgroundColor: color ? `${color}4d` : undefined,
-                                                                backdropFilter: color ? 'blur(4px)' : undefined,
-                                                                border: color ? `1px solid ${color}66` : '1px solid rgba(0,0,0,0.1)',
-                                                                borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                color: color ? '#000' : undefined,
+                                                                backgroundColor: color || undefined,
+                                                                border: '1px solid white',
+                                                                color: '#fff',
                                                                 borderRadius: '4px'
                                                             }}>
                                                                 <div style={{ fontWeight: 600, fontSize: '0.7rem' }}>{item.title}</div>
@@ -1318,11 +1316,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
                                                                     cursor: 'pointer',
-                                                                    backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
-                                                                    backdropFilter: color ? 'blur(4px)' : undefined,
-                                                                    border: color ? `1px solid ${color}66` : '1px solid rgba(0,0,0,0.1)',
-                                                                    borderLeft: color ? `4px solid ${color}` : undefined,
-                                                                    color: color ? '#000' : undefined,
+                                                                    backgroundColor: color || undefined,
+                                                                    border: '1px solid white',
+                                                                    color: '#fff',
                                                                     borderRadius: '6px'
                                                                 }}
                                                                 onClick={(e) => handleEventClick(e, item, currentDate)}

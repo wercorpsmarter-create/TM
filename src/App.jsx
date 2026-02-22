@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FileText } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import api from './utils/api';
 import DashboardTab from './components/layout/DashboardTab';
 import CalendarTab from './components/layout/CalendarTab';
 import EmailTab from './components/layout/EmailTab';
+import NotesTab from './components/layout/NotesTab';
 
 import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
@@ -240,11 +241,13 @@ function App() {
             if (e.target.isContentEditable) return;
 
             if (e.key === 'ArrowLeft') {
-                if (activeTab === 'emails') setActiveTab('calendar');
+                if (activeTab === 'notes') setActiveTab('emails');
+                else if (activeTab === 'emails') setActiveTab('calendar');
                 else if (activeTab === 'calendar') setActiveTab('dashboard');
             } else if (e.key === 'ArrowRight') {
                 if (activeTab === 'dashboard') setActiveTab('calendar');
                 else if (activeTab === 'calendar') setActiveTab('emails');
+                else if (activeTab === 'emails') setActiveTab('notes');
             }
         };
 
@@ -252,47 +255,7 @@ function App() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [activeTab]);
 
-    // Handle trackpad/mouse wheel horizontal swipe
-    useEffect(() => {
-        const handleWheel = (e) => {
-            // Check if it's a horizontal scroll
-            if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 20) {
-                e.preventDefault(); // Prevent browser back/forward navigation
-
-                if (isSwipingRef.current) return;
-
-                if (activeTab === 'dashboard' && e.deltaX > 0) {
-                    setActiveTab('calendar');
-                    isSwipingRef.current = true;
-                    setTimeout(() => isSwipingRef.current = false, 500);
-                } else if (activeTab === 'calendar' && e.deltaX < 0) {
-                    setActiveTab('dashboard');
-                    isSwipingRef.current = true;
-                    setTimeout(() => isSwipingRef.current = false, 500);
-                } else if (activeTab === 'calendar' && e.deltaX > 0) {
-                    setActiveTab('emails');
-                    isSwipingRef.current = true;
-                    setTimeout(() => isSwipingRef.current = false, 500);
-                } else if (activeTab === 'emails' && e.deltaX < 0) {
-                    setActiveTab('calendar');
-                    isSwipingRef.current = true;
-                    setTimeout(() => isSwipingRef.current = false, 500);
-                }
-            }
-        };
-
-        const container = containerRef.current;
-        if (container) {
-            container.addEventListener('wheel', handleWheel, { passive: false });
-        }
-
-        return () => {
-            if (container) {
-                container.removeEventListener('wheel', handleWheel);
-            }
-        };
-    }, [activeTab]);
-
+    // Handling swipe navigation removed as per request
     const loadUserData = async () => {
         if (!googleUser?.email || !googleUser.id) return;
 
@@ -1096,7 +1059,8 @@ function App() {
                     {[
                         { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
                         { key: 'calendar', label: 'Calendar', icon: <CalendarIcon size={18} /> },
-                        { key: 'emails', label: 'Emails', icon: <Mail size={18} /> }
+                        { key: 'emails', label: 'Emails', icon: <Mail size={18} /> },
+                        { key: 'notes', label: 'Notes', icon: <FileText size={18} /> }
                     ].map(tab => {
                         const isActive = activeTab === tab.key;
                         return (
@@ -1248,46 +1212,16 @@ function App() {
             <div ref={containerRef} style={{ overflowX: 'hidden', width: '100%', flex: 1, position: 'relative', minHeight: 0 }}>
                 <motion.div
                     className="tab-track"
-                    style={{ display: 'flex', width: '300%', height: '100%', touchAction: 'pan-y', alignItems: 'flex-start' }}
+                    style={{ display: 'flex', width: '400%', height: '100%', touchAction: 'pan-y', alignItems: 'flex-start' }}
                     animate={{
-                        x: activeTab === 'calendar' ? '-33.333%' :
-                            activeTab === 'emails' ? '-66.666%' : '0%'
+                        x: activeTab === 'dashboard' ? '0%' :
+                            activeTab === 'calendar' ? '-25%' :
+                                activeTab === 'emails' ? '-50%' : '-75%'
                     }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    drag="x"
-                    dragListener={false}
-                    dragControls={dragControls}
-
-                    dragElastic={0.2}
-                    onPointerDown={(e) => {
-                        const isDraggableItem = e.target.closest('.compact-task') ||
-                            e.target.closest('.widget-item') ||
-                            e.target.closest('.time-picker-popup') ||
-                            e.target.closest('.widget-controls') ||
-                            e.target.closest('.btn-icon') ||
-                            e.target.closest('.customize-toggle') ||
-                            e.target.tagName === 'BUTTON' ||
-                            e.target.tagName === 'INPUT';
-
-                        if (!isDraggableItem) {
-                            dragControls.start(e);
-                        }
-                    }}
-                    onDragEnd={(e, { offset }) => {
-                        const swipe = offset.x;
-                        if (activeTab === 'dashboard' && swipe < -50) {
-                            setActiveTab('calendar');
-                        } else if (activeTab === 'calendar' && swipe > 50) {
-                            setActiveTab('dashboard');
-                        } else if (activeTab === 'calendar' && swipe < -50) {
-                            setActiveTab('emails');
-                        } else if (activeTab === 'emails' && swipe > 50) {
-                            setActiveTab('calendar');
-                        }
-                    }}
                 >
                     <div style={{
-                        width: '33.333%',
+                        width: '25%',
                         flexShrink: 0,
                         padding: '0 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'dashboard' ? '100%' : '0px',
@@ -1331,7 +1265,7 @@ function App() {
                         />
                     </div>
                     <div style={{
-                        width: '33.333%',
+                        width: '25%',
                         flexShrink: 0,
                         padding: '0 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'calendar' ? '100%' : '0px',
@@ -1359,7 +1293,7 @@ function App() {
                         )}
                     </div>
                     <div style={{
-                        width: '33.333%',
+                        width: '25%',
                         flexShrink: 0,
                         padding: '0 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'emails' ? '100%' : '0px',
@@ -1375,6 +1309,18 @@ function App() {
                             tasks={tasks}
                             upcomingEvents={upcomingEvents}
                         />
+                    </div>
+
+                    <div style={{
+                        width: '25%',
+                        flexShrink: 0,
+                        padding: '0 1.5rem 0.5rem 1.5rem',
+                        height: activeTab === 'notes' ? '100%' : '0px',
+                        overflow: activeTab === 'notes' ? 'hidden' : 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <NotesTab />
                     </div>
 
                 </motion.div>

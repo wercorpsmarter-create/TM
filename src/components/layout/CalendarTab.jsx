@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users, Plus, Trash2, CheckCircle, Circle, Columns } from 'lucide-react';
+import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users, Plus, Trash2, CheckCircle, Circle, Columns, ChevronDown, MoreHorizontal, Maximize2, FileText, Bell, ArrowRight } from 'lucide-react';
 
 import MiniCalendar from './MiniCalendar';
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Helper for event layout
@@ -87,27 +87,68 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
     const handleEventClick = (e, item, dateObj) => {
         e.stopPropagation();
-        setExpandedEventId(expandedEventId === item.id ? null : item.id);
 
-        // Add as task
-        if (item.type === 'google') { // Only valid for google events to be "imported" as tasks? Or duplicate generic ones? let's do all.
-            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-            const color = customColor || item.color || item.calendarColor || '#3b82f6';
-            const title = item.title || item.summary;
+        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+        const color = customColor || item.color || item.calendarColor || '#3b82f6';
+        const title = item.title || item.summary || item.text || '';
 
-            // Format date YYYY-MM-DD
-            const y = dateObj.getFullYear();
-            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const d = String(dateObj.getDate()).padStart(2, '0');
-            const dateStr = `${y}-${m}-${d}`;
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
 
-            // Check if already exists to avoid spamming? User said "clicks... a subtitle is created".
-            // Let's check simply by title+date
-            const exists = tasks.some(t => t.text === title && t.date === dateStr);
-            if (!exists) {
-                onAddTask(dateStr, title, false, null, 30, '', '', [], false, { color });
+        let timeStr = '09:00';
+        let duration = 30;
+        let allDay = false;
+
+        if (item.type === 'google') {
+            if (item.start?.dateTime) {
+                const start = new Date(item.start.dateTime);
+                const end = new Date(item.end?.dateTime || item.start.dateTime);
+                timeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                duration = Math.max(15, Math.round((end - start) / 60000)) || 30;
+            } else {
+                allDay = true;
+            }
+        } else if (item.type === 'task') {
+            if (item.metadata?.time) {
+                timeStr = item.metadata.time;
+            } else {
+                allDay = true;
+            }
+            if (item.metadata?.duration) {
+                duration = item.metadata.duration;
             }
         }
+
+        let participants = [];
+        if (item.attendees) {
+            participants = item.attendees.map(a => a.email);
+        }
+
+        setNewEventData({
+            title,
+            dateStr,
+            timeStr,
+            duration,
+            location: item.location || '',
+            description: item.description || '',
+            participants,
+            color,
+            calendarId: item.calendarId || 'primary',
+            eventType: item.type === 'task' ? 'task' : 'event',
+            addMeet: !!item.hangoutLink,
+            allDay,
+            editingEventId: item.id,
+            _originalItem: item
+        });
+
+        // Position modal centrally
+        setModalPosition({
+            top: Math.max(20, window.innerHeight / 2 - 200),
+            left: Math.max(20, window.innerWidth / 2 - 224)
+        });
+        setShowEventModal(true);
     };
 
     const [view, setView] = useState(() => localStorage.getItem('calendar_view') || 'month'); // 'month', 'week', 'day'
@@ -384,20 +425,54 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             }
         };
 
-        if (onAddTask) {
-            await onAddTask(
-                newEventData.dateStr,
-                newEventData.title,
-                true,
-                newEventData.allDay ? null : newEventData.timeStr,
-                newEventData.duration, // duration
-                description,
-                newEventData.location,
-                attendeesList,
-                newEventData.addMeet,
-                { color: newEventData.color }, // Pass metadata object with color
-                newEventData.calendarId || 'primary' // Pass the selected calendar ID
-            );
+        if (newEventData.editingEventId) {
+            // Update an existing event
+            if (newEventData.eventType === 'google' || newEventData._originalItem?.type === 'google') {
+                const cal = calendars.find(c => c.id === newEventData.calendarId) || calendars[0];
+                const callToken = cal?._token || user.access_token;
+
+                try {
+                    const updateResponse = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(newEventData.calendarId || 'primary')}/events/${newEventData.editingEventId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${callToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(event)
+                    });
+                    if (updateResponse.ok) {
+                        fetchEvents(user.access_token);
+                    }
+                } catch (err) {
+                    console.error('Error updating event:', err);
+                }
+            } else {
+                // Task updates can be addressed via onUpdateTask if available
+                if (onUpdateTask) {
+                    await onUpdateTask(newEventData.editingEventId, {
+                        text: newEventData.title,
+                        date: newEventData.dateStr,
+                        // Not handling full time updates here to keep it simple, typically you might update metadata too
+                    });
+                }
+            }
+        } else {
+            // Create a new event
+            if (onAddTask) {
+                await onAddTask(
+                    newEventData.dateStr,
+                    newEventData.title,
+                    true,
+                    newEventData.allDay ? null : newEventData.timeStr,
+                    newEventData.duration, // duration
+                    description,
+                    newEventData.location,
+                    attendeesList,
+                    newEventData.addMeet,
+                    { color: newEventData.color }, // Pass metadata object with color
+                    newEventData.calendarId || 'primary' // Pass the selected calendar ID
+                );
+            }
         }
 
         setShowEventModal(false);
@@ -431,44 +506,126 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
     const fetchCalendars = async (accessToken) => {
         try {
-            const response = await fetch(
-                'https://www.googleapis.com/calendar/v3/users/me/calendarList',
-                { headers: { Authorization: `Bearer ${accessToken}` } }
-            );
-            if (response.ok) {
-                const data = await response.json();
-                const items = data.items || [];
-                setCalendars(items);
-
-                // Try to load selection from local storage
-                const savedSelection = localStorage.getItem('calendar_selected_ids');
-                let initialSelected;
-
-                if (savedSelection) {
-                    try {
-                        const savedArray = JSON.parse(savedSelection);
-                        // Filter saved IDs to only those that exist in the current calendar list
-                        const validIds = savedArray.filter(id => items.some(c => c.id === id));
-                        if (validIds.length > 0) {
-                            initialSelected = new Set(validIds);
-                        }
-                    } catch (e) {
-                        console.error('Error parsing saved calendar selection', e);
-                    }
+            const fetchForToken = async (tokenObj) => {
+                const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+                    headers: { Authorization: `Bearer ${tokenObj.access_token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    return (data.items || []).map(cal => ({ ...cal, _token: tokenObj.access_token, _accountId: tokenObj.email }));
                 }
+                return [];
+            };
 
-                if (!initialSelected || initialSelected.size === 0) {
-                    // Fallback: select based on API 'selected' property or primary
-                    initialSelected = new Set(items.filter(c => c.selected).map(c => c.id));
-                    if (initialSelected.size === 0 && items.length > 0) {
-                        const primary = items.find(c => c.primary);
-                        if (primary) initialSelected.add(primary.id);
+            const mainItems = await fetchForToken(user);
+            const linkedItemsPromises = linkedAccounts.map(account => fetchForToken(account));
+            const linkedItemsArray = await Promise.all(linkedItemsPromises);
+
+            // Only keep the primary calendar from linked accounts, ignore their other calendars
+            const primaryLinkedItems = linkedItemsArray.flat().filter(cal => cal.primary === true);
+
+            const allItems = [...mainItems, ...primaryLinkedItems];
+            // Deduplicate by calendar ID so we don't show the same holiday/shared calendar multiple times
+            const items = Array.from(new Map(allItems.map(item => [item.id, item])).values());
+            setCalendars(items);
+
+            // Try to load selection from local storage
+            const savedSelection = localStorage.getItem('calendar_selected_ids');
+            let initialSelected;
+
+            if (savedSelection) {
+                try {
+                    const savedArray = JSON.parse(savedSelection);
+                    // Filter saved IDs to only those that exist in the current calendar list
+                    const validIds = savedArray.filter(id => items.some(c => c.id === id));
+                    if (validIds.length > 0) {
+                        initialSelected = new Set(validIds);
                     }
+                } catch (e) {
+                    console.error('Error parsing saved calendar selection', e);
                 }
-                setSelectedCalendarIds(initialSelected);
             }
+
+            if (!initialSelected || initialSelected.size === 0) {
+                // Fallback: select based on API 'selected' property or primary
+                initialSelected = new Set(items.filter(c => c.selected).map(c => c.id));
+                if (initialSelected.size === 0 && items.length > 0) {
+                    const primary = items.find(c => c.primary);
+                    if (primary) initialSelected.add(primary.id);
+                }
+            }
+            setSelectedCalendarIds(initialSelected);
         } catch (error) {
             console.error('Error fetching calendars:', error);
+        }
+    };
+
+    const handleAddOtherCalendar = async (e) => {
+        if (e) e.preventDefault();
+        if (!addOtherEmail.trim() || !user?.access_token) return;
+        setLoading(true);
+        try {
+            // Attempt to insert the calendar
+            const insertResponse = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: addOtherEmail })
+            });
+
+            if (insertResponse.ok) {
+                alert('Calendar added successfully!');
+                fetchCalendars(user.access_token);
+                setShowAddOtherInput(false);
+                setAddOtherEmail('');
+            } else {
+                // If 403 or 404, we don't have access. Check if user wants to send an email request.
+                const wantsToRequest = window.confirm(`You do not have access to ${addOtherEmail}'s calendar.\nWould you like to send an email requesting access?`);
+
+                if (wantsToRequest) {
+                    const constructEmail = () => {
+                        const to = addOtherEmail;
+                        const from = user.email;
+                        const subject = `Calendar Access Request from ${from}`;
+                        const body = `Hi,\n\nI would like to request access to view your Google Calendar on ProHub.\n\nPlease share it with me at ${from}.\n\nThanks!`;
+
+                        const str = [
+                            `To: ${to}`,
+                            `From: ${from}`,
+                            `Subject: ${subject}`,
+                            'Content-Type: text/plain; charset="UTF-8"',
+                            '',
+                            body
+                        ].join('\n');
+
+                        return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                    };
+
+                    const emailResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${user.access_token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ raw: constructEmail() })
+                    });
+
+                    if (emailResponse.ok) {
+                        alert(`Request sent to ${addOtherEmail} via Gmail.`);
+                        setShowAddOtherInput(false);
+                        setAddOtherEmail('');
+                    } else {
+                        alert('Could not add calendar nor send request email. Please check your Gmail permissions.');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error adding other calendar:', error);
+            alert('An error occurred.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -492,9 +649,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
             const promises = Array.from(selectedCalendarIds).map(async (calendarId) => {
                 try {
+                    const cal = calendars.find(c => c.id === calendarId);
+                    const callToken = cal?._token || accessToken;
+
                     const response = await fetch(
                         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${startStr}&timeMax=${endStr}&singleEvents=true&orderBy=startTime`,
-                        { headers: { Authorization: `Bearer ${accessToken}` } }
+                        { headers: { Authorization: `Bearer ${callToken}` } }
                     );
 
                     if (response.status === 401) {
@@ -503,7 +663,6 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     }
 
                     const data = await response.json();
-                    const cal = calendars.find(c => c.id === calendarId);
                     return (data.items || []).map(item => ({
                         ...item,
                         calendarId,
@@ -640,22 +799,108 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         ? `${getDaysInWeek()[0].dateObj.getDate()} - ${getDaysInWeek()[6].dateObj.getDate()}`
         : '';
 
+    // Keyboard navigation
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Ignore if user is typing in an input
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+            if (e.target.isContentEditable) return;
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault(); // Prevent scrolling when navigating dates
+                handlePrev();
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                handleNext();
+            } else if (e.key.toLowerCase() === 'w') {
+                setView('week');
+            } else if (e.key.toLowerCase() === 'm') {
+                setView('month');
+            } else if (e.key === 'd' || e.key === 'D') {
+                setView('day');
+            } else if (e.key === 'Enter') {
+                if (!showEventModal) {
+                    e.preventDefault();
+                    // Setup default start time to the next closest 30 minute block
+                    const now = new Date();
+                    const remainder = 30 - (now.getMinutes() % 30);
+                    const defaultStart = new Date(now.getTime() + remainder * 60000);
+                    const ds = (currentDate || now).toISOString().split('T')[0];
+                    const ts = defaultStart.toTimeString().substring(0, 5);
+
+                    setNewEventData({
+                        title: '',
+                        participants: [],
+                        location: '',
+                        description: '',
+                        dateStr: ds,
+                        timeStr: ts,
+                        duration: 30,
+                        eventType: 'event',
+                        addMeet: false,
+                        allDay: false,
+                        color: '#3b82f6',
+                        calendarId: 'primary'
+                    });
+                    setDragStart(null);
+                    setModalPosition({
+                        top: Math.max(20, window.innerHeight / 2 - 200),
+                        left: Math.max(20, window.innerWidth / 2 - 224)
+                    });
+                    setShowEventModal(true);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [view, currentDate, showEventModal]); // Dependencies needed if handlePrev/Next are not using state setter functions correctly or if we want to be safe. Actually setCurrentDate(prev => ...) is safer but the current handlePrev/Next use the current state value.
+
+
     return (
         <div style={{
-            height: 'calc(100vh - 4rem)',
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            padding: '1rem 0.5rem'
+            padding: '0 0.5rem 0 0.5rem' // Removed bottom padding to eliminate color difference gap
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--primary)', margin: 0, minWidth: '200px' }}>
-                        <CalendarIcon size={24} />
-                        {view === 'month' && `${monthName} ${currentDate.getFullYear()}`}
-                        {view === 'week' && `${monthName} ${weekRange}`}
-                        {view === 'day' && currentDate.toDateString()}
-                    </h2>
+            {/* Calendar Header SCOOTED UP to match Dynamic Island Level */}
+            <div style={{
+                position: 'fixed',
+                top: '0.75rem',
+                left: '1.5rem',
+                zIndex: 1001,
+                pointerEvents: 'none' // Allow clicking through to underlying elements if any, but h2 needs pointerEvents 'auto'
+            }}>
+                <h2 style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    color: 'var(--text-main)',
+                    margin: 0,
+                    fontSize: '1.4rem',
+                    fontWeight: 600,
+                    pointerEvents: 'auto'
+                }}>
+                    {view === 'month' && `${monthName} ${currentDate.getFullYear()}`}
+                    {view === 'week' && `${monthName} ${weekRange}`}
+                    {view === 'day' && currentDate.toDateString()}
+                </h2>
+            </div>
+
+            {/* View Switcher and Login - Moved to top right fixed position */}
+            <div style={{
+                position: 'fixed',
+                top: '0.75rem',
+                right: '1.5rem',
+                zIndex: 1001,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                pointerEvents: 'auto'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
 
                     <div className="view-switcher" style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
                         {['month', 'week', 'day'].map(v => (
@@ -681,14 +926,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
 
 
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button onClick={handlePrev} className="btn-icon" style={{ width: '32px', height: '32px' }}>
-                            <ChevronLeft size={18} />
-                        </button>
-                        <button onClick={handleNext} className="btn-icon" style={{ width: '32px', height: '32px' }}>
-                            <ChevronRight size={18} />
-                        </button>
-                    </div>
+                    {/* Navigation Buttons Removed - Using Keyboard Arrows Instead */}
                 </div>
 
                 {!user ? (
@@ -712,12 +950,6 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         >
                             <AlignLeft size={18} />
                         </button>
-                        <button onClick={onSyncClick} className="btn-icon" style={{ width: 'auto', padding: '0 1rem', display: 'flex', gap: '0.5rem', background: 'white', color: 'var(--text-main)', border: '1px solid rgba(0,0,0,0.1)' }}>
-                            <RefreshCcw size={16} /> Sync Plans
-                        </button>
-                        <button onClick={logout} className="btn-icon" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' }}>
-                            <LogOut size={18} />
-                        </button>
                     </div>
                 )}
             </div>
@@ -738,10 +970,33 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 }}
                             />
                             <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', margin: '0.5rem 0 1rem 0' }}></div>
-                            <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Calendars</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Calendars</h3>
+                                <button
+                                    onClick={() => onAddLinkedAccount()}
+                                    title="Add calendar from another Gmail"
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--text-muted)',
+                                        cursor: 'pointer',
+                                        padding: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: '4px',
+                                        transition: 'background-color 0.2s',
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
+                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {calendars.map(cal => (
-                                    <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem', cursor: 'pointer', padding: '4px', borderRadius: '6px', opacity: selectedCalendarIds.has(cal.id) ? 1 : 0.4, transition: 'opacity 0.2s' }} className="calendar-item">
+                                {calendars.filter(cal => cal.primary || cal.id === user?.email || linkedAccounts.some(acc => cal.id === acc.email)).map(cal => (
+                                    <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', cursor: 'pointer', padding: '2px 4px', borderRadius: '6px', opacity: selectedCalendarIds.has(cal.id) ? 1 : 0.4, transition: 'opacity 0.2s' }} className="calendar-item">
                                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                             <input
                                                 type="checkbox"
@@ -779,115 +1034,166 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     </label>
                                 ))}
                             </div>
+
+                            {calendars.filter(cal => !cal.primary && cal.id !== user?.email && !linkedAccounts.some(acc => cal.id === acc.email)).length > 0 && (
+                                <div style={{ marginTop: '1.5rem' }}>
+                                    <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Other Calendars</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {calendars.filter(cal => !cal.primary && cal.id !== user?.email && !linkedAccounts.some(acc => cal.id === acc.email)).map(cal => (
+                                            <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', cursor: 'pointer', padding: '2px 4px', borderRadius: '6px', opacity: selectedCalendarIds.has(cal.id) ? 1 : 0.4, transition: 'opacity 0.2s' }} className="calendar-item">
+                                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedCalendarIds.has(cal.id)}
+                                                        onChange={(e) => {
+                                                            const newSet = new Set(selectedCalendarIds);
+                                                            if (e.target.checked) {
+                                                                newSet.add(cal.id);
+                                                            } else {
+                                                                newSet.delete(cal.id);
+                                                            }
+                                                            setSelectedCalendarIds(newSet);
+                                                        }}
+                                                        style={{ opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer' }}
+                                                    />
+                                                    <div style={{
+                                                        width: '16px',
+                                                        height: '16px',
+                                                        borderRadius: '4px',
+                                                        border: `2px solid ${cal.backgroundColor}`,
+                                                        backgroundColor: selectedCalendarIds.has(cal.id) ? cal.backgroundColor : 'transparent',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        transition: 'all 0.2s'
+                                                    }}>
+                                                        {selectedCalendarIds.has(cal.id) && (
+                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                                            </svg>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <span style={{ color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {cal.summary}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
-                <div className="glass-card static" style={{ padding: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+                <div className="glass-card static" style={{ padding: '0.5rem 0.5rem 0 0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, background: 'transparent', border: 'none', boxShadow: 'none' }}>
                     {view === 'month' && (
-                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
-                            <div className="calendar-grid">
-                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                                    <div key={d} className="calendar-header-cell">{d}</div>
-                                ))}
-                                {getDaysInMonth().map((dayObj, i) => {
-                                    const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
-                                    const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '32px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)' }}>
+                            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', paddingBottom: '0' }}>
+                                <div className="calendar-grid" style={{ margin: 0, border: 'none', borderRadius: 0 }}>
+                                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                        <div key={d} className="calendar-header-cell">{d}</div>
+                                    ))}
+                                    {getDaysInMonth().map((dayObj, i) => {
+                                        const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
+                                        const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
 
-                                    // Merge and sort items
-                                    const allItems = [
-                                        ...dayEvents.map(e => ({ ...e, type: 'google' })),
-                                        ...dayTasks.map(t => ({ ...t, type: 'task', title: t.text }))
-                                    ].sort((a, b) => {
-                                        // Simple sort by time if available, otherwise prioritize all-day events?
-                                        // Or just keep grouped. I'll stick to a simple merge.
-                                        // Actually, let's sort by start time if possible.
-                                        const getMinutes = (item) => {
-                                            if (item.type === 'google' && item.start.dateTime) {
-                                                const d = new Date(item.start.dateTime);
-                                                return d.getHours() * 60 + d.getMinutes();
-                                            }
-                                            if (item.type === 'task' && item.metadata?.time) {
-                                                const [h, m] = item.metadata.time.split(':').map(Number);
-                                                return h * 60 + m;
-                                            }
-                                            return -1; // All day / no time
-                                        };
-                                        return getMinutes(a) - getMinutes(b);
-                                    });
+                                        // Merge and sort items
+                                        const allItems = [
+                                            ...dayEvents.map(e => ({ ...e, type: 'google' })),
+                                            ...dayTasks.map(t => ({ ...t, type: 'task', title: t.text }))
+                                        ].sort((a, b) => {
+                                            // Simple sort by time if available, otherwise prioritize all-day events?
+                                            // Or just keep grouped. I'll stick to a simple merge.
+                                            // Actually, let's sort by start time if possible.
+                                            const getMinutes = (item) => {
+                                                if (item.type === 'google' && item.start.dateTime) {
+                                                    const d = new Date(item.start.dateTime);
+                                                    return d.getHours() * 60 + d.getMinutes();
+                                                }
+                                                if (item.type === 'task' && item.metadata?.time) {
+                                                    const [h, m] = item.metadata.time.split(':').map(Number);
+                                                    return h * 60 + m;
+                                                }
+                                                return -1; // All day / no time
+                                            };
+                                            return getMinutes(a) - getMinutes(b);
+                                        });
 
-                                    const MAX_VISIBLE = 3;
-                                    const visibleItems = allItems.slice(0, MAX_VISIBLE);
-                                    const overflowCount = allItems.length - MAX_VISIBLE;
+                                        const MAX_VISIBLE = 4;
+                                        const visibleItems = allItems.slice(0, MAX_VISIBLE);
+                                        const overflowCount = allItems.length - MAX_VISIBLE;
 
-                                    return (
-                                        <div
-                                            key={i}
-                                            className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
-                                            onClick={() => {
-                                                setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
-                                                setView('day');
-                                            }}
-                                            style={{
-                                                cursor: 'pointer',
-                                                color: dayObj.currentMonth ? '#000' : '#9ca3af',
-                                                minHeight: '150px', // Increased static height
-                                                height: '150px',    // Increased static height
-                                                overflow: 'hidden',  // Hide overflow
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                padding: '4px'      // Add padding
-                                            }}
-                                        >
-                                            <div className="day-number" style={{ color: 'inherit', marginBottom: '2px', fontWeight: 600 }}>{dayObj.day}</div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                                                {visibleItems.map((item, idx) => {
-                                                    const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                    const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
+                                        return (
+                                            <div
+                                                key={i}
+                                                className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
+                                                onClick={() => {
+                                                    setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
+                                                    setView('day');
+                                                }}
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    color: dayObj.currentMonth ? '#000' : '#9ca3af',
+                                                    minHeight: '170px', // Adjusted static height
+                                                    height: '170px',    // Adjusted static height
+                                                    overflow: 'hidden',  // Hide overflow
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    padding: '4px'      // Add padding
+                                                }}
+                                            >
+                                                <div className="day-number" style={{ color: 'inherit', marginBottom: '2px', fontWeight: 400, fontSize: '0.8rem', opacity: 0.6 }}>
+                                                    {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'long' })} 1` : dayObj.day}
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                                                    {visibleItems.map((item, idx) => {
+                                                        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                        const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
 
-                                                    const style = color ? {
-                                                        backgroundColor: `${color}4d`, // 30% opacity
-                                                        backdropFilter: 'blur(4px)',
-                                                        borderLeft: `3px solid ${color}`,
-                                                        color: '#000', // Text color - Changed to black
-                                                        // Glassmorphic border
-                                                        borderTop: `1px solid ${color}40`,
-                                                        borderRight: `1px solid ${color}40`,
-                                                        borderBottom: `1px solid ${color}40`,
-                                                    } : {
-                                                        // Default gray style if no color (though mostly should have color)
-                                                        backgroundColor: 'rgba(0,0,0,0.05)',
-                                                        color: 'var(--text-main)',
-                                                        borderLeft: '3px solid rgba(0,0,0,0.2)'
-                                                    };
+                                                        const style = color ? {
+                                                            backgroundColor: `${color}4d`, // 30% opacity
+                                                            backdropFilter: 'blur(4px)',
+                                                            borderLeft: `3px solid ${color}`,
+                                                            color: '#000', // Text color - Changed to black
+                                                            // Glassmorphic border
+                                                            borderTop: `1px solid ${color}40`,
+                                                            borderRight: `1px solid ${color}40`,
+                                                            borderBottom: `1px solid ${color}40`,
+                                                        } : {
+                                                            // Default gray style if no color (though mostly should have color)
+                                                            backgroundColor: 'rgba(0,0,0,0.05)',
+                                                            color: 'var(--text-main)',
+                                                            borderLeft: '3px solid rgba(0,0,0,0.2)'
+                                                        };
 
-                                                    return (
-                                                        <div key={`${item.id}-${idx}`} className="event-pill" title={item.summary || item.title}
-                                                            style={{
-                                                                ...style,
-                                                                padding: '2px 4px',
-                                                                fontSize: '0.75rem',
-                                                                borderRadius: '4px',
-                                                                marginBottom: '1px',
-                                                                overflow: 'hidden',
-                                                                whiteSpace: 'nowrap',
-                                                                textOverflow: 'ellipsis',
-                                                                display: 'block'
-                                                            }}
-                                                        >
-                                                            {item.summary || item.title}
+                                                        return (
+                                                            <div key={`${item.id}-${idx}`} className="event-pill" title={item.summary || item.title}
+                                                                style={{
+                                                                    ...style,
+                                                                    padding: '2px 4px',
+                                                                    fontSize: '0.75rem',
+                                                                    borderRadius: '4px',
+                                                                    marginBottom: '1px',
+                                                                    overflow: 'hidden',
+                                                                    whiteSpace: 'nowrap',
+                                                                    textOverflow: 'ellipsis',
+                                                                    display: 'block',
+                                                                    fontWeight: 300
+                                                                }}
+                                                            >
+                                                                {item.summary || item.title}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {overflowCount > 0 && (
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '4px', marginTop: '2px', fontWeight: 600 }}>
+                                                            +{overflowCount} more...
                                                         </div>
-                                                    );
-                                                })}
-                                                {overflowCount > 0 && (
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '4px', marginTop: '2px', fontWeight: 600 }}>
-                                                        +{overflowCount} more...
-                                                    </div>
-                                                )}
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -902,7 +1208,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         return (
                                             <div key={i} style={{ textAlign: 'center', opacity: isToday ? 1 : 0.7 }}>
                                                 <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
-                                                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: isToday ? 'var(--primary)' : 'var(--text-main)' }}>{dayObj.day}</div>
+                                                <div style={{ fontSize: '1rem', fontWeight: 400, color: isToday ? 'var(--primary)' : 'var(--text-main)', opacity: isToday ? 1 : 0.8 }}>{dayObj.day}</div>
                                             </div>
                                         );
                                     })}
@@ -1074,7 +1380,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                 border: color ? `1px solid ${color}66` : undefined,
                                                                 borderLeft: color ? `3px solid ${color}` : undefined,
                                                                 color: color ? '#000' : undefined,
-                                                                borderRadius: '4px'
+                                                                borderRadius: '4px',
+                                                                fontWeight: 300
                                                             }}>
                                                                 {item.title}
                                                             </div>
@@ -1106,7 +1413,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                 color: '#fff',
                                                                 borderRadius: '4px'
                                                             }}>
-                                                                <div style={{ fontWeight: 600, fontSize: '0.7rem' }}>{item.title}</div>
+                                                                <div style={{ fontWeight: 300, fontSize: '0.7rem' }}>{item.title}</div>
                                                                 {height > 30 && (
                                                                     <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>
                                                                         {Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}
@@ -1287,7 +1594,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     borderRadius: '4px',
                                                                     fontSize: '0.85rem'
                                                                 }}>
-                                                                    <span style={{ fontWeight: 600 }}>All Day:</span> {item.title}
+                                                                    <span style={{ fontWeight: 300 }}>All Day:</span> {item.title}
                                                                 </div>
                                                             );
                                                         })}
@@ -1323,7 +1630,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                 }}
                                                                 onClick={(e) => handleEventClick(e, item, currentDate)}
                                                             >
-                                                                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
+                                                                <div style={{ fontWeight: 300, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
                                                                 <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.5rem' }}>
                                                                     <span>{Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}</span>
                                                                     {item.type === 'google' && item.hangoutLink && <Video size={12} />}
@@ -1557,315 +1864,305 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             left: dragStart ? modalPosition.left : '50%',
                             transform: dragStart ? 'none' : 'translate(-50%, -50%)',
                             zIndex: 9999,
-                            width: '480px',
-                            background: 'rgba(255, 255, 255, 0.9)',
+                            width: '400px',
+                            background: 'rgba(255, 255, 255, 0.65)',
                             backdropFilter: 'blur(20px)',
                             WebkitBackdropFilter: 'blur(20px)',
-                            borderRadius: '16px',
-                            boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.6) inset, 0 0 0 1px rgba(0,0,0,0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.8)',
+                            borderRadius: '24px',
+                            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)',
                             padding: '0',
                             display: 'flex',
                             flexDirection: 'column',
                             overflow: 'hidden',
                             animation: 'popupScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                            color: '#1e293b'
+                            color: '#37352f',
+                            fontFamily: 'Inter, -apple-system, sans-serif'
                         }}>
-                            {/* Notion-style Header */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#37352f' }}>Page</span>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <button
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(55, 53, 47, 0.45)', padding: '4px', display: 'flex' }}
+                            {/* Top Bar */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', color: '#737373' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#171717' }}>
+                                    <select
+                                        value={newEventData.eventType || 'event'}
+                                        onChange={e => setNewEventData({ ...newEventData, eventType: e.target.value })}
+                                        style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', appearance: 'none', fontWeight: 'inherit', color: 'inherit', padding: 0 }}
                                     >
-                                        <div style={{ width: '16px', height: '16px', border: '1.5px solid currentColor', borderRadius: '2px' }} />
+                                        <option value="event">Event</option>
+                                        <option value="task">Task</option>
+                                    </select>
+                                    <ChevronDown size={14} style={{ pointerEvents: 'none' }} />
+                                </div>
+                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                    <button
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a3a3a3', padding: '0', display: 'flex' }}
+                                    >
+                                        <MoreHorizontal size={16} />
+                                    </button>
+                                    <button
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a3a3a3', padding: '0', display: 'flex' }}
+                                    >
+                                        <Maximize2 size={14} />
                                     </button>
                                     <button
                                         onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(55, 53, 47, 0.45)', padding: '4px', display: 'flex' }}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a3a3a3', padding: '0', display: 'flex' }}
                                     >
                                         <X size={18} />
                                     </button>
                                 </div>
                             </div>
 
-                            <div style={{ padding: '0 48px 24px 48px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
-                                {/* Title */}
-                                <div style={{ marginTop: '32px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                {/* Title Input */}
+                                <div style={{ padding: '4px 16px 16px 16px' }}>
+                                    <input
+                                        autoFocus
+                                        placeholder="Title"
+                                        value={newEventData.title}
+                                        onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleSaveEvent();
+                                            }
+                                        }}
+                                        style={{
+                                            fontSize: '22px',
+                                            fontWeight: 500,
+                                            border: 'none',
+                                            outline: 'none',
+                                            width: '100%',
+                                            color: '#171717',
+                                            padding: 0,
+                                            background: 'transparent'
+                                        }}
+                                    />
+                                </div>
 
-                                    {/* Title Input */}
-                                    <div>
-                                        <input
-                                            autoFocus
-                                            placeholder="Title"
-                                            value={newEventData.title}
-                                            onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
-                                            style={{
-                                                fontSize: '36px',
-                                                fontWeight: 700,
-                                                border: 'none',
-                                                outline: 'none',
-                                                width: '100%',
-                                                color: '#37352f',
-                                                padding: 0,
-                                                background: 'transparent',
-                                                lineHeight: 1.2,
-                                                marginBottom: '24px'
-                                            }}
-                                        />
+                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+
+                                {/* Time Section */}
+                                <style>{`
+                                    input[type="time"]::-webkit-calendar-picker-indicator,
+                                    input[type="date"]::-webkit-calendar-picker-indicator {
+                                        display: none;
+                                        -webkit-appearance: none;
+                                    }
+                                `}</style>
+                                <div style={{ padding: '16px', display: 'flex', gap: '16px' }}>
+                                    <div style={{ color: '#a3a3a3', marginTop: '2px' }}>
+                                        <Clock size={16} />
                                     </div>
-
-                                    {/* Properties Grid */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        {/* Date Property */}
-                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}>
-                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                                </svg>
-                                                <span>日付</span>
-                                            </div>
-                                            <div style={{ fontSize: '14px', color: '#37352f', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                <input
-                                                    type="date"
-                                                    value={newEventData.dateStr}
-                                                    onChange={e => setNewEventData({ ...newEventData, dateStr: e.target.value })}
-                                                    style={{
-                                                        border: 'none',
-                                                        background: 'transparent',
-                                                        fontSize: '14px',
-                                                        color: '#37352f',
-                                                        outline: 'none',
-                                                        cursor: 'pointer',
-                                                        padding: '2px 4px',
-                                                        borderRadius: '4px'
-                                                    }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(55, 53, 47, 0.06)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                />
-                                                {!newEventData.allDay && (
-                                                    <input
-                                                        type="time"
-                                                        value={newEventData.timeStr || ''}
-                                                        onChange={e => setNewEventData({ ...newEventData, timeStr: e.target.value })}
-                                                        style={{
-                                                            border: 'none',
-                                                            background: 'transparent',
-                                                            fontSize: '14px',
-                                                            color: 'rgba(55,53,47,0.65)',
-                                                            outline: 'none',
-                                                            cursor: 'pointer',
-                                                            padding: '2px 4px',
-                                                            borderRadius: '4px'
-                                                        }}
-                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(55, 53, 47, 0.06)'}
-                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* All-day Property */}
-                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}>
-                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
-                                                <Clock size={16} />
-                                                <span>All-day</span>
-                                            </div>
-                                            <div
-                                                onClick={() => setNewEventData({ ...newEventData, allDay: !newEventData.allDay })}
-                                                style={{
-                                                    width: '32px', height: '18px',
-                                                    background: newEventData.allDay ? '#2eaadc' : 'rgba(55, 53, 47, 0.16)',
-                                                    borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.2s'
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px', color: '#171717', fontWeight: 500 }}>
+                                            <input
+                                                type="time"
+                                                value={newEventData.timeStr || ''}
+                                                onChange={e => setNewEventData({ ...newEventData, timeStr: e.target.value })}
+                                                onClick={e => e.target.showPicker && e.target.showPicker()}
+                                                style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
+                                            />
+                                            <ArrowRight size={14} color="#a3a3a3" />
+                                            <input
+                                                type="time"
+                                                value={(() => {
+                                                    if (!newEventData.timeStr) return '';
+                                                    const [h, m] = newEventData.timeStr.split(':').map(Number);
+                                                    const totalM = h * 60 + m + (newEventData.duration || 30);
+                                                    const endH = Math.floor(totalM / 60) % 24;
+                                                    const endM = totalM % 60;
+                                                    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+                                                })()}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    if (val && newEventData.timeStr) {
+                                                        const [sh, sm] = newEventData.timeStr.split(':').map(Number);
+                                                        const [eh, em] = val.split(':').map(Number);
+                                                        let diff = (eh * 60 + em) - (sh * 60 + sm);
+                                                        if (diff < 0) diff += 24 * 60;
+                                                        setNewEventData({ ...newEventData, duration: Math.max(15, diff) });
+                                                    }
                                                 }}
-                                            >
-                                                <div style={{
-                                                    width: '14px', height: '14px', background: 'white', borderRadius: '50%',
-                                                    position: 'absolute', top: '2px',
-                                                    left: newEventData.allDay ? '16px' : '2px',
-                                                    transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
-                                                }} />
-                                            </div>
+                                                onClick={e => e.target.showPicker && e.target.showPicker()}
+                                                style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
+                                            />
+                                            <span style={{ color: '#737373', fontWeight: 400 }}>
+                                                {newEventData.duration >= 60 ? `${Math.floor(newEventData.duration / 60)}h${newEventData.duration % 60 > 0 ? ` ${newEventData.duration % 60}m` : ''}` : `${newEventData.duration}m`}
+                                            </span>
                                         </div>
-
-                                        {/* Calendar Property */}
-                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}>
-                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <rect x="3" y="3" width="7" height="7"></rect>
-                                                    <rect x="14" y="3" width="7" height="7"></rect>
-                                                    <rect x="14" y="14" width="7" height="7"></rect>
-                                                    <rect x="3" y="14" width="7" height="7"></rect>
-                                                </svg>
-                                                <span>Calendar</span>
-                                            </div>
-                                            <select
-                                                value={newEventData.calendarId || 'primary'}
-                                                onChange={e => setNewEventData({ ...newEventData, calendarId: e.target.value })}
-                                                style={{
-                                                    fontSize: '14px',
-                                                    color: '#37352f',
-                                                    border: 'none',
-                                                    background: 'transparent',
-                                                    outline: 'none',
-                                                    cursor: 'pointer',
-                                                    padding: '2px 4px',
-                                                    borderRadius: '4px',
-                                                    appearance: 'none',
-                                                    WebkitAppearance: 'none'
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(55, 53, 47, 0.06)'}
-                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                            >
-                                                {calendars.length > 0 ? (
-                                                    calendars.map(cal => (
-                                                        <option key={cal.id} value={cal.id}>
-                                                            {cal.summary || cal.id}
-                                                        </option>
-                                                    ))
-                                                ) : (
-                                                    <option value="primary">Primary Calendar</option>
-                                                )}
+                                        <div style={{ fontSize: '13px', color: '#404040', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <CalendarIcon size={14} color="#a3a3a3" />
+                                            <input
+                                                type="date"
+                                                value={newEventData.dateStr}
+                                                onChange={e => setNewEventData({ ...newEventData, dateStr: e.target.value })}
+                                                onClick={e => e.target.showPicker && e.target.showPicker()}
+                                                style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontFamily: 'inherit' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#a3a3a3', marginTop: '4px', alignItems: 'center' }}>
+                                            <span style={{ cursor: 'pointer', color: newEventData.allDay ? '#171717' : 'inherit' }} onClick={() => setNewEventData({ ...newEventData, allDay: !newEventData.allDay })}>All-day</span>
+                                            <select style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', outline: 'none', fontSize: 'inherit', padding: 0 }}>
+                                                <option value="none">Does not repeat</option>
+                                                <option value="daily">Daily</option>
+                                                <option value="weekly">Weekly</option>
+                                                <option value="monthly">Monthly</option>
                                             </select>
                                         </div>
+                                    </div>
+                                </div>
 
-                                        {/* Members Property */}
-                                        <div style={{ display: 'flex', alignItems: 'flex-start', minHeight: '32px', paddingTop: '4px' }}>
-                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px', height: '32px' }}>
-                                                <Users size={16} />
-                                                <span>参加者</span>
-                                            </div>
-                                            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                                                {Array.isArray(newEventData.participants) && newEventData.participants.map((email, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                            background: 'rgba(55, 53, 47, 0.08)',
-                                                            padding: '2px 8px',
-                                                            borderRadius: '12px',
-                                                            fontSize: '13px',
-                                                            color: '#37352f',
-                                                            whiteSpace: 'nowrap'
-                                                        }}
-                                                    >
-                                                        {email}
-                                                        <button
-                                                            onClick={() => {
-                                                                const newParticipants = newEventData.participants.filter((_, i) => i !== idx);
-                                                                setNewEventData({ ...newEventData, participants: newParticipants });
-                                                            }}
-                                                            style={{
-                                                                background: 'transparent',
-                                                                border: 'none',
-                                                                cursor: 'pointer',
-                                                                padding: '0',
-                                                                display: 'flex',
-                                                                color: 'rgba(55, 53, 47, 0.45)'
-                                                            }}
-                                                        >
-                                                            <X size={12} />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                                <input
-                                                    placeholder={newEventData.participants?.length > 0 ? "" : "Add members..."}
-                                                    value={memberInput}
-                                                    onChange={e => setMemberInput(e.target.value)}
-                                                    onKeyDown={e => {
-                                                        if (e.key === 'Enter' && memberInput.trim()) {
-                                                            e.preventDefault();
-                                                            const newMembers = [...(newEventData.participants || []), memberInput.trim()];
-                                                            setNewEventData({ ...newEventData, participants: newMembers });
-                                                            setMemberInput('');
-                                                        }
-                                                    }}
-                                                    style={{
-                                                        fontSize: '14px',
-                                                        color: '#37352f',
-                                                        border: 'none',
-                                                        background: 'transparent',
-                                                        outline: 'none',
-                                                        flex: 1,
-                                                        minWidth: '100px',
-                                                        padding: '4px 0'
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
+                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
 
-                                        {/* Tags Property */}
-                                        <div style={{ display: 'flex', alignItems: 'center', minHeight: '32px' }}>
-                                            <div style={{ width: '140px', display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(55, 53, 47, 0.65)', fontSize: '14px' }}>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                                                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                                                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                                                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                                                </svg>
-                                                <span>タグ</span>
-                                            </div>
-                                            <div style={{ fontSize: '14px', color: 'rgba(55, 53, 47, 0.45)' }}>Empty</div>
+                                {/* Options */}
+                                <div style={{ padding: '12px 0' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <label htmlFor="participants-input" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '8px 16px', color: '#737373', fontSize: '13px', cursor: 'pointer' }}
+                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.4)'}
+                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                            <Users size={16} />
+                                            <span>Participants</span>
+                                            {newEventData.participants?.length > 0 && <span style={{ marginLeft: 'auto', background: '#f5f5f5', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', color: '#171717' }}>{newEventData.participants.length}</span>}
+                                        </label>
+                                        <div style={{ padding: '0 16px 8px 48px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                            {newEventData.participants?.map((p, i) => (
+                                                <span key={i} style={{ background: '#f5f5f5', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', color: '#171717' }}>
+                                                    {p}
+                                                    <X size={10} cursor="pointer" onClick={() => {
+                                                        const newP = [...newEventData.participants];
+                                                        newP.splice(i, 1);
+                                                        setNewEventData({ ...newEventData, participants: newP });
+                                                    }} />
+                                                </span>
+                                            ))}
+                                            <input
+                                                id="participants-input"
+                                                placeholder="Add email..."
+                                                value={memberInput}
+                                                onChange={e => setMemberInput(e.target.value)}
+                                                style={{ border: 'none', outline: 'none', fontSize: '12px', background: 'transparent', minWidth: '100px', flex: 1, padding: '4px 0', color: '#171717' }}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter' && e.target.value) {
+                                                        e.preventDefault();
+                                                        const newP = [...(newEventData.participants || []), e.target.value];
+                                                        setNewEventData({ ...newEventData, participants: newP });
+                                                        setMemberInput('');
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                     </div>
-
-                                    {/* Divider */}
-                                    <div style={{ height: '1px', background: 'rgba(55, 53, 47, 0.09)', margin: '16px 0' }} />
-
-                                    {/* Add Google Meet Button */}
-                                    <button
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '8px 16px', color: '#737373', fontSize: '13px', cursor: 'pointer' }}
                                         onClick={() => setNewEventData({ ...newEventData, addMeet: !newEventData.addMeet })}
+                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.4)'}
+                                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                        <Video size={16} color={newEventData.addMeet ? '#2563eb' : 'currentColor'} />
+                                        <span style={{ color: newEventData.addMeet ? '#171717' : 'inherit' }}>Conferencing</span>
+                                        {newEventData.addMeet && <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#2563eb' }}>Google Meet</span>}
+                                    </div>
+                                </div>
+
+                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+
+                                {/* Description */}
+                                <div style={{ padding: '16px' }}>
+                                    <input
+                                        placeholder="Description"
+                                        value={newEventData.description || ''}
+                                        onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
+                                        style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: '#171717', fontSize: '13px', padding: 0 }}
+                                    />
+                                </div>
+
+                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+
+                                {/* Calendar Selection */}
+                                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px', color: '#171717', cursor: 'pointer' }}>
+                                        <div style={{ width: '12px', height: '12px', borderRadius: '4px', background: newEventData.color || '#3b82f6' }} />
+                                        <select
+                                            value={newEventData.calendarId || 'primary'}
+                                            onChange={e => setNewEventData({ ...newEventData, calendarId: e.target.value })}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', appearance: 'none', flex: 1 }}
+                                        >
+                                            <option value="primary">{user?.email || 'Primary Calendar'}</option>
+                                            {calendars.filter(c => c.id !== user?.email).map(cal => (
+                                                <option key={cal.id} value={cal.id}>{cal.summary}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '24px', paddingLeft: '24px', fontSize: '12px', color: '#404040' }}>
+                                        <select
+                                            value={newEventData.busyStatus || 'busy'}
+                                            onChange={e => setNewEventData({ ...newEventData, busyStatus: e.target.value })}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                                        >
+                                            <option value="busy">Busy</option>
+                                            <option value="free">Free</option>
+                                        </select>
+                                        <select
+                                            value={newEventData.visibility || 'default'}
+                                            onChange={e => setNewEventData({ ...newEventData, visibility: e.target.value })}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                                        >
+                                            <option value="default">Default visibility</option>
+                                            <option value="public">Public</option>
+                                            <option value="private">Private</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Reminders */}
+                                <div style={{ padding: '0 16px 16px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                    <Bell size={16} color="#a3a3a3" strokeWidth={2} style={{ marginTop: '2px' }} />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
+                                        <span style={{ color: '#a3a3a3' }}>Reminders</span>
+                                        <div style={{ color: '#404040', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                            <select
+                                                value={newEventData.reminder || '30'}
+                                                onChange={e => setNewEventData({ ...newEventData, reminder: e.target.value })}
+                                                style={{ fontWeight: 'bold', border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                                            >
+                                                <option value="0">At time of event</option>
+                                                <option value="5">5 min</option>
+                                                <option value="10">10 min</option>
+                                                <option value="15">15 min</option>
+                                                <option value="30">30 min</option>
+                                                <option value="60">1 hour</option>
+                                                <option value="1440">1 day</option>
+                                            </select>
+                                            <span>before</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 16px 16px 16px' }}>
+                                    { /* Save button hidden, relies on enter or blur, but let's just make it subtle or hide it */}
+                                    <button
+                                        onClick={handleSaveEvent}
                                         style={{
-                                            width: '100%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px',
-                                            padding: '8px',
-                                            borderRadius: '6px',
-                                            background: newEventData.addMeet ? 'rgba(37, 99, 235, 0.1)' : 'white',
-                                            border: `1px solid ${newEventData.addMeet ? '#2563eb' : 'rgba(55, 53, 47, 0.16)'}`,
-                                            color: newEventData.addMeet ? '#2563eb' : '#37352f',
-                                            fontSize: '14px',
-                                            fontWeight: 500,
+                                            background: 'rgba(37, 99, 235, 0.1)',
+                                            backdropFilter: 'blur(8px)',
+                                            WebkitBackdropFilter: 'blur(8px)',
+                                            color: '#2563eb',
+                                            border: '1px solid rgba(37, 99, 235, 0.2)',
+                                            borderRadius: '8px',
+                                            padding: '8px 20px',
+                                            fontSize: '13px',
+                                            fontWeight: 600,
                                             cursor: 'pointer',
-                                            transition: 'all 0.1s'
+                                            transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={e => {
-                                            if (!newEventData.addMeet) e.currentTarget.style.background = 'rgba(55, 53, 47, 0.04)';
+                                            e.currentTarget.style.background = 'rgba(37, 99, 235, 0.15)';
+                                            e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.3)';
                                         }}
                                         onMouseLeave={e => {
-                                            if (!newEventData.addMeet) e.currentTarget.style.background = 'white';
+                                            e.currentTarget.style.background = 'rgba(37, 99, 235, 0.1)';
+                                            e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.2)';
                                         }}
                                     >
-                                        <Video size={16} />
-                                        {newEventData.addMeet ? 'Google Meet details added' : 'Add Google Meet video conferencing'}
+                                        Save
                                     </button>
-
-                                    {/* Save Button */}
-                                    <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-                                        <button
-                                            onClick={handleSaveEvent}
-                                            style={{
-                                                background: '#37352f',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                padding: '6px 12px',
-                                                fontSize: '14px',
-                                                fontWeight: 500,
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            Done
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
                         </div>

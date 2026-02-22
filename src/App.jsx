@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { Calendar as CalendarIcon, Download, RefreshCcw, LogOut, X } from 'lucide-react';
+import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import api from './utils/api';
 import DashboardTab from './components/layout/DashboardTab';
@@ -68,6 +68,7 @@ function App() {
     const [visibleDays, setVisibleDays] = useLocalStorage('prohub-visible-days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
     const [accentColor, setAccentColor] = useLocalStorage('prohub-accent-color', '#3b82f6');
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
+    const [linkedAccounts, setLinkedAccounts] = useLocalStorage('prohub-linked-accounts-v1', []);
     const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
 
     // Apply accent color globally
@@ -216,6 +217,25 @@ function App() {
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
+    // Handle keyboard tab switching globally
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+            if (e.target.isContentEditable) return;
+
+            if (e.key === 'ArrowLeft') {
+                if (activeTab === 'emails') setActiveTab('calendar');
+                else if (activeTab === 'calendar') setActiveTab('dashboard');
+            } else if (e.key === 'ArrowRight') {
+                if (activeTab === 'dashboard') setActiveTab('calendar');
+                else if (activeTab === 'calendar') setActiveTab('emails');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [activeTab]);
+
     // Handle trackpad/mouse wheel horizontal swipe
     useEffect(() => {
         const handleWheel = (e) => {
@@ -231,6 +251,14 @@ function App() {
                     setTimeout(() => isSwipingRef.current = false, 500);
                 } else if (activeTab === 'calendar' && e.deltaX < 0) {
                     setActiveTab('dashboard');
+                    isSwipingRef.current = true;
+                    setTimeout(() => isSwipingRef.current = false, 500);
+                } else if (activeTab === 'calendar' && e.deltaX > 0) {
+                    setActiveTab('emails');
+                    isSwipingRef.current = true;
+                    setTimeout(() => isSwipingRef.current = false, 500);
+                } else if (activeTab === 'emails' && e.deltaX < 0) {
+                    setActiveTab('calendar');
                     isSwipingRef.current = true;
                     setTimeout(() => isSwipingRef.current = false, 500);
                 }
@@ -384,7 +412,7 @@ function App() {
                 console.error('Error fetching user info:', error);
             }
         },
-        scope: 'https://www.googleapis.com/auth/calendar',
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send',
     });
 
     // Separate login for existing users - validates subscription
@@ -419,9 +447,41 @@ function App() {
                 alert('Login failed. Please try again.');
             }
         },
-        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send'
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send' // Or adjust depending on the user token requirement
     });
 
+    const attachLinkedAccount = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            try {
+                const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const userInfo = await userInfoResponse.json();
+
+                const newAccount = {
+                    ...tokenResponse,
+                    email: userInfo.email,
+                    name: userInfo.name,
+                    id: userInfo.id,
+                    expires_at: Date.now() + (tokenResponse.expires_in * 1000)
+                };
+
+                setLinkedAccounts(prev => {
+                    const existingIndex = prev.findIndex(a => a.id === newAccount.id);
+                    if (existingIndex >= 0) {
+                        const cloned = [...prev];
+                        cloned[existingIndex] = newAccount;
+                        return cloned;
+                    }
+                    return [...prev, newAccount];
+                });
+            } catch (error) {
+                console.error('Error attaching account:', error);
+            }
+        },
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        prompt: 'select_account'
+    });
     const logout = async () => {
         // Persist layout (and any pending writes) before clearing session.
         // Never clear prohub-data-* localStorage — tasks, habits, goals, layouts stay per user.
@@ -996,101 +1056,86 @@ function App() {
                 }} />
             )}
 
-            {/* Top Navigation */}
-            <nav style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '3rem' }}>
-                <button
-                    onClick={() => setActiveTab('dashboard')}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        color: activeTab === 'dashboard' ? 'var(--primary)' : 'var(--text-muted)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        letterSpacing: '0.1em',
-                        borderBottom: activeTab === 'dashboard' ? '2px solid var(--primary)' : '2px solid transparent',
-                        paddingBottom: '0.5rem',
-                        transition: 'all 0.3s'
-                    }}
-                >
-                    DASHBOARD
-                </button>
-                <button
-                    onClick={() => setActiveTab('calendar')}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        color: activeTab === 'calendar' ? 'var(--primary)' : 'var(--text-muted)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        letterSpacing: '0.1em',
-                        borderBottom: activeTab === 'calendar' ? '2px solid var(--primary)' : '2px solid transparent',
-                        paddingBottom: '0.5rem',
-                        transition: 'all 0.3s'
-                    }}
-                >
-                    CALENDAR
-                </button>
-                <button
-                    onClick={() => setActiveTab('emails')}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        color: activeTab === 'emails' ? 'var(--primary)' : 'var(--text-muted)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        letterSpacing: '0.1em',
-                        borderBottom: activeTab === 'emails' ? '2px solid var(--primary)' : '2px solid transparent',
-                        paddingBottom: '0.5rem',
-                        transition: 'all 0.3s'
-                    }}
-                >
-                    EMAILS
-                </button>
-
-                <button
-                    onClick={logout}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        letterSpacing: '0.1em',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        paddingBottom: '0.5rem',
-                        transition: 'all 0.3s'
-                    }}
-                >
-                    <LogOut size={16} /> LOGOUT
-                </button>
-            </nav>
-
-            <div ref={containerRef} style={{ overflowX: 'hidden', width: 'auto', margin: '0 -5rem', position: 'relative' }}>
+            {/* Dynamic Island Notch Navigation - Arrows Moved to Keyboard */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: '0.5rem 0 0.6rem 0',
+                flexShrink: 0,
+                gap: '0.5rem',
+                position: 'relative',
+                zIndex: 1000
+            }}>
+                {/* Notch Pill */}
                 <div style={{
-                    position: 'absolute', top: 0, bottom: 0, left: 0, width: '6rem', zIndex: 10,
-                    pointerEvents: 'none',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    maskImage: 'linear-gradient(to right, black, transparent)',
-                    WebkitMaskImage: 'linear-gradient(to right, black, transparent)'
-                }} />
-                <div style={{
-                    position: 'absolute', top: 0, bottom: 0, right: 0, width: '6rem', zIndex: 10,
-                    pointerEvents: 'none',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    maskImage: 'linear-gradient(to left, black, transparent)',
-                    WebkitMaskImage: 'linear-gradient(to left, black, transparent)'
-                }} />
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '2px',
+                    borderRadius: '24px',
+                    position: 'relative',
+                    background: 'transparent'
+                }}>
+                    {[
+                        { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+                        { key: 'calendar', label: 'Calendar', icon: <CalendarIcon size={18} /> },
+                        { key: 'emails', label: 'Emails', icon: <Mail size={18} /> }
+                    ].map(tab => {
+                        const isActive = activeTab === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.6rem',
+                                    padding: '0.6rem 1.4rem',
+                                    borderRadius: '20px',
+                                    border: isActive ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
+                                    background: isActive
+                                        ? 'rgba(255, 255, 255, 0.65)'
+                                        : 'transparent',
+                                    backdropFilter: isActive ? 'blur(20px)' : 'none',
+                                    WebkitBackdropFilter: isActive ? 'blur(20px)' : 'none',
+                                    color: isActive ? 'var(--text-main)' : 'rgba(0, 0, 0, 0.45)',
+                                    fontWeight: isActive ? 600 : 500,
+                                    cursor: 'pointer',
+                                    fontSize: '0.95rem',
+                                    letterSpacing: '-0.01em',
+                                    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                                    boxShadow: isActive
+                                        ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
+                                        : 'none',
+                                    position: 'relative',
+                                    zIndex: isActive ? 2 : 1
+                                }}
+                                onMouseEnter={e => {
+                                    if (!isActive) {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                        e.currentTarget.style.color = 'var(--text-main)';
+                                    }
+                                }}
+                                onMouseLeave={e => {
+                                    if (!isActive) {
+                                        e.currentTarget.style.background = 'transparent';
+                                        e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                                    }
+                                }}
+                            >
+                                {tab.icon}
+                                <span style={{ opacity: isActive ? 1 : 0.8 }}>{tab.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div ref={containerRef} style={{ overflowX: 'hidden', width: '100%', flex: 1, position: 'relative', minHeight: 0 }}>
                 <motion.div
                     className="tab-track"
-                    style={{ display: 'flex', width: '300%', touchAction: 'pan-y', alignItems: 'flex-start' }}
+                    style={{ display: 'flex', width: '300%', height: '100%', touchAction: 'pan-y', alignItems: 'flex-start' }}
                     animate={{
                         x: activeTab === 'calendar' ? '-33.333%' :
                             activeTab === 'emails' ? '-66.666%' : '0%'
@@ -1131,9 +1176,9 @@ function App() {
                     <div style={{
                         width: '33.333%',
                         flexShrink: 0,
-                        padding: '0 5rem 3rem 5rem',
-                        height: activeTab === 'dashboard' ? 'auto' : '0px',
-                        overflow: 'hidden'
+                        padding: '0 1.5rem 0.5rem 1.5rem',
+                        height: activeTab === 'dashboard' ? '100%' : '0px',
+                        overflow: activeTab === 'dashboard' ? 'auto' : 'hidden'
                     }}>
                         <DashboardTab
                             tasks={tasks}
@@ -1175,8 +1220,9 @@ function App() {
                     <div style={{
                         width: '33.333%',
                         flexShrink: 0,
-                        padding: '0 5rem',
-                        overflow: 'hidden'
+                        padding: '0 1.5rem 0.5rem 1.5rem',
+                        height: activeTab === 'calendar' ? '100%' : '0px',
+                        overflow: activeTab === 'calendar' ? 'auto' : 'hidden'
                     }}>
                         {activeTab === 'calendar' && (
                             <CalendarTab
@@ -1186,6 +1232,8 @@ function App() {
                                 onSyncClick={handleSyncClick}
                                 onAddTask={addTask}
                                 onLogin={() => login()}
+                                linkedAccounts={linkedAccounts}
+                                onAddLinkedAccount={() => attachLinkedAccount()}
                                 externalPopupTrigger={calendarPopupTrigger}
                                 isActive={activeTab === 'calendar'}
                                 accentColor={accentColor}
@@ -1198,9 +1246,9 @@ function App() {
                     <div style={{
                         width: '33.333%',
                         flexShrink: 0,
-                        padding: '0 5rem 3rem 5rem',
-                        height: activeTab === 'emails' ? 'calc(100vh - 90px)' : '0px',
-                        overflow: 'hidden'
+                        padding: '0 1.5rem 0.5rem 1.5rem',
+                        height: activeTab === 'emails' ? '100%' : '0px',
+                        overflow: activeTab === 'emails' ? 'auto' : 'hidden'
                     }}>
                         <EmailTab
                             user={googleUser}
@@ -1263,7 +1311,7 @@ function App() {
                 )
             }
 
-            <div style={{ marginTop: '3rem', textAlign: 'center', opacity: 0.3, fontSize: '0.75rem', color: 'white' }}>
+            <div style={{ marginTop: '0', textAlign: 'center', opacity: 0.3, fontSize: '0.75rem', color: 'white' }}>
                 Task Master • Glassmorphism Edit
                 <div style={{ marginTop: '0.5rem' }}>
                     <button
@@ -1313,28 +1361,6 @@ function App() {
                 </div>
             </div>
 
-            {
-                importLoading && !isImportModalOpen && (
-                    <div style={{
-                        position: 'fixed',
-                        bottom: '2rem',
-                        right: '2rem',
-                        background: 'var(--glass-bg)',
-                        backdropFilter: 'blur(10px)',
-                        padding: '1rem 1.5rem',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--glass-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '1rem',
-                        zIndex: 2000,
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
-                    }}>
-                        <RefreshCcw size={20} className="spin" style={{ color: 'var(--primary)' }} />
-                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Importing your calendar...</span>
-                    </div>
-                )
-            }
         </div >
     );
 }

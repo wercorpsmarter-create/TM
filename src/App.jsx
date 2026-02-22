@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import api from './utils/api';
 import DashboardTab from './components/layout/DashboardTab';
@@ -70,6 +70,22 @@ function App() {
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
     const [linkedAccounts, setLinkedAccounts] = useLocalStorage('prohub-linked-accounts-v1', []);
     const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+    const [calendarView, setCalendarView] = useState(() => localStorage.getItem('calendar_view') || 'month');
+    const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false);
+
+    // Save calendar view to localStorage
+    useEffect(() => {
+        localStorage.setItem('calendar_view', calendarView);
+    }, [calendarView]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => setIsViewDropdownOpen(false);
+        if (isViewDropdownOpen) {
+            window.addEventListener('click', handleClickOutside);
+        }
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, [isViewDropdownOpen]);
 
     // Apply accent color globally
     useEffect(() => {
@@ -1095,12 +1111,12 @@ function App() {
                                     borderRadius: '20px',
                                     border: isActive ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
                                     background: isActive
-                                        ? 'rgba(255, 255, 255, 0.65)'
+                                        ? 'rgba(255, 255, 255, 0.6)'
                                         : 'transparent',
                                     backdropFilter: isActive ? 'blur(20px)' : 'none',
                                     WebkitBackdropFilter: isActive ? 'blur(20px)' : 'none',
                                     color: isActive ? 'var(--text-main)' : 'rgba(0, 0, 0, 0.45)',
-                                    fontWeight: isActive ? 600 : 500,
+                                    fontWeight: 500,
                                     cursor: 'pointer',
                                     fontSize: '0.95rem',
                                     letterSpacing: '-0.01em',
@@ -1130,6 +1146,103 @@ function App() {
                         );
                     })}
                 </div>
+
+                {/* Calendar View Switcher - Only visible on Calendar Tab, on the far right */}
+                {activeTab === 'calendar' && (
+                    <div style={{ position: 'absolute', right: '3rem', display: 'flex', alignItems: 'center' }}>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsViewDropdownOpen(!isViewDropdownOpen);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(20px)',
+                                    WebkitBackdropFilter: 'blur(20px)',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '14px',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                    color: 'var(--text-main)',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    opacity: 0.8,
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                <span>{calendarView === 'day' ? 'Day' : calendarView === 'week' ? 'Week' : 'Month'}</span>
+                                <ChevronDown size={16} />
+                            </button>
+
+                            <AnimatePresence>
+                                {isViewDropdownOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 5, scale: 1 }}
+                                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                        transition={{ duration: 0.2 }}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            right: 0,
+                                            width: '160px',
+                                            background: 'rgba(255, 255, 255, 0.9)',
+                                            backdropFilter: 'blur(20px)',
+                                            WebkitBackdropFilter: 'blur(20px)',
+                                            borderRadius: '16px',
+                                            border: '1px solid rgba(255, 255, 255, 0.8)',
+                                            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                            padding: '0.5rem',
+                                            zIndex: 2000,
+                                            overflow: 'hidden'
+                                        }}
+                                    >
+                                        {[
+                                            { id: 'day', label: 'Day (D)' },
+                                            { id: 'week', label: 'Week (W)' },
+                                            { id: 'month', label: 'Month (M)' }
+                                        ].map(v => (
+                                            <button
+                                                key={v.id}
+                                                onClick={() => {
+                                                    setCalendarView(v.id);
+                                                    setIsViewDropdownOpen(false);
+                                                }}
+                                                style={{
+                                                    display: 'flex',
+                                                    width: '100%',
+                                                    padding: '0.6rem 1rem',
+                                                    borderRadius: '10px',
+                                                    border: 'none',
+                                                    background: calendarView === v.id ? 'var(--primary)' : 'transparent',
+                                                    color: calendarView === v.id ? 'white' : 'var(--text-main)',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 500,
+                                                    textAlign: 'left',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseEnter={e => {
+                                                    if (calendarView !== v.id) e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    if (calendarView !== v.id) e.currentTarget.style.background = 'transparent';
+                                                }}
+                                            >
+                                                {v.label}
+                                            </button>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div ref={containerRef} style={{ overflowX: 'hidden', width: '100%', flex: 1, position: 'relative', minHeight: 0 }}>
@@ -1240,6 +1353,8 @@ function App() {
                                 onDeleteTask={deleteTask}
                                 onToggleTask={toggleTask}
                                 onUpdateTask={updateTask}
+                                view={calendarView}
+                                setView={setCalendarView}
                             />
                         )}
                     </div>

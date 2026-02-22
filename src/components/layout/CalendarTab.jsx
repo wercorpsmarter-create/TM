@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users, Plus, Trash2, CheckCircle, Circle, Columns, ChevronDown, MoreHorizontal, Maximize2, FileText, Bell, ArrowRight } from 'lucide-react';
+import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users, Plus, Trash2, CheckCircle, CheckCircle2, Circle, Columns, ChevronDown, MoreHorizontal, Maximize2, FileText, Bell, ArrowRight, Check, Pencil } from 'lucide-react';
 
 import MiniCalendar from './MiniCalendar';
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask, view, setView }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Helper for event layout
@@ -151,13 +151,6 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         setShowEventModal(true);
     };
 
-    const [view, setView] = useState(() => localStorage.getItem('calendar_view') || 'month'); // 'month', 'week', 'day'
-
-    // Save view to localStorage whenever it changes
-    useEffect(() => {
-        localStorage.setItem('calendar_view', view);
-    }, [view]);
-
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [expandedEventId, setExpandedEventId] = useState(null);
@@ -176,7 +169,10 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         }
     }, [view]);
 
+
+
     const [newTaskText, setNewTaskText] = useState('');
+    const [isEditingTasks, setIsEditingTasks] = useState(false);
     const [newTaskColor, setNewTaskColor] = useState('#3b82f6');
     const [showTaskColorPicker, setShowTaskColorPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(() => {
@@ -869,9 +865,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             <div style={{
                 position: 'fixed',
                 top: '0.75rem',
-                left: '1.5rem',
+                left: '1.2rem',
                 zIndex: 1001,
-                pointerEvents: 'none' // Allow clicking through to underlying elements if any, but h2 needs pointerEvents 'auto'
+                pointerEvents: 'none'
             }}>
                 <h2 style={{
                     display: 'flex',
@@ -879,7 +875,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     gap: '0.5rem',
                     color: 'var(--text-main)',
                     margin: 0,
-                    fontSize: '1.4rem',
+                    fontSize: '1.3rem',
                     fontWeight: 600,
                     pointerEvents: 'auto'
                 }}>
@@ -889,75 +885,10 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 </h2>
             </div>
 
-            {/* View Switcher and Login - Moved to top right fixed position */}
-            <div style={{
-                position: 'fixed',
-                top: '0.75rem',
-                right: '1.5rem',
-                zIndex: 1001,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                pointerEvents: 'auto'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-
-                    <div className="view-switcher" style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
-                        {['month', 'week', 'day'].map(v => (
-                            <button
-                                key={v}
-                                onClick={() => setView(v)}
-                                style={{
-                                    background: view === v ? 'white' : 'transparent',
-                                    color: view === v ? 'var(--primary)' : 'var(--text-muted)',
-                                    border: 'none',
-                                    padding: '4px 12px',
-                                    borderRadius: '8px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    textTransform: 'capitalize'
-                                }}
-                            >
-                                {v}
-                            </button>
-                        ))}
-                    </div>
-
-
-
-                    {/* Navigation Buttons Removed - Using Keyboard Arrows Instead */}
-                </div>
-
-                {!user ? (
-                    <button onClick={() => onLogin()} className="btn-icon" style={{ width: 'auto', padding: '0 1.5rem', display: 'flex', gap: '0.5rem' }}>
-                        <LogIn size={18} /> Login
-                    </button>
-                ) : (
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button
-                            onClick={() => setShowSidebar(!showSidebar)}
-                            className="btn-icon"
-                            style={{
-                                width: 'auto',
-                                padding: '0 1rem',
-                                display: 'flex',
-                                gap: '0.5rem',
-                                background: showSidebar ? 'rgba(0,0,0,0.05)' : 'white',
-                                color: 'var(--text-main)',
-                                border: '1px solid rgba(0,0,0,0.1)'
-                            }}
-                        >
-                            <AlignLeft size={18} />
-                        </button>
-                    </div>
-                )}
-            </div>
-
             <div style={{ display: 'flex', gap: '1rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
                 {showSidebar && user && (
                     <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-                        <div className="glass-card static" style={{ padding: '1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                        <div className="glass-card static" style={{ padding: '1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
                             <MiniCalendar
                                 currentMainDate={currentDate}
                                 onDateSelect={(date) => {
@@ -971,7 +902,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             />
                             <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', margin: '0.5rem 0 1rem 0' }}></div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                                <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Calendars</h3>
+                                <h3 style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Calendars</h3>
                                 <button
                                     onClick={() => onAddLinkedAccount()}
                                     title="Add calendar from another Gmail"
@@ -1084,13 +1015,14 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     </div>
                 )}
 
-                <div className="glass-card static" style={{ padding: '0.5rem 0.5rem 0 0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                <div className="glass-card static" style={{ padding: '0.5rem 0.5rem 0 0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', position: 'relative' }}>
+
                     {view === 'month' && (
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '32px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '32px', overflow: 'hidden' }}>
                             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', paddingBottom: '0' }}>
-                                <div className="calendar-grid" style={{ margin: 0, border: 'none', borderRadius: 0 }}>
+                                <div className="calendar-grid" style={{ margin: 0, border: 'none', borderRadius: 0, background: 'transparent', gap: 0 }}>
                                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                                        <div key={d} className="calendar-header-cell">{d}</div>
+                                        <div key={d} className="calendar-header-cell" style={{ textAlign: 'center', padding: '10px 0', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{d}</div>
                                     ))}
                                     {getDaysInMonth().map((dayObj, i) => {
                                         const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
@@ -1125,7 +1057,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         return (
                                             <div
                                                 key={i}
-                                                className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
+                                                className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''}`}
                                                 onClick={() => {
                                                     setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
                                                     setView('day');
@@ -1133,16 +1065,33 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 style={{
                                                     cursor: 'pointer',
                                                     color: dayObj.currentMonth ? '#000' : '#9ca3af',
-                                                    minHeight: '170px', // Adjusted static height
-                                                    height: '170px',    // Adjusted static height
-                                                    overflow: 'hidden',  // Hide overflow
+                                                    minHeight: '170px',
+                                                    height: '170px',
+                                                    overflow: 'hidden',
                                                     display: 'flex',
                                                     flexDirection: 'column',
-                                                    padding: '4px'      // Add padding
+                                                    padding: '8px',
+                                                    position: 'relative',
+                                                    borderRight: '1px solid rgba(0, 0, 0, 0.05)',
+                                                    borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+                                                    background: dayObj.currentMonth ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
                                                 }}
                                             >
-                                                <div className="day-number" style={{ color: 'inherit', marginBottom: '2px', fontWeight: 400, fontSize: '0.8rem', opacity: 0.6 }}>
-                                                    {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'long' })} 1` : dayObj.day}
+                                                <div className="day-number" style={{
+                                                    color: isToday ? 'white' : 'inherit',
+                                                    background: isToday ? '#ef4444' : 'transparent',
+                                                    borderRadius: '4px',
+                                                    padding: isToday ? '2px 4px' : '0',
+                                                    width: 'fit-content',
+                                                    minWidth: isToday ? '20px' : 'auto',
+                                                    textAlign: 'center',
+                                                    alignSelf: 'flex-end',
+                                                    marginBottom: '4px',
+                                                    fontWeight: isToday ? 600 : 400,
+                                                    fontSize: '0.75rem',
+                                                    opacity: isToday ? 1 : 0.6
+                                                }}>
+                                                    {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'short' })} 1` : dayObj.day}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                                                     {visibleItems.map((item, idx) => {
@@ -1167,6 +1116,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                                                         return (
                                                             <div key={`${item.id}-${idx}`} className="event-pill" title={item.summary || item.title}
+                                                                onClick={(e) => handleEventClick(e, item, new Date(dayObj.year, dayObj.month, dayObj.day))}
                                                                 style={{
                                                                     ...style,
                                                                     padding: '2px 4px',
@@ -1177,7 +1127,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                     whiteSpace: 'nowrap',
                                                                     textOverflow: 'ellipsis',
                                                                     display: 'block',
-                                                                    fontWeight: 300
+                                                                    fontWeight: 300,
+                                                                    cursor: 'pointer'
                                                                 }}
                                                             >
                                                                 {item.summary || item.title}
@@ -1277,12 +1228,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             }}>
                                                 <div style={{
                                                     position: 'absolute',
-                                                    left: '-6px',
-                                                    top: '-4px',
-                                                    width: '10px',
-                                                    height: '10px',
-                                                    borderRadius: '50%',
-                                                    backgroundColor: 'red'
+                                                    left: '-2px',
+                                                    top: '-6px',
+                                                    width: '4px',
+                                                    height: '14px',
+                                                    backgroundColor: 'red',
+                                                    borderRadius: '2px'
                                                 }} />
                                             </div>
                                         );
@@ -1367,22 +1318,25 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
                                                         const color = customColor || item.color || item.calendarColor || '#3b82f6';
                                                         return (
-                                                            <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
-                                                                position: 'relative',
-                                                                marginBottom: '2px',
-                                                                fontSize: '0.7rem',
-                                                                padding: '2px 4px',
-                                                                whiteSpace: 'nowrap',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                                backgroundColor: color ? `${color}4d` : undefined,
-                                                                backdropFilter: color ? 'blur(4px)' : undefined,
-                                                                border: color ? `1px solid ${color}66` : undefined,
-                                                                borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                color: color ? '#000' : undefined,
-                                                                borderRadius: '4px',
-                                                                fontWeight: 300
-                                                            }}>
+                                                            <div key={`ad-${idx}`} className={`event-pill ${item.type}`}
+                                                                onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
+                                                                style={{
+                                                                    position: 'relative',
+                                                                    marginBottom: '2px',
+                                                                    fontSize: '0.7rem',
+                                                                    padding: '2px 4px',
+                                                                    whiteSpace: 'nowrap',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                    backgroundColor: color ? `${color}4d` : undefined,
+                                                                    backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                    border: color ? `1px solid ${color}66` : undefined,
+                                                                    borderLeft: color ? `3px solid ${color}` : undefined,
+                                                                    color: color ? '#000' : undefined,
+                                                                    borderRadius: '4px',
+                                                                    fontWeight: 300,
+                                                                    cursor: 'pointer'
+                                                                }}>
                                                                 {item.title}
                                                             </div>
                                                         );
@@ -1395,24 +1349,27 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         const color = customColor || item.color || item.calendarColor || '#3b82f6';
 
                                                         return (
-                                                            <div key={`t-${idx}`} className={`event-pill ${item.type}`} style={{
-                                                                position: 'absolute',
-                                                                top: `${top}px`,
-                                                                height: `${Math.max(height, 20)}px`,
-                                                                left: `${item.layoutLeft}%`,
-                                                                width: `calc(${item.layoutWidth}% - 2px)`,
-                                                                fontSize: '0.75rem',
-                                                                padding: '2px 4px',
-                                                                overflow: 'hidden',
-                                                                zIndex: item.zIndex || 10,
-                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                                                display: 'flex',
-                                                                flexDirection: 'column',
-                                                                backgroundColor: color || undefined,
-                                                                border: '1px solid white',
-                                                                color: '#fff',
-                                                                borderRadius: '4px'
-                                                            }}>
+                                                            <div key={`t-${idx}`} className={`event-pill ${item.type}`}
+                                                                onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    top: `${top}px`,
+                                                                    height: `${Math.max(height, 20)}px`,
+                                                                    left: `${item.layoutLeft}%`,
+                                                                    width: `calc(${item.layoutWidth}% - 2px)`,
+                                                                    fontSize: '0.75rem',
+                                                                    padding: '2px 4px',
+                                                                    overflow: 'hidden',
+                                                                    zIndex: item.zIndex || 10,
+                                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    backgroundColor: color || undefined,
+                                                                    border: '1px solid white',
+                                                                    color: '#fff',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer'
+                                                                }}>
                                                                 <div style={{ fontWeight: 300, fontSize: '0.7rem' }}>{item.title}</div>
                                                                 {height > 30 && (
                                                                     <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>
@@ -1495,12 +1452,12 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             }}>
                                                 <div style={{
                                                     position: 'absolute',
-                                                    left: '-6px',
-                                                    top: '-4px',
-                                                    width: '10px',
-                                                    height: '10px',
-                                                    borderRadius: '50%',
-                                                    backgroundColor: 'red'
+                                                    left: '-2px',
+                                                    top: '-6px',
+                                                    width: '4px',
+                                                    height: '14px',
+                                                    backgroundColor: 'red',
+                                                    borderRadius: '2px'
                                                 }} />
                                             </div>
                                         );
@@ -1582,18 +1539,21 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                             const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
                                                             const color = customColor || item.color || item.calendarColor || '#3b82f6';
                                                             return (
-                                                                <div key={`ad-${idx}`} className={`event-pill ${item.type}`} style={{
-                                                                    position: 'relative',
-                                                                    marginBottom: '4px',
-                                                                    padding: '4px 8px',
-                                                                    backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
-                                                                    backdropFilter: color ? 'blur(4px)' : undefined,
-                                                                    border: color ? `1px solid ${color}66` : undefined,
-                                                                    borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                    color: color ? '#000' : undefined,
-                                                                    borderRadius: '4px',
-                                                                    fontSize: '0.85rem'
-                                                                }}>
+                                                                <div key={`ad-${idx}`} className={`event-pill ${item.type}`}
+                                                                    onClick={(e) => handleEventClick(e, item, currentDate)}
+                                                                    style={{
+                                                                        position: 'relative',
+                                                                        marginBottom: '4px',
+                                                                        padding: '4px 8px',
+                                                                        backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
+                                                                        backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                        border: color ? `1px solid ${color}66` : undefined,
+                                                                        borderLeft: color ? `3px solid ${color}` : undefined,
+                                                                        color: color ? '#000' : undefined,
+                                                                        borderRadius: '4px',
+                                                                        fontSize: '0.85rem',
+                                                                        cursor: 'pointer'
+                                                                    }}>
                                                                     <span style={{ fontWeight: 300 }}>All Day:</span> {item.title}
                                                                 </div>
                                                             );
@@ -1663,12 +1623,45 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 </div>
 
                 {showSplitView && (
-                    <div className="glass-card static" style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ padding: '0 0 0.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-main)', paddingLeft: '0.5rem', paddingTop: '0.25rem' }}>Task List</h3>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.5rem' }}>
-                                {currentDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    <div className="glass-card static"
+                        onMouseEnter={(e) => {
+                            const btn = e.currentTarget.querySelector('.edit-mode-trigger');
+                            if (btn && !isEditingTasks) btn.style.opacity = '1';
+                        }}
+                        onMouseLeave={(e) => {
+                            const btn = e.currentTarget.querySelector('.edit-mode-trigger');
+                            if (btn && !isEditingTasks) btn.style.opacity = '0';
+                        }}
+                        style={{ position: 'relative', width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+                        <div style={{ padding: '0 0 0.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-main)', paddingLeft: '0.5rem', paddingTop: '0.25rem' }}>Task List</h3>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.5rem' }}>
+                                    {currentDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                </div>
                             </div>
+                            <button
+                                className="edit-mode-trigger"
+                                onClick={() => setIsEditingTasks(!isEditingTasks)}
+                                style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'white',
+                                    border: '1px solid rgba(0,0,0,0.05)',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-muted)',
+                                    transition: 'all 0.2s',
+                                    marginTop: '2px',
+                                    opacity: isEditingTasks ? 1 : 0
+                                }}
+                            >
+                                {isEditingTasks ? <Check size={14} color="#10b981" strokeWidth={3} /> : <Pencil size={14} />}
+                            </button>
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 0' }}>
                             {tasks.filter(t => {
@@ -1680,42 +1673,52 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             }).map(task => {
                                 const taskColor = task.metadata?.color;
                                 return (
-                                    <div key={task.id} style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        padding: '0.4rem 0.75rem',
-                                        background: taskColor ? `${taskColor}1a` : 'white', // lighter background (10% opacity) for list items or 4d (30%). Let's use 1a (10%) for readability or 4d if matching plan. Plan is 4d. Let's try 33 (20%)
-                                        // Actually, let's match the plan style: 30% opacity bg, solid left border
-                                        backgroundColor: taskColor ? `${taskColor}4d` : 'white',
-                                        borderRadius: '8px',
-                                        marginBottom: '0.5rem',
-                                        border: taskColor ? `1px solid ${taskColor}66` : '1px solid rgba(0,0,0,0.05)',
-                                        borderLeft: taskColor ? `4px solid ${taskColor}` : undefined,
-                                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                                    }}>
+                                    <div key={task.id}
+                                        onClick={(e) => handleEventClick(e, { ...task, type: 'task' }, currentDate)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.75rem',
+                                            padding: '0.4rem 0.75rem',
+                                            backgroundColor: taskColor ? `${taskColor}4d` : 'white',
+                                            borderRadius: '8px',
+                                            marginBottom: '0.5rem',
+                                            border: taskColor ? `1px solid ${taskColor}66` : '1px solid rgba(0,0,0,0.05)',
+                                            borderLeft: taskColor ? `4px solid ${taskColor}` : undefined,
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                            cursor: 'pointer'
+                                        }}>
                                         <button
-                                            onClick={() => onToggleTask && onToggleTask(task.id)}
+                                            onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(task.id); }}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
                                         >
-                                            {task.completed ? <CheckCircle size={18} color="var(--primary)" fill="var(--primary)" fillOpacity={0.2} /> : <Circle size={18} color="var(--text-muted)" />}
+                                            {task.status === 'Completed' ? <CheckCircle size={18} color="var(--primary)" fill="var(--primary)" fillOpacity={0.2} /> : <Circle size={18} color="var(--text-muted)" />}
                                         </button>
                                         <span style={{
                                             flex: 1,
                                             fontSize: '0.9rem',
-                                            color: task.completed ? 'var(--text-muted)' : 'var(--text-main)',
-                                            textDecoration: task.completed ? 'line-through' : 'none'
+                                            color: task.status === 'Completed' ? 'var(--text-muted)' : 'var(--text-main)',
+                                            textDecoration: task.status === 'Completed' ? 'line-through' : 'none'
                                         }}>
                                             {task.text}
                                         </span>
-                                        <button
-                                            onClick={() => onDeleteTask && onDeleteTask(task.id)}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', opacity: 0.4, transition: 'opacity 0.2s' }}
-                                            onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                                            onMouseLeave={e => e.currentTarget.style.opacity = 0.4}
-                                        >
-                                            <Trash2 size={14} color="#ef4444" />
-                                        </button>
+                                        {isEditingTasks && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onDeleteTask && onDeleteTask(task.id); }}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: '4px',
+                                                    opacity: 0.8,
+                                                    transition: 'opacity 0.2s',
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                                                onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+                                            >
+                                                <Trash2 size={16} color="#ef4444" />
+                                            </button>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -1731,120 +1734,124 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     </div>
                                 )}
                         </div>
-                        <div style={{ padding: '0.25rem 0', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                            <form
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    if (!newTaskText.trim()) return;
-                                    const year = currentDate.getFullYear();
-                                    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                                    const day = String(currentDate.getDate()).padStart(2, '0');
-                                    const isoDate = `${year}-${month}-${day}`;
-                                    onAddTask(isoDate, newTaskText, false, null, 30, '', '', [], false, { color: newTaskColor });
-                                    setNewTaskText('');
-                                    setNewTaskColor('#3b82f6'); // Reset to default
-                                    setShowTaskColorPicker(false);
-                                }}
-                                style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}
-                            >
-                                <div style={{ position: 'relative' }}>
-                                    <button
-                                        type="button" // Placeholder to remove the old button logic block so I can replace the whole container structure cleanly
-                                        style={{ display: 'none' }}
-                                    ></button>
-
-                                    {showTaskColorPicker && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            bottom: '100%',
-                                            left: 0,
-                                            marginBottom: '0.5rem',
-                                            background: 'white',
-                                            padding: '0.5rem',
-                                            borderRadius: '12px',
-                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                            display: 'flex',
-                                            gap: '0.5rem',
-                                            zIndex: 20,
-                                            border: '1px solid rgba(0,0,0,0.05)'
-                                        }}>
-                                            {['#3b82f6', '#ef4444', '#64748b', '#ffffff', '#06b6d4', '#10b981'].map(c => (
-                                                <button
-                                                    key={c}
-                                                    type="button"
-                                                    onClick={() => { setNewTaskColor(c); setShowTaskColorPicker(false); }}
-                                                    style={{
-                                                        width: '24px',
-                                                        height: '24px',
-                                                        borderRadius: '50%',
-                                                        background: c,
-                                                        border: c === '#ffffff' ? '1px solid #e2e8f0' : 'none',
-                                                        cursor: 'pointer',
-                                                        outline: newTaskColor === c ? '2px solid var(--text-main)' : 'none',
-                                                        outlineOffset: '2px'
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <div style={{
-                                        flex: 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        padding: '0.5rem 0.75rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid rgba(0,0,0,0.1)',
-                                        background: 'white',
-                                        gap: '0.5rem'
-                                    }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowTaskColorPicker(!showTaskColorPicker)}
-                                            style={{
-                                                width: '12px',
-                                                height: '12px',
-                                                borderRadius: '50%',
-                                                background: newTaskColor,
-                                                border: newTaskColor === '#ffffff' ? '1px solid #e2e8f0' : 'none',
-                                                cursor: 'pointer',
-                                                padding: 0,
-                                                flexShrink: 0
-                                            }}
-                                        />
-                                        <input
-                                            value={newTaskText}
-                                            onChange={e => setNewTaskText(e.target.value)}
-                                            placeholder="Add a task..."
-                                            style={{
-                                                flex: 1,
-                                                border: 'none',
-                                                outline: 'none',
-                                                fontSize: '0.9rem',
-                                                background: 'transparent',
-                                                padding: 0
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                                <button
-                                    type="submit"
-                                    style={{
-                                        background: 'var(--primary)',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        width: '36px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer'
+                        {isEditingTasks && (
+                            <div style={{ padding: '0.25rem 0', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (!newTaskText.trim()) return;
+                                        const year = currentDate.getFullYear();
+                                        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                        const day = String(currentDate.getDate()).padStart(2, '0');
+                                        const isoDate = `${year}-${month}-${day}`;
+                                        onAddTask(isoDate, newTaskText, false, null, 30, '', '', [], false, { color: newTaskColor });
+                                        setNewTaskText('');
+                                        setNewTaskColor('#3b82f6'); // Reset to default
+                                        setShowTaskColorPicker(false);
                                     }}
+                                    style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}
                                 >
-                                    <Plus size={18} />
-                                </button>
-                            </form>
-                        </div>
+                                    <div style={{ position: 'relative' }}>
+                                        <button
+                                            type="button" // Placeholder to remove the old button logic block so I can replace the whole container structure cleanly
+                                            style={{ display: 'none' }}
+                                        ></button>
+
+                                        {showTaskColorPicker && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: '100%',
+                                                left: 0,
+                                                marginBottom: '0.5rem',
+                                                background: 'white',
+                                                padding: '0.5rem',
+                                                borderRadius: '12px',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                display: 'flex',
+                                                gap: '0.5rem',
+                                                zIndex: 20,
+                                                border: '1px solid rgba(0,0,0,0.05)'
+                                            }}>
+                                                {['#3b82f6', '#ef4444', '#64748b', '#ffffff', '#06b6d4', '#10b981'].map(c => (
+                                                    <button
+                                                        key={c}
+                                                        type="button"
+                                                        onClick={() => { setNewTaskColor(c); setShowTaskColorPicker(false); }}
+                                                        style={{
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            borderRadius: '50%',
+                                                            background: c,
+                                                            border: c === '#ffffff' ? '1px solid #e2e8f0' : 'none',
+                                                            cursor: 'pointer',
+                                                            outline: newTaskColor === c ? '2px solid var(--text-main)' : 'none',
+                                                            outlineOffset: '2px'
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <div style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            padding: '0.5rem 0.75rem',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(0,0,0,0.1)',
+                                            background: 'white',
+                                            gap: '0.5rem'
+                                        }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowTaskColorPicker(!showTaskColorPicker)}
+                                                style={{
+                                                    width: '12px',
+                                                    height: '12px',
+                                                    borderRadius: '50%',
+                                                    background: newTaskColor,
+                                                    border: newTaskColor === '#ffffff' ? '1px solid #e2e8f0' : 'none',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    flexShrink: 0
+                                                }}
+                                            />
+                                            <input
+                                                value={newTaskText}
+                                                onChange={e => setNewTaskText(e.target.value)}
+                                                placeholder="Add a task..."
+                                                style={{
+                                                    flex: 1,
+                                                    border: 'none',
+                                                    outline: 'none',
+                                                    fontSize: '0.9rem',
+                                                    background: 'transparent',
+                                                    padding: 0
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        style={{
+                                            background: 'var(--primary)',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            width: '36px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Plus size={18} />
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+
                     </div>
                 )}
             </div>
@@ -2169,6 +2176,6 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     </>
                     , document.body)
             }
-        </div>
+        </div >
     );
 }

@@ -52,7 +52,7 @@ const SortableWidget = ({ id, children, isCustomizing, onInteractionStart, onInt
     return (
         <div
             ref={setNodeRef}
-            style={{ ...style, ...overlayStyle, cursor: isCustomizing ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+            style={{ ...style, ...overlayStyle, cursor: isCustomizing ? (isDragging ? 'grabbing' : 'grab') : 'default', background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
             className={`glass-card widget-item ${isCustomizing ? 'customizing' : ''}`}
             {...handlers}
         >

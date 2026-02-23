@@ -182,6 +182,8 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     const [hasMore, setHasMore] = useState(true);
     const [manualTitle, setManualTitle] = useState('');
     const [manualDate, setManualDate] = useState('');
+    const [isAutoSuggested, setIsAutoSuggested] = useState(false);
+    const [suggestedOption, setSuggestedOption] = useState(null);
     const [participants, setParticipants] = useState([]);
     const [memberInput, setMemberInput] = useState('');
     const observerRef = useRef();
@@ -603,6 +605,24 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
             // Try to extract event (reuse logic)
             const suggestion = extractEventDetails(email.subject, plainText || body.replace(/<[^>]*>?/gm, ''), email.date, tasks, upcomingEvents);
             setSuggestedEvent(suggestion);
+
+            if (suggestion && suggestion.title) {
+                setManualTitle(suggestion.title);
+                setIsAutoSuggested(true);
+                if (suggestion.options && suggestion.options.length > 0) {
+                    const opt = suggestion.options[0];
+                    setSuggestedOption(opt);
+                    const year = opt.date.getFullYear();
+                    const month = String(opt.date.getMonth() + 1).padStart(2, '0');
+                    const day = String(opt.date.getDate()).padStart(2, '0');
+                    setManualDate(`${year}-${month}-${day}`);
+                }
+            } else {
+                setManualTitle('');
+                setManualDate('');
+                setIsAutoSuggested(false);
+                setSuggestedOption(null);
+            }
 
         } catch (err) {
             console.error(err);
@@ -1226,20 +1246,24 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                     <input
                                         type="text"
                                         value={manualTitle}
-                                        onChange={(e) => setManualTitle(e.target.value)}
+                                        onChange={(e) => {
+                                            setManualTitle(e.target.value);
+                                            setIsAutoSuggested(false);
+                                        }}
                                         style={{
                                             width: '100%',
                                             padding: '0.75rem',
                                             borderRadius: '12px',
-                                            border: '1px solid #E2E8F0',
+                                            border: isAutoSuggested ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
                                             fontSize: '0.9rem',
-                                            color: '#1E293B',
-                                            background: '#F8FAFC',
+                                            color: isAutoSuggested ? '#2563EB' : '#1E293B',
+                                            background: isAutoSuggested ? '#EFF6FF' : '#F8FAFC',
+                                            fontWeight: isAutoSuggested ? 600 : 400,
                                             transition: 'all 0.2s',
                                             outline: 'none'
                                         }}
-                                        onFocus={(e) => e.target.style.borderColor = '#94A3B8'}
-                                        onBlur={(e) => e.target.style.borderColor = '#E2E8F0'}
+                                        onFocus={(e) => e.target.style.borderColor = isAutoSuggested ? '#60A5FA' : '#94A3B8'}
+                                        onBlur={(e) => e.target.style.borderColor = isAutoSuggested ? '#BFDBFE' : '#E2E8F0'}
                                     />
                                 </div>
 
@@ -1294,24 +1318,52 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                             Tomorrow
                                         </button>
                                     </div>
-                                    <input
-                                        type="date"
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.6rem',
-                                            borderRadius: '10px',
-                                            border: '1px solid #E2E8F0',
-                                            background: 'white',
-                                            color: '#334155',
-                                            fontSize: '0.85rem'
-                                        }}
-                                        onChange={(e) => {
-                                            if (!e.target.value) return;
-                                            const d = new Date(e.target.value);
-                                            onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, {}, 'primary');
-                                            alert(`Added to ${d.toLocaleDateString()}!`);
-                                        }}
-                                    />
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <input
+                                            type="date"
+                                            value={manualDate}
+                                            style={{
+                                                flex: 1,
+                                                padding: '0.6rem',
+                                                borderRadius: '10px',
+                                                border: isAutoSuggested && manualDate ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                                                background: isAutoSuggested && manualDate ? '#EFF6FF' : 'white',
+                                                color: isAutoSuggested && manualDate ? '#2563EB' : '#334155',
+                                                fontWeight: isAutoSuggested && manualDate ? 600 : 400,
+                                                fontSize: '0.85rem'
+                                            }}
+                                            onChange={(e) => {
+                                                setIsAutoSuggested(false);
+                                                setManualDate(e.target.value);
+                                                if (!e.target.value) return;
+                                                const d = new Date(e.target.value + 'T12:00:00');
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, {}, 'primary');
+                                                alert(`Added to ${d.toLocaleDateString()}!`);
+                                            }}
+                                        />
+                                        {isAutoSuggested && manualDate && suggestedOption && (
+                                            <button
+                                                onClick={() => {
+                                                    handleAddToCalendar(suggestedOption);
+                                                }}
+                                                style={{
+                                                    background: '#2563EB',
+                                                    color: 'white',
+                                                    padding: '0 1rem',
+                                                    borderRadius: '10px',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 600,
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+                                                onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+                                            >
+                                                Confirm
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div>
@@ -1352,60 +1404,6 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                 </div>
                             </div>
                         </div>
-
-                        {/* Section: Smart Suggestions (Conditional) */}
-                        {suggestedEvent && (
-                            <>
-                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.05)', width: '100%' }}></div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563EB', fontWeight: 700, fontSize: '0.9rem' }}>
-                                        <Clock size={16} />
-                                        Smart Suggestions
-                                    </div>
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        {suggestedEvent.options.map((opt, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => handleAddToCalendar(opt)}
-                                                style={{
-                                                    background: 'rgba(37, 99, 235, 0.05)',
-                                                    border: '1px solid rgba(37, 99, 235, 0.1)',
-                                                    padding: '0.75rem',
-                                                    borderRadius: '12px',
-                                                    cursor: 'pointer',
-                                                    textAlign: 'left',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    gap: '0.25rem',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                                onMouseEnter={e => {
-                                                    e.currentTarget.style.borderColor = '#2563EB';
-                                                    e.currentTarget.style.background = 'rgba(37, 99, 235, 0.1)';
-                                                }}
-                                                onMouseLeave={e => {
-                                                    e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.1)';
-                                                    e.currentTarget.style.background = 'rgba(37, 99, 235, 0.05)';
-                                                }}
-                                            >
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                                    <span style={{ fontWeight: 600, color: '#1E3A8A' }}>{opt.label}</span>
-                                                    {opt.timeStr && (
-                                                        <span style={{ fontSize: '0.75rem', color: '#2563EB', background: 'white', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(37,99,235,0.2)' }}>
-                                                            {opt.timeStr}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                                                    {opt.reason}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
                     </div>
                 </div>
             )

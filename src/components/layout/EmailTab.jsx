@@ -186,6 +186,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     const [suggestedOption, setSuggestedOption] = useState(null);
     const [participants, setParticipants] = useState([]);
     const [memberInput, setMemberInput] = useState('');
+    const [creationMode, setCreationMode] = useState('plan'); // 'plan' or 'task'
     const observerRef = useRef();
 
     // Reply/Compose States
@@ -665,6 +666,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
         const defaultAttendees = senderEmail ? [senderEmail] : [];
         const finalAttendees = participants.length > 0 ? participants : defaultAttendees;
         const description = `From email: ${selectedEmail.subject}\nSent by: ${selectedEmail.from}`;
+        const metadata = { isPlanOnly: creationMode === 'plan', isTaskOnly: creationMode === 'task' };
 
         onAddTask(
             dayLabel,
@@ -676,7 +678,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
             '', // location
             finalAttendees,
             true, // addMeet: defaulted to true for email meetings
-            {}, // metadata
+            metadata, // metadata
             'primary' // calendarId
         );
         alert(`Event added to ${dayLabel} and invitation sent to ${senderEmail || 'sender'}!`);
@@ -1234,11 +1236,19 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
 
                         {/* Section: Manual Creation */}
                         <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#111827', fontWeight: 700, fontSize: '0.95rem', marginBottom: '1rem' }}>
-                                <div style={{ width: '24px', height: '24px', background: '#334155', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>+</span>
-                                </div>
-                                Create Plan
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', background: '#F1F5F9', padding: '0.25rem', borderRadius: '12px' }}>
+                                <button
+                                    onClick={() => setCreationMode('plan')}
+                                    style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: 'none', background: creationMode === 'plan' ? 'white' : 'transparent', color: creationMode === 'plan' ? '#0F172A' : '#64748B', fontWeight: 600, fontSize: '0.85rem', boxShadow: creationMode === 'plan' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                                >
+                                    Plan (Calendar)
+                                </button>
+                                <button
+                                    onClick={() => setCreationMode('task')}
+                                    style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: 'none', background: creationMode === 'task' ? 'white' : 'transparent', color: creationMode === 'task' ? '#0F172A' : '#64748B', fontWeight: 600, fontSize: '0.85rem', boxShadow: creationMode === 'task' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                                >
+                                    Task (Dashboard)
+                                </button>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1278,7 +1288,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                         <button
                                             onClick={() => {
                                                 const d = new Date();
-                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, {}, 'primary');
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: creationMode === 'plan', isTaskOnly: creationMode === 'task' }, 'primary');
                                                 alert('Added to Today!');
                                             }}
                                             style={{
@@ -1301,7 +1311,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                             onClick={() => {
                                                 const d = new Date();
                                                 d.setDate(d.getDate() + 1);
-                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, {}, 'primary');
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: creationMode === 'plan', isTaskOnly: creationMode === 'task' }, 'primary');
                                                 alert('Added to Tomorrow!');
                                             }}
                                             style={{
@@ -1340,7 +1350,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                                 setManualDate(e.target.value);
                                                 if (!e.target.value) return;
                                                 const d = new Date(e.target.value + 'T12:00:00');
-                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, {}, 'primary');
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: creationMode === 'plan', isTaskOnly: creationMode === 'task' }, 'primary');
                                                 alert(`Added to ${d.toLocaleDateString()}!`);
                                             }}
                                         />

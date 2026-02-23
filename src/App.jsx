@@ -679,14 +679,16 @@ function App() {
         const color = metadata?.color || null;
 
         try {
-            const newTask = await api.createTask(userId, text, dateStr, 'Pending', { time, duration, description, location, attendees: JSON.stringify(attendees), addMeet, color });
-            setTasks(prev => [...prev, {
-                ...newTask,
-                day,
-                text: newTask.title || newTask.text
-            }]);
+            if (!metadata?.isPlanOnly) {
+                const newTask = await api.createTask(userId, text, dateStr, 'Pending', { time, duration, description, location, attendees: JSON.stringify(attendees), addMeet, color });
+                setTasks(prev => [...prev, {
+                    ...newTask,
+                    day,
+                    text: newTask.title || newTask.text
+                }]);
+            }
 
-            if (syncWithGoogle && googleUser?.access_token) {
+            if (syncWithGoogle && googleUser?.access_token && !metadata?.isTaskOnly) {
                 const googleEvent = await pushToGoogle(text, dateStr, time, duration, description, location, attendees, addMeet, color, calendarId);
                 if (googleEvent) {
                     setUpcomingEvents(prev => {

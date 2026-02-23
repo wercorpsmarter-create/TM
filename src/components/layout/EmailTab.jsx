@@ -515,6 +515,9 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
         setManualTitle(email.subject);
         setManualDate('');
 
+        const sender = extractEmail(email.from);
+        setParticipants(sender ? [sender] : []);
+
         // API call to remove UNREAD label (mark as read)
         try {
             fetch(

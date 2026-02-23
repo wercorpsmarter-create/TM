@@ -1901,16 +1901,6 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 </div>
                                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                                     <button
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a3a3a3', padding: '0', display: 'flex' }}
-                                    >
-                                        <MoreHorizontal size={16} />
-                                    </button>
-                                    <button
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a3a3a3', padding: '0', display: 'flex' }}
-                                    >
-                                        <Maximize2 size={14} />
-                                    </button>
-                                    <button
                                         onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
                                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a3a3a3', padding: '0', display: 'flex' }}
                                     >

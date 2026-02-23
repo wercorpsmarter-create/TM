@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import {
-    Mail, RefreshCw, ExternalLink, Inbox, Clock, User,
+    Mail, RefreshCw, ExternalLink, Inbox, Clock, User, Users,
     Star, ChevronLeft, ChevronRight, Filter, StarOff, Plus, Reply, Send, X,
     Maximize2, Minimize2, Type, Paperclip, MoreVertical, Trash2, Bold, Italic, Underline, Link2, Smile, Image
 } from 'lucide-react';
@@ -182,6 +182,8 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     const [hasMore, setHasMore] = useState(true);
     const [manualTitle, setManualTitle] = useState('');
     const [manualDate, setManualDate] = useState('');
+    const [participants, setParticipants] = useState([]);
+    const [memberInput, setMemberInput] = useState('');
     const observerRef = useRef();
 
     // Reply/Compose States
@@ -637,7 +639,8 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
         const dayLabel = days[option.date.getDay()];
 
         const senderEmail = extractEmail(selectedEmail.from);
-        const attendees = senderEmail ? [senderEmail] : [];
+        const defaultAttendees = senderEmail ? [senderEmail] : [];
+        const finalAttendees = participants.length > 0 ? participants : defaultAttendees;
         const description = `From email: ${selectedEmail.subject}\nSent by: ${selectedEmail.from}`;
 
         onAddTask(
@@ -648,7 +651,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
             60, // duration
             description,
             '', // location
-            attendees,
+            finalAttendees,
             true, // addMeet: defaulted to true for email meetings
             {}, // metadata
             'primary' // calendarId
@@ -1248,7 +1251,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                         <button
                                             onClick={() => {
                                                 const d = new Date();
-                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true);
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, {}, 'primary');
                                                 alert('Added to Today!');
                                             }}
                                             style={{
@@ -1271,7 +1274,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                             onClick={() => {
                                                 const d = new Date();
                                                 d.setDate(d.getDate() + 1);
-                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true);
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, {}, 'primary');
                                                 alert('Added to Tomorrow!');
                                             }}
                                             style={{
@@ -1305,10 +1308,47 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                         onChange={(e) => {
                                             if (!e.target.value) return;
                                             const d = new Date(e.target.value);
-                                            onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true);
+                                            onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, {}, 'primary');
                                             alert(`Added to ${d.toLocaleDateString()}!`);
                                         }}
                                     />
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        <Users size={12} />
+                                        Participants
+                                    </label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '0.5rem' }}>
+                                        {participants.length > 0 && (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                {participants.map((p, i) => (
+                                                    <span key={i} style={{ background: '#E2E8F0', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
+                                                        {p}
+                                                        <X size={10} cursor="pointer" onClick={() => {
+                                                            const newP = [...participants];
+                                                            newP.splice(i, 1);
+                                                            setParticipants(newP);
+                                                        }} />
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <input
+                                            type="text"
+                                            placeholder="Add email and press Enter..."
+                                            value={memberInput}
+                                            onChange={(e) => setMemberInput(e.target.value)}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', color: '#1E293B', width: '100%' }}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter' && e.target.value) {
+                                                    e.preventDefault();
+                                                    setParticipants([...participants, e.target.value]);
+                                                    setMemberInput('');
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>

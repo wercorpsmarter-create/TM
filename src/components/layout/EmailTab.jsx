@@ -187,6 +187,8 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
     const [participants, setParticipants] = useState([]);
     const [memberInput, setMemberInput] = useState('');
     const [creationMode, setCreationMode] = useState('plan'); // 'plan' or 'task'
+    const [aiTasks, setAiTasks] = useState([]);
+    const [newTaskInput, setNewTaskInput] = useState('');
     const observerRef = useRef();
 
     // Reply/Compose States
@@ -621,11 +623,13 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                     const day = String(opt.date.getDate()).padStart(2, '0');
                     setManualDate(`${year}-${month}-${day}`);
                 }
+                setAiTasks([suggestion.title, 'Reply to ' + (extractEmail(email.from) || 'sender')]);
             } else {
                 setManualTitle('');
                 setManualDate('');
                 setIsAutoSuggested(false);
                 setSuggestedOption(null);
+                setAiTasks([]);
             }
 
         } catch (err) {
@@ -1251,171 +1255,281 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                 </button>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        Task Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={manualTitle}
-                                        onChange={(e) => {
-                                            setManualTitle(e.target.value);
-                                            setIsAutoSuggested(false);
-                                        }}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            borderRadius: '12px',
-                                            border: isAutoSuggested ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
-                                            fontSize: '0.9rem',
-                                            color: isAutoSuggested ? '#2563EB' : '#1E293B',
-                                            background: isAutoSuggested ? '#EFF6FF' : '#F8FAFC',
-                                            fontWeight: isAutoSuggested ? 600 : 400,
-                                            transition: 'all 0.2s',
-                                            outline: 'none'
-                                        }}
-                                        onFocus={(e) => e.target.style.borderColor = isAutoSuggested ? '#60A5FA' : '#94A3B8'}
-                                        onBlur={(e) => e.target.style.borderColor = isAutoSuggested ? '#BFDBFE' : '#E2E8F0'}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        When?
-                                    </label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                        <button
-                                            onClick={() => {
-                                                const d = new Date();
-                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: creationMode === 'plan', isTaskOnly: creationMode === 'task' }, 'primary');
-                                                alert('Added to Today!');
+                            {creationMode === 'plan' ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            Plan Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={manualTitle}
+                                            onChange={(e) => {
+                                                setManualTitle(e.target.value);
+                                                setIsAutoSuggested(false);
                                             }}
                                             style={{
-                                                padding: '0.6rem',
-                                                borderRadius: '10px',
-                                                border: '1px solid #E2E8F0',
-                                                background: 'white',
-                                                color: '#334155',
-                                                fontSize: '0.85rem',
-                                                fontWeight: 500,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s'
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                borderRadius: '12px',
+                                                border: isAutoSuggested ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                                                fontSize: '0.9rem',
+                                                color: isAutoSuggested ? '#2563EB' : '#1E293B',
+                                                background: isAutoSuggested ? '#EFF6FF' : '#F8FAFC',
+                                                fontWeight: isAutoSuggested ? 600 : 400,
+                                                transition: 'all 0.2s',
+                                                outline: 'none'
                                             }}
-                                            onMouseEnter={e => e.target.style.background = '#F1F5F9'}
-                                            onMouseLeave={e => e.target.style.background = 'white'}
-                                        >
-                                            Today
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                const d = new Date();
-                                                d.setDate(d.getDate() + 1);
-                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: creationMode === 'plan', isTaskOnly: creationMode === 'task' }, 'primary');
-                                                alert('Added to Tomorrow!');
-                                            }}
-                                            style={{
-                                                padding: '0.6rem',
-                                                borderRadius: '10px',
-                                                border: '1px solid #E2E8F0',
-                                                background: 'white',
-                                                color: '#334155',
-                                                fontSize: '0.85rem',
-                                                fontWeight: 500,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s'
-                                            }}
-                                            onMouseEnter={e => e.target.style.background = '#F1F5F9'}
-                                            onMouseLeave={e => e.target.style.background = 'white'}
-                                        >
-                                            Tomorrow
-                                        </button>
+                                            onFocus={(e) => e.target.style.borderColor = isAutoSuggested ? '#60A5FA' : '#94A3B8'}
+                                            onBlur={(e) => e.target.style.borderColor = isAutoSuggested ? '#BFDBFE' : '#E2E8F0'}
+                                        />
                                     </div>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            When?
+                                        </label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                            <button
+                                                onClick={() => {
+                                                    const d = new Date();
+                                                    onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: true }, 'primary');
+                                                    alert('Added Plan to Today!');
+                                                }}
+                                                style={{
+                                                    padding: '0.6rem',
+                                                    borderRadius: '10px',
+                                                    border: '1px solid #E2E8F0',
+                                                    background: 'white',
+                                                    color: '#334155',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 500,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                            >
+                                                Today
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const d = new Date();
+                                                    d.setDate(d.getDate() + 1);
+                                                    onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: true }, 'primary');
+                                                    alert('Added Plan to Tomorrow!');
+                                                }}
+                                                style={{
+                                                    padding: '0.6rem',
+                                                    borderRadius: '10px',
+                                                    border: '1px solid #E2E8F0',
+                                                    background: 'white',
+                                                    color: '#334155',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 500,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                            >
+                                                Tomorrow
+                                            </button>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <input
+                                                type="date"
+                                                value={manualDate}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '0.6rem',
+                                                    borderRadius: '10px',
+                                                    border: isAutoSuggested && manualDate ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                                                    background: isAutoSuggested && manualDate ? '#EFF6FF' : 'white',
+                                                    color: isAutoSuggested && manualDate ? '#2563EB' : '#334155',
+                                                    fontWeight: isAutoSuggested && manualDate ? 600 : 400,
+                                                    fontSize: '0.85rem'
+                                                }}
+                                                onChange={(e) => {
+                                                    setIsAutoSuggested(false);
+                                                    setManualDate(e.target.value);
+                                                    if (!e.target.value) return;
+                                                    const d = new Date(e.target.value + 'T12:00:00');
+                                                    onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: true }, 'primary');
+                                                    alert(`Added Plan to ${d.toLocaleDateString()}!`);
+                                                }}
+                                            />
+                                            {isAutoSuggested && manualDate && suggestedOption && (
+                                                <button
+                                                    onClick={() => {
+                                                        handleAddToCalendar(suggestedOption);
+                                                    }}
+                                                    style={{
+                                                        background: '#2563EB',
+                                                        color: 'white',
+                                                        padding: '0 1rem',
+                                                        borderRadius: '10px',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: 600,
+                                                        transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+                                                >
+                                                    Confirm
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            <Users size={12} />
+                                            Participants
+                                        </label>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '0.5rem' }}>
+                                            {participants.length > 0 && (
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                    {participants.map((p, i) => (
+                                                        <span key={i} style={{ background: '#E2E8F0', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
+                                                            {p}
+                                                            <X size={10} cursor="pointer" onClick={() => {
+                                                                const newP = [...participants];
+                                                                newP.splice(i, 1);
+                                                                setParticipants(newP);
+                                                            }} />
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <input
+                                                type="text"
+                                                placeholder="Add email and press Enter..."
+                                                value={memberInput}
+                                                onChange={(e) => setMemberInput(e.target.value)}
+                                                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', color: '#1E293B', width: '100%' }}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter' && e.target.value) {
+                                                        e.preventDefault();
+                                                        setParticipants([...participants, e.target.value]);
+                                                        setMemberInput('');
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    {/* Date choice at top */}
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            Date
+                                        </label>
                                         <input
                                             type="date"
                                             value={manualDate}
+                                            onChange={(e) => setManualDate(e.target.value)}
                                             style={{
-                                                flex: 1,
+                                                width: '100%',
                                                 padding: '0.6rem',
                                                 borderRadius: '10px',
-                                                border: isAutoSuggested && manualDate ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
-                                                background: isAutoSuggested && manualDate ? '#EFF6FF' : 'white',
-                                                color: isAutoSuggested && manualDate ? '#2563EB' : '#334155',
-                                                fontWeight: isAutoSuggested && manualDate ? 600 : 400,
-                                                fontSize: '0.85rem'
-                                            }}
-                                            onChange={(e) => {
-                                                setIsAutoSuggested(false);
-                                                setManualDate(e.target.value);
-                                                if (!e.target.value) return;
-                                                const d = new Date(e.target.value + 'T12:00:00');
-                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), manualTitle, true, null, 30, '', '', participants, false, { isPlanOnly: creationMode === 'plan', isTaskOnly: creationMode === 'task' }, 'primary');
-                                                alert(`Added to ${d.toLocaleDateString()}!`);
+                                                border: '1px solid #E2E8F0',
+                                                background: 'white',
+                                                color: '#334155',
+                                                fontSize: '0.85rem',
+                                                outline: 'none',
                                             }}
                                         />
-                                        {isAutoSuggested && manualDate && suggestedOption && (
-                                            <button
-                                                onClick={() => {
-                                                    handleAddToCalendar(suggestedOption);
-                                                }}
-                                                style={{
-                                                    background: '#2563EB',
-                                                    color: 'white',
-                                                    padding: '0 1rem',
-                                                    borderRadius: '10px',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: 600,
-                                                    transition: 'background 0.2s'
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
-                                                onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
-                                            >
-                                                Confirm
-                                            </button>
-                                        )}
                                     </div>
-                                </div>
 
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        <Users size={12} />
-                                        Participants
-                                    </label>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '0.5rem' }}>
-                                        {participants.length > 0 && (
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                                {participants.map((p, i) => (
-                                                    <span key={i} style={{ background: '#E2E8F0', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', color: '#334155' }}>
-                                                        {p}
-                                                        <X size={10} cursor="pointer" onClick={() => {
-                                                            const newP = [...participants];
-                                                            newP.splice(i, 1);
-                                                            setParticipants(newP);
-                                                        }} />
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                    {/* AI task suggestions below that */}
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            <Clock size={12} color="#2563EB" /> AI Task Suggestions
+                                        </label>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {aiTasks.map((t, idx) => (
+                                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#EFF6FF', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
+                                                    <span style={{ flex: 1, fontSize: '0.85rem', color: '#1E3A8A', fontWeight: 500 }}>{t}</span>
+                                                    <X size={14} color="#60A5FA" cursor="pointer" onClick={() => {
+                                                        const newT = [...aiTasks];
+                                                        newT.splice(idx, 1);
+                                                        setAiTasks(newT);
+                                                    }} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Option to add other tasks */}
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', marginBottom: '0.25rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            Add Other Task
+                                        </label>
                                         <input
                                             type="text"
-                                            placeholder="Add email and press Enter..."
-                                            value={memberInput}
-                                            onChange={(e) => setMemberInput(e.target.value)}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', color: '#1E293B', width: '100%' }}
+                                            value={newTaskInput}
+                                            onChange={(e) => setNewTaskInput(e.target.value)}
                                             onKeyDown={e => {
                                                 if (e.key === 'Enter' && e.target.value) {
                                                     e.preventDefault();
-                                                    setParticipants([...participants, e.target.value]);
-                                                    setMemberInput('');
+                                                    setAiTasks([...aiTasks, e.target.value]);
+                                                    setNewTaskInput('');
                                                 }
+                                            }}
+                                            placeholder="Type task and press Enter..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.6rem',
+                                                borderRadius: '10px',
+                                                border: '1px solid #E2E8F0',
+                                                background: '#F8FAFC',
+                                                color: '#1E293B',
+                                                fontSize: '0.85rem',
+                                                outline: 'none'
                                             }}
                                         />
                                     </div>
+
+                                    {/* Submit Tasks to Dashboard Button */}
+                                    <button
+                                        onClick={() => {
+                                            if (!manualDate) { alert('Please select a date first!'); return; }
+                                            if (aiTasks.length === 0) { alert('Please add at least one task!'); return; }
+                                            const d = new Date(manualDate + 'T12:00:00');
+                                            aiTasks.forEach(taskStr => {
+                                                onAddTask(d.toLocaleDateString('en-US', { weekday: 'long' }), taskStr, false, null, 30, '', '', [], false, { isTaskOnly: true }, 'primary');
+                                            });
+                                            alert(`Added ${aiTasks.length} tasks to Dashboard on ${d.toLocaleDateString()}!`);
+                                            setAiTasks([]);
+                                            setManualDate('');
+                                        }}
+                                        style={{
+                                            padding: '0.75rem',
+                                            borderRadius: '10px',
+                                            border: 'none',
+                                            background: '#10B981', // green shade for success/add
+                                            color: 'white',
+                                            fontSize: '0.9rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem',
+                                            alignItems: 'center',
+                                            transition: 'opacity 0.2s',
+                                            opacity: (aiTasks.length > 0 && manualDate) ? 1 : 0.5
+                                        }}
+                                        disabled={aiTasks.length === 0 || !manualDate}
+                                    >
+                                        <Plus size={16} />
+                                        Add {aiTasks.length > 0 ? aiTasks.length : ''} Tasks to Dashboard
+                                    </button>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

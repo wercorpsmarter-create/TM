@@ -1865,30 +1865,33 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
                         />
 
+                        <style>{`
+                            @keyframes slideInRight {
+                                from { transform: translateX(100%); }
+                                to { transform: translateX(0); }
+                            }
+                        `}</style>
                         <div style={{
                             position: 'fixed',
-                            top: dragStart ? modalPosition.top : '50%',
-                            left: dragStart ? modalPosition.left : '50%',
-                            transform: dragStart ? 'none' : 'translate(-50%, -50%)',
+                            top: 0,
+                            right: 0,
+                            bottom: 0,
                             zIndex: 9999,
-                            width: '400px',
-                            background: 'rgba(255, 255, 255, 0.65)',
-                            backdropFilter: 'blur(20px)',
-                            WebkitBackdropFilter: 'blur(20px)',
-                            border: '1px solid rgba(255, 255, 255, 0.8)',
-                            borderRadius: '24px',
-                            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)',
+                            width: '360px',
+                            background: '#ffffff',
+                            borderLeft: '1px solid #e5e5e5',
+                            boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
                             padding: '0',
                             display: 'flex',
                             flexDirection: 'column',
-                            overflow: 'hidden',
-                            animation: 'popupScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                            color: '#37352f',
-                            fontFamily: 'Inter, -apple-system, sans-serif'
+                            overflowY: 'auto',
+                            animation: 'slideInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            color: '#3c4043',
+                            fontFamily: 'Roboto, Inter, -apple-system, sans-serif'
                         }}>
                             {/* Top Bar */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', color: '#737373' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#171717' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', color: '#5f6368' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#3c4043' }}>
                                     <select
                                         value={newEventData.eventType || 'event'}
                                         onChange={e => setNewEventData({ ...newEventData, eventType: e.target.value })}
@@ -1900,9 +1903,10 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     <ChevronDown size={14} style={{ pointerEvents: 'none' }} />
                                 </div>
                                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                    {/* Submitting explicitly using Save when they want */}
                                     <button
                                         onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a3a3a3', padding: '0', display: 'flex' }}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#5f6368', padding: '0', display: 'flex' }}
                                     >
                                         <X size={18} />
                                     </button>
@@ -1911,7 +1915,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 {/* Title Input */}
-                                <div style={{ padding: '4px 16px 16px 16px' }}>
+                                <div style={{ padding: '8px 16px 16px 16px' }}>
                                     <input
                                         autoFocus
                                         placeholder="Title"
@@ -1925,18 +1929,18 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         }}
                                         style={{
                                             fontSize: '22px',
-                                            fontWeight: 500,
+                                            fontWeight: 400,
                                             border: 'none',
                                             outline: 'none',
                                             width: '100%',
-                                            color: '#171717',
+                                            color: '#202124',
                                             padding: 0,
                                             background: 'transparent'
                                         }}
                                     />
                                 </div>
 
-                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+                                <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
 
                                 {/* Time Section */}
                                 <style>{`
@@ -1947,11 +1951,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     }
                                 `}</style>
                                 <div style={{ padding: '16px', display: 'flex', gap: '16px' }}>
-                                    <div style={{ color: '#a3a3a3', marginTop: '2px' }}>
+                                    <div style={{ color: '#5f6368', marginTop: '2px' }}>
                                         <Clock size={16} />
                                     </div>
                                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px', color: '#171717', fontWeight: 500 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#202124' }}>
                                             <input
                                                 type="time"
                                                 value={newEventData.timeStr || ''}
@@ -1959,7 +1963,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 onClick={e => e.target.showPicker && e.target.showPicker()}
                                                 style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
                                             />
-                                            <ArrowRight size={14} color="#a3a3a3" />
+                                            <ArrowRight size={14} color="#5f6368" />
                                             <input
                                                 type="time"
                                                 value={(() => {
@@ -1983,12 +1987,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 onClick={e => e.target.showPicker && e.target.showPicker()}
                                                 style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
                                             />
-                                            <span style={{ color: '#737373', fontWeight: 400 }}>
+                                            <span style={{ color: '#5f6368', fontWeight: 400, marginLeft: '4px' }}>
                                                 {newEventData.duration >= 60 ? `${Math.floor(newEventData.duration / 60)}h${newEventData.duration % 60 > 0 ? ` ${newEventData.duration % 60}m` : ''}` : `${newEventData.duration}m`}
                                             </span>
                                         </div>
-                                        <div style={{ fontSize: '13px', color: '#404040', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <CalendarIcon size={14} color="#a3a3a3" />
+                                        <div style={{ fontSize: '14px', color: '#3c4043', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <input
                                                 type="date"
                                                 value={newEventData.dateStr}
@@ -1997,10 +2000,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontFamily: 'inherit' }}
                                             />
                                         </div>
-                                        <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#a3a3a3', marginTop: '4px', alignItems: 'center' }}>
-                                            <span style={{ cursor: 'pointer', color: newEventData.allDay ? '#171717' : 'inherit' }} onClick={() => setNewEventData({ ...newEventData, allDay: !newEventData.allDay })}>All-day</span>
+                                        <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#5f6368', marginTop: '4px', alignItems: 'center' }}>
+                                            <span style={{ cursor: 'pointer', color: newEventData.allDay ? '#202124' : 'inherit' }} onClick={() => setNewEventData({ ...newEventData, allDay: !newEventData.allDay })}>All-day</span>
+                                            <span style={{ cursor: 'pointer' }}>Time zone</span>
                                             <select style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', outline: 'none', fontSize: 'inherit', padding: 0 }}>
-                                                <option value="none">Does not repeat</option>
+                                                <option value="none">Repeat</option>
                                                 <option value="daily">Daily</option>
                                                 <option value="weekly">Weekly</option>
                                                 <option value="monthly">Monthly</option>
@@ -2009,23 +2013,22 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     </div>
                                 </div>
 
-                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+                                <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
 
-                                {/* Options */}
-                                <div style={{ padding: '12px 0' }}>
+                                {/* Options and Participants */}
+                                <div style={{ padding: '8px 0' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <label htmlFor="participants-input" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '8px 16px', color: '#737373', fontSize: '13px', cursor: 'pointer' }}
-                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.4)'}
+                                        <label htmlFor="participants-input" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                            <Users size={16} />
+                                            <Users size={18} />
                                             <span>Participants</span>
-                                            {newEventData.participants?.length > 0 && <span style={{ marginLeft: 'auto', background: '#f5f5f5', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', color: '#171717' }}>{newEventData.participants.length}</span>}
                                         </label>
                                         <div style={{ padding: '0 16px 8px 48px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                             {newEventData.participants?.map((p, i) => (
-                                                <span key={i} style={{ background: '#f5f5f5', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', color: '#171717' }}>
+                                                <span key={i} style={{ background: '#f1f3f4', padding: '4px 10px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: '#3c4043' }}>
                                                     {p}
-                                                    <X size={10} cursor="pointer" onClick={() => {
+                                                    <X size={12} cursor="pointer" onClick={() => {
                                                         const newP = [...newEventData.participants];
                                                         newP.splice(i, 1);
                                                         setNewEventData({ ...newEventData, participants: newP });
@@ -2037,7 +2040,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 placeholder="Add email..."
                                                 value={memberInput}
                                                 onChange={e => setMemberInput(e.target.value)}
-                                                style={{ border: 'none', outline: 'none', fontSize: '12px', background: 'transparent', minWidth: '100px', flex: 1, padding: '4px 0', color: '#171717' }}
+                                                style={{ border: 'none', outline: 'none', fontSize: '13px', background: 'transparent', minWidth: '100px', flex: 1, padding: '4px 0', color: '#202124' }}
                                                 onKeyDown={e => {
                                                     if (e.key === 'Enter' && e.target.value) {
                                                         e.preventDefault();
@@ -2049,50 +2052,79 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             />
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '8px 16px', color: '#737373', fontSize: '13px', cursor: 'pointer' }}
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
                                         onClick={() => setNewEventData({ ...newEventData, addMeet: !newEventData.addMeet })}
-                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.4)'}
+                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                        <Video size={16} color={newEventData.addMeet ? '#2563eb' : 'currentColor'} />
-                                        <span style={{ color: newEventData.addMeet ? '#171717' : 'inherit' }}>Conferencing</span>
-                                        {newEventData.addMeet && <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#2563eb' }}>Google Meet</span>}
+                                        <Video size={18} color={newEventData.addMeet ? '#1a73e8' : 'currentColor'} />
+                                        <span style={{ color: newEventData.addMeet ? '#202124' : 'inherit' }}>Conferencing</span>
+                                        {newEventData.addMeet && <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#1a73e8' }}>Google Meet</span>}
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg>
+                                        <span>AI Meeting Notes and Docs</span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                            <circle cx="12" cy="10" r="3"></circle>
+                                        </svg>
+                                        <input
+                                            placeholder="Location"
+                                            value={newEventData.location || ''}
+                                            onChange={e => setNewEventData({ ...newEventData, location: e.target.value })}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: '#202124', fontSize: '14px', padding: 0 }}
+                                        />
                                     </div>
                                 </div>
 
-                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+                                <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
 
                                 {/* Description */}
                                 <div style={{ padding: '16px' }}>
-                                    <input
+                                    <textarea
                                         placeholder="Description"
                                         value={newEventData.description || ''}
                                         onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
-                                        style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: '#171717', fontSize: '13px', padding: 0 }}
+                                        style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: '#202124', fontSize: '14px', padding: 0, resize: 'vertical', minHeight: '60px', fontFamily: 'inherit' }}
                                     />
                                 </div>
 
-                                <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+                                <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
 
-                                {/* Calendar Selection */}
-                                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px', color: '#171717', cursor: 'pointer' }}>
-                                        <div style={{ width: '12px', height: '12px', borderRadius: '4px', background: newEventData.color || '#3b82f6' }} />
+                                {/* Calendar Selection and Visibility */}
+                                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: '#3c4043', cursor: 'pointer' }}>
+                                        <div style={{ width: '14px', height: '14px', borderRadius: '4px', background: newEventData.color || '#1a73e8' }} />
                                         <select
                                             value={newEventData.calendarId || 'primary'}
                                             onChange={e => setNewEventData({ ...newEventData, calendarId: e.target.value })}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', appearance: 'none', flex: 1 }}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', appearance: 'none', flex: 1, padding: 0, color: '#202124' }}
                                         >
-                                            <option value="primary">{user?.email || 'Primary Calendar'}</option>
+                                            <option value="primary">{user?.email || 'yumaayoshida@gmail.com'}</option>
                                             {calendars.filter(c => c.id !== user?.email).map(cal => (
                                                 <option key={cal.id} value={cal.id}>{cal.summary}</option>
                                             ))}
                                         </select>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '24px', paddingLeft: '24px', fontSize: '12px', color: '#404040' }}>
+                                    <div style={{ display: 'flex', gap: '24px', paddingLeft: '30px', fontSize: '14px', color: '#5f6368' }}>
                                         <select
                                             value={newEventData.busyStatus || 'busy'}
                                             onChange={e => setNewEventData({ ...newEventData, busyStatus: e.target.value })}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}
                                         >
                                             <option value="busy">Busy</option>
                                             <option value="free">Free</option>
@@ -2100,7 +2132,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         <select
                                             value={newEventData.visibility || 'default'}
                                             onChange={e => setNewEventData({ ...newEventData, visibility: e.target.value })}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}
                                         >
                                             <option value="default">Default visibility</option>
                                             <option value="public">Public</option>
@@ -2110,15 +2142,15 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 </div>
 
                                 {/* Reminders */}
-                                <div style={{ padding: '0 16px 16px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                                    <Bell size={16} color="#a3a3a3" strokeWidth={2} style={{ marginTop: '2px' }} />
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
-                                        <span style={{ color: '#a3a3a3' }}>Reminders</span>
-                                        <div style={{ color: '#404040', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                <div style={{ padding: '0 16px 24px 16px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                                    <Bell size={18} color="#5f6368" style={{ marginTop: '2px' }} />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+                                        <span style={{ color: '#5f6368' }}>Reminders</span>
+                                        <div style={{ color: '#3c4043', display: 'flex', gap: '4px', alignItems: 'center' }}>
                                             <select
                                                 value={newEventData.reminder || '30'}
                                                 onChange={e => setNewEventData({ ...newEventData, reminder: e.target.value })}
-                                                style={{ fontWeight: 'bold', border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0 }}
+                                                style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: '#202124' }}
                                             >
                                                 <option value="0">At time of event</option>
                                                 <option value="5">5 min</option>
@@ -2132,31 +2164,24 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         </div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 16px 16px 16px' }}>
-                                    { /* Save button hidden, relies on enter or blur, but let's just make it subtle or hide it */}
+
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px', borderTop: '1px solid #f1f3f4', background: '#f8f9fa', marginTop: 'auto' }}>
                                     <button
                                         onClick={handleSaveEvent}
                                         style={{
-                                            background: 'rgba(37, 99, 235, 0.1)',
-                                            backdropFilter: 'blur(8px)',
-                                            WebkitBackdropFilter: 'blur(8px)',
-                                            color: '#2563eb',
-                                            border: '1px solid rgba(37, 99, 235, 0.2)',
-                                            borderRadius: '8px',
-                                            padding: '8px 20px',
-                                            fontSize: '13px',
-                                            fontWeight: 600,
+                                            background: '#1a73e8',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '8px 24px',
+                                            fontSize: '14px',
+                                            fontWeight: 500,
                                             cursor: 'pointer',
-                                            transition: 'all 0.2s'
+                                            transition: 'background 0.2s',
+                                            boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)'
                                         }}
-                                        onMouseEnter={e => {
-                                            e.currentTarget.style.background = 'rgba(37, 99, 235, 0.15)';
-                                            e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.3)';
-                                        }}
-                                        onMouseLeave={e => {
-                                            e.currentTarget.style.background = 'rgba(37, 99, 235, 0.1)';
-                                            e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.2)';
-                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = '#1557b0'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = '#1a73e8'; }}
                                     >
                                         Save
                                     </button>

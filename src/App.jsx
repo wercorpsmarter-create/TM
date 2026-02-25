@@ -1269,7 +1269,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '0 1.5rem 0.5rem 1.5rem',
+                        padding: '0 1.5rem 0.5rem 4px',
                         height: activeTab === 'calendar' ? '100%' : '0px',
                         overflow: activeTab === 'calendar' ? 'auto' : 'hidden'
                     }}>

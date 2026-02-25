@@ -859,7 +859,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            padding: `0 ${showEventModal ? '392px' : '0.5rem'} 0 0.5rem`, // Dynamically resize when modal opens
+            padding: `0 ${showEventModal ? '376px' : '0.5rem'} 0 0`, // Dynamically resize when modal opens
             transition: 'padding-right 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
             {/* Calendar Header SCOOTED UP to match Dynamic Island Level */}

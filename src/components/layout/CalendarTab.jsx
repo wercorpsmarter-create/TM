@@ -859,7 +859,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            padding: `0 ${showEventModal ? '360px' : '0.5rem'} 0 0`, // Dynamically resize when modal opens
+            padding: `0 ${showEventModal ? '376px' : '0.5rem'} 0 0`, // Dynamically resize when modal opens
             transition: 'padding-right 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
             {/* Calendar Header SCOOTED UP to match Dynamic Island Level */}
@@ -886,7 +886,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 </h2>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+            <div style={{ display: 'flex', gap: '1.5rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
                 {showSidebar && user && (
                     <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
                         <div className="glass-card static" style={{ padding: '1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
@@ -1874,13 +1874,13 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         `}</style>
                         <div style={{
                             position: 'fixed',
-                            top: '8px',
-                            right: '0',
-                            bottom: '8px',
+                            top: '16px',
+                            right: '16px',
+                            bottom: '16px',
                             zIndex: 9999,
                             width: '360px',
                             background: '#ffffff',
-                            borderRadius: '16px 0 0 16px',
+                            borderRadius: '16px',
                             border: '1px solid #e5e5e5',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
                             padding: '0',

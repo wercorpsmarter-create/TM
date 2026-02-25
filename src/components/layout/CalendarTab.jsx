@@ -1861,26 +1861,27 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 showEventModal && createPortal(
                     <>
                         <div
-                            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)' }}
+                            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'transparent' }}
                             onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
                         />
 
                         <style>{`
                             @keyframes slideInRight {
-                                from { transform: translateX(100%); }
-                                to { transform: translateX(0); }
+                                from { transform: translateX(100%); opacity: 0; }
+                                to { transform: translateX(0); opacity: 1; }
                             }
                         `}</style>
                         <div style={{
                             position: 'fixed',
-                            top: 0,
-                            right: 0,
-                            bottom: 0,
+                            top: '16px',
+                            right: '16px',
+                            bottom: '16px',
                             zIndex: 9999,
                             width: '360px',
                             background: '#ffffff',
-                            borderLeft: '1px solid #e5e5e5',
-                            boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
+                            borderRadius: '16px',
+                            border: '1px solid #e5e5e5',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
                             padding: '0',
                             display: 'flex',
                             flexDirection: 'column',

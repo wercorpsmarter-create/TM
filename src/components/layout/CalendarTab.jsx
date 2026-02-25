@@ -886,7 +886,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 </h2>
             </div>
 
-            <div style={{ display: 'flex', gap: '1.5rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+            <div style={{ display: 'flex', gap: '16px', flex: 1, overflow: 'hidden', minHeight: 0 }}>
                 {showSidebar && user && (
                     <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
                         <div className="glass-card static" style={{ padding: '1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>

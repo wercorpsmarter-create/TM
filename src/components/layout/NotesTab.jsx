@@ -80,6 +80,7 @@ export default function NotesTab() {
     const [editingFolderName, setEditingFolderName] = useState('');
     const [expandedFolders, setExpandedFolders] = useState({});
     const [folderSidebarCollapsed, setFolderSidebarCollapsed] = useState(false);
+    const [folderEditMode, setFolderEditMode] = useState(false);
     const folderInputRef = useRef(null);
 
     // Initialize with a default note
@@ -216,25 +217,46 @@ export default function NotesTab() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                     }}>Folders</span>
-                    <button
-                        onClick={createFolder}
-                        title="New Folder"
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: '#86868b',
-                            padding: '2px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            borderRadius: '4px',
-                            transition: 'color 0.15s'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.color = '#1d1d1f'}
-                        onMouseLeave={e => e.currentTarget.style.color = '#86868b'}
-                    >
-                        <FolderPlus size={14} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <button
+                            onClick={() => setFolderEditMode(!folderEditMode)}
+                            title={folderEditMode ? 'Done' : 'Edit Folders'}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: folderEditMode ? '#1d1d1f' : '#86868b',
+                                padding: '2px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                transition: 'color 0.15s'
+                            }}
+                        >
+                            {folderEditMode ? 'Done' : 'Edit'}
+                        </button>
+                        <button
+                            onClick={createFolder}
+                            title="New Folder"
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#86868b',
+                                padding: '2px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderRadius: '4px',
+                                transition: 'color 0.15s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = '#1d1d1f'}
+                            onMouseLeave={e => e.currentTarget.style.color = '#86868b'}
+                        >
+                            <FolderPlus size={14} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Folder List */}
@@ -282,6 +304,32 @@ export default function NotesTab() {
                                     position: 'relative'
                                 }}
                             >
+                                {/* Delete button in edit mode */}
+                                {folderEditMode && !folder.system && (
+                                    <button
+                                        onClick={e => { e.stopPropagation(); deleteFolder(folder.id); }}
+                                        title="Delete Folder"
+                                        style={{
+                                            background: '#ff3b30',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: 'white',
+                                            width: '16px',
+                                            height: '16px',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0,
+                                            padding: 0,
+                                            fontSize: '11px',
+                                            fontWeight: 700,
+                                            lineHeight: 1
+                                        }}
+                                    >
+                                        −
+                                    </button>
+                                )}
                                 {folder.icon === 'notes' ?
                                     <FileText size={15} style={{ flexShrink: 0 }} /> :
                                     <Folder size={15} style={{ flexShrink: 0 }} />
@@ -316,43 +364,61 @@ export default function NotesTab() {
                                         {folder.name}
                                     </span>
                                 )}
-                                <span style={{
-                                    fontSize: '0.7rem',
-                                    color: '#86868b',
-                                    fontWeight: 500,
-                                    minWidth: '16px',
-                                    textAlign: 'right'
-                                }}>
-                                    {count > 0 ? count : ''}
-                                </span>
+                                {/* Add note button in edit mode */}
+                                {folderEditMode && folder.id !== 'all' && (
+                                    <button
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            setActiveFolderId(folder.id);
+                                            const newNote = {
+                                                id: Date.now().toString(),
+                                                title: '',
+                                                content: '',
+                                                folderId: folder.id,
+                                                updatedAt: Date.now()
+                                            };
+                                            setNotes([newNote, ...notes]);
+                                            setActiveNoteId(newNote.id);
+                                        }}
+                                        title="Add note to this folder"
+                                        style={{
+                                            background: 'rgba(0,0,0,0.08)',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#1d1d1f',
+                                            width: '16px',
+                                            height: '16px',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0,
+                                            padding: 0,
+                                            fontSize: '13px',
+                                            fontWeight: 500,
+                                            lineHeight: 1
+                                        }}
+                                    >
+                                        +
+                                    </button>
+                                )}
+                                {!folderEditMode && (
+                                    <span style={{
+                                        fontSize: '0.7rem',
+                                        color: '#86868b',
+                                        fontWeight: 500,
+                                        minWidth: '16px',
+                                        textAlign: 'right'
+                                    }}>
+                                        {count > 0 ? count : ''}
+                                    </span>
+                                )}
                             </div>
                         );
                     })}
                 </div>
 
-                {/* Delete folder button at bottom */}
-                {activeFolderId !== 'all' && !folders.find(f => f.id === activeFolderId)?.system && (
-                    <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                        <button
-                            onClick={() => deleteFolder(activeFolderId)}
-                            style={{
-                                width: '100%',
-                                background: 'none',
-                                border: 'none',
-                                color: '#ff3b30',
-                                fontSize: '0.8rem',
-                                cursor: 'pointer',
-                                padding: '6px',
-                                borderRadius: '6px',
-                                transition: 'background 0.15s'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,59,48,0.08)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                        >
-                            Delete Folder
-                        </button>
-                    </div>
-                )}
+
             </div>
 
             {/* ===== MIDDLE: Note List ===== */}

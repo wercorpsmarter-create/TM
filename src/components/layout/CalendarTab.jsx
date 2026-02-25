@@ -859,7 +859,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            padding: `0 ${showEventModal ? '376px' : '0.5rem'} 0 0`, // Dynamically resize when modal opens
+            padding: `0 ${showEventModal ? '360px' : '0.5rem'} 0 0`, // Dynamically resize when modal opens
             transition: 'padding-right 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
             {/* Calendar Header SCOOTED UP to match Dynamic Island Level */}
@@ -1874,13 +1874,13 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         `}</style>
                         <div style={{
                             position: 'fixed',
-                            top: '16px',
-                            right: '16px',
-                            bottom: '16px',
+                            top: '8px',
+                            right: '0',
+                            bottom: '8px',
                             zIndex: 9999,
                             width: '360px',
                             background: '#ffffff',
-                            borderRadius: '16px',
+                            borderRadius: '16px 0 0 16px',
                             border: '1px solid #e5e5e5',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
                             padding: '0',

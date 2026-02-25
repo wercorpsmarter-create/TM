@@ -1874,9 +1874,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         `}</style>
                         <div style={{
                             position: 'fixed',
-                            top: '16px',
+                            top: '48px',
                             right: '16px',
-                            bottom: '16px',
+                            bottom: '8px',
                             zIndex: 9999,
                             width: '360px',
                             background: '#ffffff',

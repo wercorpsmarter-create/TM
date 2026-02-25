@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
-import { Plus, Trash2, FileText, Folder, FolderPlus, ChevronRight, ChevronDown, MoreHorizontal, Search, Edit3 } from 'lucide-react';
+import { Plus, Trash2, FileText, Folder, FolderPlus, ChevronRight, ChevronDown, ChevronLeft, MoreHorizontal, Search, Edit3, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Helper to group notes by time period
@@ -79,6 +79,7 @@ export default function NotesTab() {
     const [editingFolderId, setEditingFolderId] = useState(null);
     const [editingFolderName, setEditingFolderName] = useState('');
     const [expandedFolders, setExpandedFolders] = useState({});
+    const [folderSidebarCollapsed, setFolderSidebarCollapsed] = useState(false);
     const folderInputRef = useRef(null);
 
     // Initialize with a default note
@@ -188,16 +189,18 @@ export default function NotesTab() {
 
             {/* ===== LEFT: Folder Sidebar ===== */}
             <div style={{
-                width: '180px',
+                width: folderSidebarCollapsed ? '0px' : '180px',
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 background: 'rgba(245, 245, 247, 0.95)',
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
-                borderRight: '1px solid rgba(0,0,0,0.08)',
+                borderRight: folderSidebarCollapsed ? 'none' : '1px solid rgba(0,0,0,0.08)',
                 borderRadius: '16px 0 0 16px',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                transition: 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                minWidth: 0
             }}>
                 {/* Folder Header */}
                 <div style={{
@@ -251,11 +254,11 @@ export default function NotesTab() {
                                         setEditingFolderName(folder.name);
                                     }
                                 }}
-                                onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,122,255,0.1)'; }}
-                                onDragLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(0,122,255,0.12)' : 'transparent'; }}
+                                onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; }}
+                                onDragLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(0,0,0,0.06)' : 'transparent'; }}
                                 onDrop={e => {
                                     e.preventDefault();
-                                    e.currentTarget.style.background = isActive ? 'rgba(0,122,255,0.12)' : 'transparent';
+                                    e.currentTarget.style.background = isActive ? 'rgba(0,0,0,0.06)' : 'transparent';
                                     const noteId = e.dataTransfer.getData('noteId');
                                     if (noteId && folder.id !== 'all') {
                                         setNotes(prev => prev.map(n =>
@@ -270,8 +273,8 @@ export default function NotesTab() {
                                     padding: '6px 10px',
                                     borderRadius: '8px',
                                     cursor: 'pointer',
-                                    background: isActive ? 'rgba(0,122,255,0.12)' : 'transparent',
-                                    color: isActive ? '#007aff' : '#1d1d1f',
+                                    background: isActive ? 'rgba(0,0,0,0.06)' : 'transparent',
+                                    color: '#1d1d1f',
                                     fontSize: '0.85rem',
                                     fontWeight: isActive ? 600 : 400,
                                     transition: 'all 0.15s',
@@ -315,7 +318,7 @@ export default function NotesTab() {
                                 )}
                                 <span style={{
                                     fontSize: '0.7rem',
-                                    color: isActive ? '#007aff' : '#86868b',
+                                    color: '#86868b',
                                     fontWeight: 500,
                                     minWidth: '16px',
                                     textAlign: 'right'
@@ -362,20 +365,42 @@ export default function NotesTab() {
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
                 borderRight: '1px solid rgba(0,0,0,0.06)',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                borderRadius: folderSidebarCollapsed ? '16px 0 0 16px' : '0'
             }}>
                 {/* List Header */}
                 <div style={{ padding: '12px 12px 8px 12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        <h3 style={{
-                            margin: 0,
-                            fontSize: '1.15rem',
-                            fontWeight: 700,
-                            color: '#1d1d1f',
-                            letterSpacing: '-0.01em'
-                        }}>
-                            {activeFolder?.name || 'Notes'}
-                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                                onClick={() => setFolderSidebarCollapsed(!folderSidebarCollapsed)}
+                                title={folderSidebarCollapsed ? 'Show Folders' : 'Hide Folders'}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#86868b',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    borderRadius: '4px',
+                                    transition: 'color 0.15s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#1d1d1f'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#86868b'}
+                            >
+                                {folderSidebarCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+                            </button>
+                            <h3 style={{
+                                margin: 0,
+                                fontSize: '1.15rem',
+                                fontWeight: 700,
+                                color: '#1d1d1f',
+                                letterSpacing: '-0.01em'
+                            }}>
+                                {activeFolder?.name || 'Notes'}
+                            </h3>
+                        </div>
                         <div style={{ display: 'flex', gap: '4px' }}>
                             <button
                                 onClick={createNote}
@@ -384,12 +409,15 @@ export default function NotesTab() {
                                     background: 'none',
                                     border: 'none',
                                     cursor: 'pointer',
-                                    color: '#007aff',
+                                    color: '#86868b',
                                     padding: '4px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    borderRadius: '6px'
+                                    borderRadius: '6px',
+                                    transition: 'color 0.15s'
                                 }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#1d1d1f'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#86868b'}
                             >
                                 <Edit3 size={16} />
                             </button>
@@ -459,7 +487,7 @@ export default function NotesTab() {
                                             padding: '10px 12px',
                                             borderRadius: '10px',
                                             cursor: 'pointer',
-                                            background: isActive ? '#FFCC02' : 'transparent',
+                                            background: isActive ? 'rgba(0,0,0,0.06)' : 'transparent',
                                             marginBottom: '2px',
                                             transition: 'background 0.15s'
                                         }}

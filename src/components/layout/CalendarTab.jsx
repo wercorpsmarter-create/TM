@@ -1082,43 +1082,35 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 )}
 
                 <div className="glass-card static" style={{ padding: '0.5rem 0.5rem 0 0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', position: 'relative' }}>
-                    {/* Small add button at top-right */}
-                    <button
-                        onClick={() => {
-                            const now = new Date();
-                            const remainder = 30 - (now.getMinutes() % 30);
-                            const defaultStart = new Date(now.getTime() + remainder * 60000);
-                            const ds = (currentDate || now).toISOString().split('T')[0];
-                            const ts = defaultStart.toTimeString().substring(0, 5);
-                            const endTime = new Date(defaultStart.getTime() + 30 * 60000);
-                            const te = endTime.toTimeString().substring(0, 5);
-                            setEditingEvent({ date: ds, startTime: ts, endTime: te, title: '', isAllDay: false, meetLink: '', description: '', members: [] });
-                            setShowEventModal(true);
-                        }}
-                        style={{
-                            position: 'absolute',
-                            top: '6px',
-                            right: '8px',
-                            width: '22px',
-                            height: '22px',
-                            background: 'none',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'rgba(0,0,0,0.25)',
-                            padding: 0,
-                            zIndex: 5,
-                            transition: 'color 0.2s, background 0.2s'
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,0,0,0.5)'; e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(0,0,0,0.25)'; e.currentTarget.style.background = 'none'; }}
-                        title="Add event"
-                    >
-                        <Plus size={14} />
-                    </button>
+                    {/* Small toggle button for task list at top-right (day view only) */}
+                    {view === 'day' && (
+                        <button
+                            onClick={() => setShowSplitView(prev => !prev)}
+                            style={{
+                                position: 'absolute',
+                                top: '12px',
+                                right: '8px',
+                                width: '22px',
+                                height: '22px',
+                                background: 'none',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: showSplitView ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.2)',
+                                padding: 0,
+                                zIndex: 5,
+                                transition: 'color 0.2s, background 0.2s'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,0,0,0.5)'; e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = showSplitView ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.2)'; e.currentTarget.style.background = 'none'; }}
+                            title={showSplitView ? 'Hide task list' : 'Show task list'}
+                        >
+                            <AlignLeft size={14} />
+                        </button>
+                    )}
 
                     {view === 'month' && (
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: fadingIn ? 0 : 1, transition: 'opacity 0.25s ease' }}>

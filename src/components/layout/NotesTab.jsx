@@ -606,9 +606,10 @@ export default function NotesTab() {
                 display: 'flex',
                 flexDirection: 'column',
                 background: 'rgba(255,255,255,0.98)',
-                borderRadius: '0 16px 16px 0',
+                borderRadius: folderSidebarCollapsed ? '16px' : '0 16px 16px 0',
                 overflow: 'hidden',
-                minWidth: 0
+                minWidth: 0,
+                transition: 'border-radius 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
             }}>
                 {activeNote ? (
                     <>

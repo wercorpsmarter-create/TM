@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video, ChevronLeft, ChevronRight, MoreHorizontal, StickyNote, X } from 'lucide-react';
@@ -7,6 +7,28 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// CSS keyframes for task entry animation
+const taskAnimationStyles = `
+@keyframes taskSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+        max-height: 0;
+    }
+    40% {
+        max-height: 80px;
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        max-height: 80px;
+    }
+}
+.task-enter-animation {
+    animation: taskSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+`;
 
 const TimePicker = ({ value, onChange }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -123,6 +145,16 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
     const [showMenu, setShowMenu] = useState(false);
     const [isNotePopupOpen, setIsNotePopupOpen] = useState(false);
     const [noteText, setNoteText] = useState(task.metadata?.note || '');
+    const [isNew, setIsNew] = useState(true);
+    const mountedRef = useRef(false);
+
+    useEffect(() => {
+        if (!mountedRef.current) {
+            mountedRef.current = true;
+            const timer = setTimeout(() => setIsNew(false), 400);
+            return () => clearTimeout(timer);
+        }
+    }, []);
 
     const handleSaveNote = () => {
         onUpdateTask(task.id, { metadata: { ...task.metadata, note: noteText } });
@@ -135,7 +167,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
     const style = {
         transform: CSS.Translate.toString(transform),
         transition,
-        opacity: isDragging ? 0 : 1,
+        opacity: isDragging ? 0 : undefined,
         zIndex: isDragging ? 999 : 'auto',
         touchAction: 'none',
         ...(color ? {
@@ -154,6 +186,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                 style={style}
                 {...listeners}
                 {...attributes}
+                className={`compact-task ${task.status === 'Completed' ? 'completed' : ''} ${isNew && !isDragging ? 'task-enter-animation' : ''}`}
                 onPointerDown={(e) => {
                     e.stopPropagation();
                     if (e.nativeEvent) {
@@ -176,7 +209,6 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
                 onPointerUp={(e) => {
                     if (onInteractionEnd) onInteractionEnd();
                 }}
-                className={`compact-task ${task.status === 'Completed' ? 'completed' : ''}`}
                 onMouseEnter={() => setShowMenu(true)}
                 onMouseLeave={() => setShowMenu(false)}
                 onClick={(e) => {
@@ -627,52 +659,55 @@ export default function WeeklyBreakdown({
     };
 
     return (
-        <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            collisionDetection={closestCenter}
-            autoScroll={false}
-        >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0 1rem' }}>
-                <button onClick={onPrevWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ChevronLeft size={14} />
-                </button>
-                <button onClick={onNextWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ChevronRight size={14} />
-                </button>
-            </div>
+        <>
+            <style>{taskAnimationStyles}</style>
+            <DndContext
+                sensors={sensors}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                collisionDetection={closestCenter}
+                autoScroll={false}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0 1rem' }}>
+                    <button onClick={onPrevWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ChevronLeft size={14} />
+                    </button>
+                    <button onClick={onNextWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ChevronRight size={14} />
+                    </button>
+                </div>
 
-            <div className="weekly-breakdown">
-                {DAYS.filter(day => visibleDays.includes(day)).map((day, index) => (
-                    <DayColumn
-                        key={`${day}-${currentWeekOffset}`}
-                        dayName={day}
-                        tasks={tasks}
-                        onAddTask={onAddTask}
-                        onDeleteTask={onDeleteTask}
-                        onToggleTask={onToggleTask}
-                        onUpdateTask={onUpdateTask}
-                        onInteractionStart={onDragStart}
-                        onInteractionEnd={onDragEnd}
-                        offset={currentWeekOffset}
-                        onOpenCalendarPopup={onOpenCalendarPopup}
-                    />
-                ))}
-            </div>
-            <DragOverlay>
-                {activeTask ? (
-                    <div className={`compact-task ${activeTask.status === 'Completed' ? 'completed' : ''}`} style={{ opacity: 0.9, transform: 'scale(1.05)', transition: 'none', cursor: 'grabbing' }}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                            {activeTask.status === 'Completed' ?
-                                <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
-                                <Circle size={18} color="rgba(0, 0, 0, 0.2)" />
-                            }
+                <div className="weekly-breakdown">
+                    {DAYS.filter(day => visibleDays.includes(day)).map((day, index) => (
+                        <DayColumn
+                            key={`${day}-${currentWeekOffset}`}
+                            dayName={day}
+                            tasks={tasks}
+                            onAddTask={onAddTask}
+                            onDeleteTask={onDeleteTask}
+                            onToggleTask={onToggleTask}
+                            onUpdateTask={onUpdateTask}
+                            onInteractionStart={onDragStart}
+                            onInteractionEnd={onDragEnd}
+                            offset={currentWeekOffset}
+                            onOpenCalendarPopup={onOpenCalendarPopup}
+                        />
+                    ))}
+                </div>
+                <DragOverlay>
+                    {activeTask ? (
+                        <div className={`compact-task ${activeTask.status === 'Completed' ? 'completed' : ''}`} style={{ opacity: 0.9, transform: 'scale(1.05)', transition: 'none', cursor: 'grabbing' }}>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                {activeTask.status === 'Completed' ?
+                                    <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
+                                    <Circle size={18} color="rgba(0, 0, 0, 0.2)" />
+                                }
+                            </div>
+                            <span style={{ fontSize: '0.85rem' }}>{activeTask.text}</span>
                         </div>
-                        <span style={{ fontSize: '0.85rem' }}>{activeTask.text}</span>
-                    </div>
-                ) : null}
-            </DragOverlay>
-        </DndContext>
+                    ) : null}
+                </DragOverlay>
+            </DndContext>
+        </>
     );
 }

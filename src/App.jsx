@@ -186,9 +186,7 @@ function App() {
 
     const fetchUpcomingEvents = async (accessToken) => {
         try {
-            const start = new Date();
-            start.setHours(0, 0, 0, 0);
-            const timeMin = start.toISOString();
+            const timeMin = new Date().toISOString();
             const response = await fetch(
                 `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&maxResults=50&singleEvents=true&orderBy=startTime`,
                 { headers: { Authorization: `Bearer ${accessToken}` } }

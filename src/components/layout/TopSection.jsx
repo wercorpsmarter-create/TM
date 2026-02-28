@@ -766,11 +766,30 @@ export default function TopSection({
                             <Video size={20} /> Upcoming Meetings
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {(!upcomingEvents || upcomingEvents.length === 0) && (
-                                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>No upcoming meetings found.</div>
-                            )}
+                            {(!upcomingEvents || upcomingEvents.filter(event => {
+                                if (!event.hangoutLink) return false;
+                                const now = new Date();
+                                const eventEnd = event.end?.dateTime ? new Date(event.end.dateTime)
+                                    : event.end?.date ? new Date(event.end.date)
+                                        : event.start?.dateTime ? new Date(event.start.dateTime)
+                                            : null;
+                                if (!eventEnd) return true;
+                                return eventEnd > now;
+                            }).length === 0) && (
+                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>No upcoming meetings found.</div>
+                                )}
                             {upcomingEvents && upcomingEvents
-                                .filter(event => event.hangoutLink)
+                                .filter(event => {
+                                    if (!event.hangoutLink) return false;
+                                    const now = new Date();
+                                    // Use end time if available, otherwise start time
+                                    const eventEnd = event.end?.dateTime ? new Date(event.end.dateTime)
+                                        : event.end?.date ? new Date(event.end.date)
+                                            : event.start?.dateTime ? new Date(event.start.dateTime)
+                                                : null;
+                                    if (!eventEnd) return true; // Show if we can't determine time
+                                    return eventEnd > now;
+                                })
                                 .slice(0, 3)
                                 .map(event => (
                                     <div key={event.id} style={{

@@ -28,7 +28,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             setTimeout(() => {
                 setWeekCollapseIndex(-1);
                 setView(newView);
-            }, 320);
+            }, 600);
         } else if (view === 'day' && newView === 'week') {
             // Day → Week: switch immediately, then expand columns
             setWeekExpanding(true);
@@ -68,7 +68,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
     const weekGridColumns = getWeekGridColumns();
     const weekGridTransitionStyle = {
-        transition: 'grid-template-columns 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'grid-template-columns 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
         overflow: 'hidden'
     };
 
@@ -1232,7 +1232,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     textAlign: 'center',
                                                     opacity: (isCollapsing || isExpandingOther) ? 0 : (isToday ? 1 : 0.7),
                                                     overflow: 'hidden',
-                                                    transition: 'opacity 0.25s ease',
+                                                    transition: 'opacity 0.5s ease',
                                                     whiteSpace: 'nowrap'
                                                 }}>
                                                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>

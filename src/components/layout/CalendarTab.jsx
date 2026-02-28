@@ -1724,33 +1724,71 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     <>
                         {/* Subtle toggle button for task list */}
                         {!showSplitView && (
-                            <button
-                                onClick={() => setShowSplitView(true)}
-                                style={{
-                                    position: 'absolute',
-                                    right: '0',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    width: '14px',
-                                    height: '44px',
-                                    background: 'rgba(0,0,0,0.04)',
-                                    border: 'none',
-                                    borderRadius: '4px 0 0 4px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'rgba(0,0,0,0.25)',
-                                    padding: 0,
-                                    zIndex: 10,
-                                    transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
-                                title="Show task list"
-                            >
-                                <ChevronLeft size={10} />
-                            </button>
+                            <div style={{
+                                position: 'absolute',
+                                right: '0',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px',
+                                zIndex: 10
+                            }}>
+                                <button
+                                    onClick={() => setShowSplitView(true)}
+                                    style={{
+                                        width: '14px',
+                                        height: '36px',
+                                        background: 'rgba(0,0,0,0.04)',
+                                        border: 'none',
+                                        borderRadius: '4px 0 0 4px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'rgba(0,0,0,0.25)',
+                                        padding: 0,
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                                    title="Show task list"
+                                >
+                                    <ChevronLeft size={10} />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const now = new Date();
+                                        const remainder = 30 - (now.getMinutes() % 30);
+                                        const defaultStart = new Date(now.getTime() + remainder * 60000);
+                                        const ds = (currentDate || now).toISOString().split('T')[0];
+                                        const ts = defaultStart.toTimeString().substring(0, 5);
+                                        const endTime = new Date(defaultStart.getTime() + 30 * 60000);
+                                        const te = endTime.toTimeString().substring(0, 5);
+                                        setEditingEvent({ date: ds, startTime: ts, endTime: te, title: '', isAllDay: false, meetLink: '', description: '', members: [] });
+                                        setShowEventModal(true);
+                                    }}
+                                    style={{
+                                        width: '14px',
+                                        height: '14px',
+                                        background: 'rgba(0,0,0,0.04)',
+                                        border: 'none',
+                                        borderRadius: '4px 0 0 4px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'rgba(0,0,0,0.25)',
+                                        padding: 0,
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                                    title="Add event"
+                                >
+                                    <Plus size={10} />
+                                </button>
+                            </div>
                         )}
                         {showSplitView && (
                             <div className="glass-card static"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users, Plus, Trash2, CheckCircle, CheckCircle2, Circle, Columns, ChevronDown, MoreHorizontal, Maximize2, FileText, Bell, ArrowRight, Check, Pencil } from 'lucide-react';
 
@@ -6,6 +6,26 @@ import MiniCalendar from './MiniCalendar';
 
 export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask, view, setView }) {
     const [currentDate, setCurrentDate] = useState(new Date());
+
+    // View zoom transition tracking
+    const VIEW_LEVELS = { month: 0, week: 1, day: 2 };
+    const prevViewRef = useRef(view);
+    const [viewTransition, setViewTransition] = useState('');
+
+    useEffect(() => {
+        const prevLevel = VIEW_LEVELS[prevViewRef.current] ?? 0;
+        const nextLevel = VIEW_LEVELS[view] ?? 0;
+        if (prevViewRef.current !== view) {
+            if (nextLevel > prevLevel) {
+                setViewTransition('cal-zoom-in');
+            } else {
+                setViewTransition('cal-zoom-out');
+            }
+            prevViewRef.current = view;
+            const timer = setTimeout(() => setViewTransition(''), 350);
+            return () => clearTimeout(timer);
+        }
+    }, [view]);
 
     // Helper for event layout
     const layoutEvents = React.useCallback((items) => {
@@ -1017,369 +1037,144 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 )}
 
                 <div className="glass-card static" style={{ padding: '0.5rem 0.5rem 0 0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', position: 'relative' }}>
+                    <style>{`
+                        @keyframes calZoomIn {
+                            0% { opacity: 0; transform: scale(0.88); }
+                            100% { opacity: 1; transform: scale(1); }
+                        }
+                        @keyframes calZoomOut {
+                            0% { opacity: 0; transform: scale(1.12); }
+                            100% { opacity: 1; transform: scale(1); }
+                        }
+                        .cal-zoom-in { animation: calZoomIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+                        .cal-zoom-out { animation: calZoomOut 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+                    `}</style>
 
                     {view === 'month' && (
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '32px', overflow: 'hidden' }}>
-                            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', paddingBottom: '0' }}>
-                                <div className="calendar-grid" style={{ margin: 0, border: 'none', borderRadius: 0, background: 'transparent', gap: 0 }}>
-                                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                                        <div key={d} className="calendar-header-cell" style={{ textAlign: 'center', padding: '10px 0', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{d}</div>
-                                    ))}
-                                    {getDaysInMonth().map((dayObj, i) => {
-                                        const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
-                                        const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
-
-                                        // Merge and sort items
-                                        const allItems = [
-                                            ...dayEvents.map(e => ({ ...e, type: 'google' })),
-                                            ...dayTasks.map(t => ({ ...t, type: 'task', title: t.text }))
-                                        ].sort((a, b) => {
-                                            // Simple sort by time if available, otherwise prioritize all-day events?
-                                            // Or just keep grouped. I'll stick to a simple merge.
-                                            // Actually, let's sort by start time if possible.
-                                            const getMinutes = (item) => {
-                                                if (item.type === 'google' && item.start.dateTime) {
-                                                    const d = new Date(item.start.dateTime);
-                                                    return d.getHours() * 60 + d.getMinutes();
-                                                }
-                                                if (item.type === 'task' && item.metadata?.time) {
-                                                    const [h, m] = item.metadata.time.split(':').map(Number);
-                                                    return h * 60 + m;
-                                                }
-                                                return -1; // All day / no time
-                                            };
-                                            return getMinutes(a) - getMinutes(b);
-                                        });
-
-                                        const MAX_VISIBLE = 4;
-                                        const visibleItems = allItems.slice(0, MAX_VISIBLE);
-                                        const overflowCount = allItems.length - MAX_VISIBLE;
-
-                                        return (
-                                            <div
-                                                key={i}
-                                                className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''}`}
-                                                onClick={() => {
-                                                    setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
-                                                    setView('day');
-                                                }}
-                                                style={{
-                                                    cursor: 'pointer',
-                                                    color: dayObj.currentMonth ? '#000' : '#9ca3af',
-                                                    minHeight: '170px',
-                                                    height: '170px',
-                                                    overflow: 'hidden',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    padding: '8px',
-                                                    position: 'relative',
-                                                    borderRight: '1px solid rgba(0, 0, 0, 0.05)',
-                                                    borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
-                                                    background: dayObj.currentMonth ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
-                                                }}
-                                            >
-                                                <div className="day-number" style={{
-                                                    color: isToday ? 'white' : 'inherit',
-                                                    background: isToday ? '#ef4444' : 'transparent',
-                                                    borderRadius: '4px',
-                                                    padding: isToday ? '2px 4px' : '0',
-                                                    width: 'fit-content',
-                                                    minWidth: isToday ? '20px' : 'auto',
-                                                    textAlign: 'center',
-                                                    alignSelf: 'flex-end',
-                                                    marginBottom: '4px',
-                                                    fontWeight: isToday ? 600 : 400,
-                                                    fontSize: '0.75rem',
-                                                    opacity: isToday ? 1 : 0.6
-                                                }}>
-                                                    {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'short' })} 1` : dayObj.day}
-                                                </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                                                    {visibleItems.map((item, idx) => {
-                                                        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
-
-                                                        const style = color ? {
-                                                            backgroundColor: `${color}4d`, // 30% opacity
-                                                            backdropFilter: 'blur(4px)',
-                                                            borderLeft: `3px solid ${color}`,
-                                                            color: '#000', // Text color - Changed to black
-                                                            // Glassmorphic border
-                                                            borderTop: `1px solid ${color}40`,
-                                                            borderRight: `1px solid ${color}40`,
-                                                            borderBottom: `1px solid ${color}40`,
-                                                        } : {
-                                                            // Default gray style if no color (though mostly should have color)
-                                                            backgroundColor: 'rgba(0,0,0,0.05)',
-                                                            color: 'var(--text-main)',
-                                                            borderLeft: '3px solid rgba(0,0,0,0.2)'
-                                                        };
-
-                                                        return (
-                                                            <div key={`${item.id}-${idx}`} className="event-pill" title={item.summary || item.title}
-                                                                onClick={(e) => handleEventClick(e, item, new Date(dayObj.year, dayObj.month, dayObj.day))}
-                                                                style={{
-                                                                    ...style,
-                                                                    padding: '2px 4px',
-                                                                    fontSize: '0.75rem',
-                                                                    borderRadius: '4px',
-                                                                    marginBottom: '1px',
-                                                                    overflow: 'hidden',
-                                                                    whiteSpace: 'nowrap',
-                                                                    textOverflow: 'ellipsis',
-                                                                    display: 'block',
-                                                                    fontWeight: 300,
-                                                                    cursor: 'pointer'
-                                                                }}
-                                                            >
-                                                                {item.summary || item.title}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    {overflowCount > 0 && (
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '4px', marginTop: '2px', fontWeight: 600 }}>
-                                                            +{overflowCount} more...
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {view === 'week' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', width: '100%', gap: '1px' }}>
-                                    {getDaysInWeek().map((dayObj, i) => {
-                                        const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
-                                        const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-                                        return (
-                                            <div key={i} style={{ textAlign: 'center', opacity: isToday ? 1 : 0.7 }}>
-                                                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
-                                                <div style={{ fontSize: '1rem', fontWeight: 400, color: isToday ? 'var(--primary)' : 'var(--text-main)', opacity: isToday ? 1 : 0.8 }}>{dayObj.day}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-                                <div
-                                    style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
-                                    onMouseMove={handleDragMove}
-                                    onMouseUp={handleDragEnd}
-                                    onMouseLeave={handleDragEnd}
-                                >
-                                    <div style={{ position: 'absolute', inset: 0, left: '70px', pointerEvents: 'none', zIndex: 0 }}>
-                                        {Array.from({ length: 24 }).map((_, i) => (
-                                            <div key={i} style={{
-                                                height: '60px',
-                                                borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
-                                                borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
-                                                boxSizing: 'border-box'
-                                            }} />
+                        <div key={`month-${viewTransition}`} className={viewTransition} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '32px', overflow: 'hidden' }}>
+                                <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', paddingBottom: '0' }}>
+                                    <div className="calendar-grid" style={{ margin: 0, border: 'none', borderRadius: 0, background: 'transparent', gap: 0 }}>
+                                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                            <div key={d} className="calendar-header-cell" style={{ textAlign: 'center', padding: '10px 0', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{d}</div>
                                         ))}
-                                    </div>
-
-                                    <div style={{
-                                        width: '60px',
-                                        flexShrink: 0,
-                                        marginRight: '10px',
-                                        zIndex: 1,
-                                        position: 'relative',
-                                        marginTop: '10px' // Compensate for the pill extending up
-                                    }}>
-
-                                        {Array.from({ length: 24 }).map((_, i) => (
-                                            <div key={i} style={{ height: '60px', position: 'relative' }}>
-                                                <span style={{
-                                                    position: 'absolute',
-                                                    top: '-6px',
-                                                    left: 0,
-                                                    width: '100%',
-                                                    textAlign: 'center',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: 600,
-                                                    color: 'var(--text-muted)'
-                                                }}>
-                                                    {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {(() => {
-                                        const now = new Date();
-                                        const minutes = now.getHours() * 60 + now.getMinutes();
-                                        const topOffset = (minutes / 60) * 60;
-                                        return (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: `${topOffset}px`,
-                                                left: '70px',
-                                                right: 0,
-                                                height: '2px',
-                                                backgroundColor: 'red',
-                                                zIndex: 50,
-                                                pointerEvents: 'none'
-                                            }}>
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    left: '-2px',
-                                                    top: '-6px',
-                                                    width: '4px',
-                                                    height: '14px',
-                                                    backgroundColor: 'red',
-                                                    borderRadius: '2px'
-                                                }} />
-                                            </div>
-                                        );
-                                    })()}
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', width: '100%', gap: '0', zIndex: 1 }}>
-                                        {getDaysInWeek().map((dayObj, i) => {
+                                        {getDaysInMonth().map((dayObj, i) => {
                                             const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
+                                            const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
 
-                                            const items = [
-                                                ...dayEvents.map(e => {
-                                                    const start = new Date(e.start.dateTime || e.start.date);
-                                                    const end = new Date(e.end.dateTime || e.end.date);
-                                                    const startMinutes = start.getHours() * 60 + start.getMinutes();
-                                                    const duration = (end - start) / (1000 * 60);
-                                                    return { ...e, type: 'google', startMinutes, duration, title: e.summary };
-                                                }),
-                                                ...dayTasks.map(t => {
-                                                    let startMinutes = 0;
-                                                    let duration = 30;
-                                                    let hasTime = false;
-                                                    let color = undefined;
-
-                                                    if (t.metadata) {
-                                                        if (t.metadata.time) {
-                                                            const [h, m] = t.metadata.time.split(':').map(Number);
-                                                            startMinutes = h * 60 + m;
-                                                            hasTime = true;
-                                                        }
-                                                        if (t.metadata.duration) {
-                                                            duration = parseInt(t.metadata.duration, 10);
-                                                        }
-                                                        if (t.metadata.color) {
-                                                            color = t.metadata.color;
-                                                        }
+                                            // Merge and sort items
+                                            const allItems = [
+                                                ...dayEvents.map(e => ({ ...e, type: 'google' })),
+                                                ...dayTasks.map(t => ({ ...t, type: 'task', title: t.text }))
+                                            ].sort((a, b) => {
+                                                // Simple sort by time if available, otherwise prioritize all-day events?
+                                                // Or just keep grouped. I'll stick to a simple merge.
+                                                // Actually, let's sort by start time if possible.
+                                                const getMinutes = (item) => {
+                                                    if (item.type === 'google' && item.start.dateTime) {
+                                                        const d = new Date(item.start.dateTime);
+                                                        return d.getHours() * 60 + d.getMinutes();
                                                     }
-                                                    return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
-                                                })
-                                            ];
+                                                    if (item.type === 'task' && item.metadata?.time) {
+                                                        const [h, m] = item.metadata.time.split(':').map(Number);
+                                                        return h * 60 + m;
+                                                    }
+                                                    return -1; // All day / no time
+                                                };
+                                                return getMinutes(a) - getMinutes(b);
+                                            });
 
-                                            const { allDay, timed } = layoutEvents(items);
+                                            const MAX_VISIBLE = 4;
+                                            const visibleItems = allItems.slice(0, MAX_VISIBLE);
+                                            const overflowCount = allItems.length - MAX_VISIBLE;
 
                                             return (
-                                                <div key={i}
-                                                    style={{
-                                                        position: 'relative',
-                                                        borderRight: '1px solid rgba(0,0,0,0.1)',
-                                                        borderLeft: i === 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
-                                                        height: '100%'
+                                                <div
+                                                    key={i}
+                                                    className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''}`}
+                                                    onClick={() => {
+                                                        setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
+                                                        setView('day');
                                                     }}
-                                                    onMouseDown={(e) => handleDragStart(e, i, dayObj.dateObj)}
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        color: dayObj.currentMonth ? '#000' : '#9ca3af',
+                                                        minHeight: '170px',
+                                                        height: '170px',
+                                                        overflow: 'hidden',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        padding: '8px',
+                                                        position: 'relative',
+                                                        borderRight: '1px solid rgba(0, 0, 0, 0.05)',
+                                                        borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+                                                        background: dayObj.currentMonth ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
+                                                    }}
                                                 >
-                                                    {isDragging && dragStart && dragStart.dayIndex === i && (
-                                                        <div style={{
-                                                            position: 'absolute',
-                                                            top: `${(dragStart.startMinutes / 60) * 60}px`,
-                                                            height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
-                                                            left: '4px', right: '4px',
-                                                            background: 'rgba(59, 130, 246, 0.25)',
-                                                            backdropFilter: 'blur(4px)',
-                                                            WebkitBackdropFilter: 'blur(4px)',
-                                                            borderRadius: '6px',
-                                                            zIndex: 100,
-                                                            pointerEvents: 'none',
-                                                            border: '1px solid rgba(59, 130, 246, 0.5)',
-                                                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
-                                                            color: '#1e3a8a',
-                                                            fontSize: '0.75rem',
-                                                            padding: '4px',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            fontWeight: 600,
-                                                            transition: 'height 0.1s ease-out'
-                                                        }}>
-                                                            {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
-                                                            {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
-                                                        </div>
-                                                    )}
+                                                    <div className="day-number" style={{
+                                                        color: isToday ? 'white' : 'inherit',
+                                                        background: isToday ? '#ef4444' : 'transparent',
+                                                        borderRadius: '4px',
+                                                        padding: isToday ? '2px 4px' : '0',
+                                                        width: 'fit-content',
+                                                        minWidth: isToday ? '20px' : 'auto',
+                                                        textAlign: 'center',
+                                                        alignSelf: 'flex-end',
+                                                        marginBottom: '4px',
+                                                        fontWeight: isToday ? 600 : 400,
+                                                        fontSize: '0.75rem',
+                                                        opacity: isToday ? 1 : 0.6
+                                                    }}>
+                                                        {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'short' })} 1` : dayObj.day}
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                                                        {visibleItems.map((item, idx) => {
+                                                            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                            const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
 
-                                                    {allDay.map((item, idx) => {
-                                                        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
-                                                        return (
-                                                            <div key={`ad-${idx}`} className={`event-pill ${item.type}`}
-                                                                onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
-                                                                style={{
-                                                                    position: 'relative',
-                                                                    marginBottom: '2px',
-                                                                    fontSize: '0.7rem',
-                                                                    padding: '2px 4px',
-                                                                    whiteSpace: 'nowrap',
-                                                                    overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis',
-                                                                    backgroundColor: color ? `${color}4d` : undefined,
-                                                                    backdropFilter: color ? 'blur(4px)' : undefined,
-                                                                    border: color ? `1px solid ${color}66` : undefined,
-                                                                    borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                    color: color ? '#000' : undefined,
-                                                                    borderRadius: '4px',
-                                                                    fontWeight: 300,
-                                                                    cursor: 'pointer'
-                                                                }}>
-                                                                {item.title}
+                                                            const style = color ? {
+                                                                backgroundColor: `${color}4d`, // 30% opacity
+                                                                backdropFilter: 'blur(4px)',
+                                                                borderLeft: `3px solid ${color}`,
+                                                                color: '#000', // Text color - Changed to black
+                                                                // Glassmorphic border
+                                                                borderTop: `1px solid ${color}40`,
+                                                                borderRight: `1px solid ${color}40`,
+                                                                borderBottom: `1px solid ${color}40`,
+                                                            } : {
+                                                                // Default gray style if no color (though mostly should have color)
+                                                                backgroundColor: 'rgba(0,0,0,0.05)',
+                                                                color: 'var(--text-main)',
+                                                                borderLeft: '3px solid rgba(0,0,0,0.2)'
+                                                            };
+
+                                                            return (
+                                                                <div key={`${item.id}-${idx}`} className="event-pill" title={item.summary || item.title}
+                                                                    onClick={(e) => handleEventClick(e, item, new Date(dayObj.year, dayObj.month, dayObj.day))}
+                                                                    style={{
+                                                                        ...style,
+                                                                        padding: '2px 4px',
+                                                                        fontSize: '0.75rem',
+                                                                        borderRadius: '4px',
+                                                                        marginBottom: '1px',
+                                                                        overflow: 'hidden',
+                                                                        whiteSpace: 'nowrap',
+                                                                        textOverflow: 'ellipsis',
+                                                                        display: 'block',
+                                                                        fontWeight: 300,
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                >
+                                                                    {item.summary || item.title}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {overflowCount > 0 && (
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '4px', marginTop: '2px', fontWeight: 600 }}>
+                                                                +{overflowCount} more...
                                                             </div>
-                                                        );
-                                                    })}
-
-                                                    {timed.map((item, idx) => {
-                                                        const top = (item.startMinutes / 60) * 60;
-                                                        const height = (item.duration / 60) * 60;
-                                                        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
-
-                                                        return (
-                                                            <div key={`t-${idx}`} className={`event-pill ${item.type}`}
-                                                                onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
-                                                                style={{
-                                                                    position: 'absolute',
-                                                                    top: `${top}px`,
-                                                                    height: `${Math.max(height, 20)}px`,
-                                                                    left: `${item.layoutLeft}%`,
-                                                                    width: `calc(${item.layoutWidth}% - 2px)`,
-                                                                    fontSize: '0.75rem',
-                                                                    padding: '2px 4px',
-                                                                    overflow: 'hidden',
-                                                                    zIndex: item.zIndex || 10,
-                                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                                                    display: 'flex',
-                                                                    flexDirection: 'column',
-                                                                    backgroundColor: color || undefined,
-                                                                    border: '1px solid white',
-                                                                    color: '#fff',
-                                                                    borderRadius: '4px',
-                                                                    cursor: 'pointer'
-                                                                }}>
-                                                                <div style={{ fontWeight: 300, fontSize: '0.7rem' }}>{item.title}</div>
-                                                                {height > 30 && (
-                                                                    <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>
-                                                                        {Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -1389,234 +1184,477 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         </div>
                     )}
 
-                    {view === 'day' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                            <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-                                <div
-                                    style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
-                                    onMouseMove={handleDragMove}
-                                    onMouseUp={handleDragEnd}
-                                    onMouseLeave={handleDragEnd}
-                                >
-                                    <div style={{ position: 'absolute', inset: 0, left: '70px', pointerEvents: 'none', zIndex: 0 }}>
-                                        {Array.from({ length: 24 }).map((_, i) => (
-                                            <div key={i} style={{
-                                                height: '60px',
-                                                borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
-                                                borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
-                                                boxSizing: 'border-box'
-                                            }} />
-                                        ))}
+                    {view === 'week' && (
+                        <div key={`week-${viewTransition}`} className={viewTransition} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', width: '100%', gap: '1px' }}>
+                                        {getDaysInWeek().map((dayObj, i) => {
+                                            const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
+                                            const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                                            return (
+                                                <div key={i} style={{ textAlign: 'center', opacity: isToday ? 1 : 0.7 }}>
+                                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
+                                                    <div style={{ fontSize: '1rem', fontWeight: 400, color: isToday ? 'var(--primary)' : 'var(--text-main)', opacity: isToday ? 1 : 0.8 }}>{dayObj.day}</div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
+                                </div>
 
-                                    <div style={{
-                                        width: '60px',
-                                        flexShrink: 0,
-                                        marginRight: '10px',
-                                        zIndex: 1,
-                                        position: 'relative',
-                                        marginTop: '10px'
-                                    }}>
-
-                                        {Array.from({ length: 24 }).map((_, i) => (
-                                            <div key={i} style={{ height: '60px', position: 'relative' }}>
-                                                <span style={{
-                                                    position: 'absolute',
-                                                    top: '-6px',
-                                                    left: 0,
-                                                    width: '100%',
-                                                    textAlign: 'center',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: 600,
-                                                    color: 'var(--text-muted)'
-                                                }}>
-                                                    {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {(() => {
-                                        const now = new Date();
-                                        const minutes = now.getHours() * 60 + now.getMinutes();
-                                        const topOffset = (minutes / 60) * 60;
-                                        return (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: `${topOffset}px`,
-                                                left: '70px',
-                                                right: 0,
-                                                height: '2px',
-                                                backgroundColor: 'red',
-                                                zIndex: 50,
-                                                pointerEvents: 'none'
-                                            }}>
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    left: '-2px',
-                                                    top: '-6px',
-                                                    width: '4px',
-                                                    height: '14px',
-                                                    backgroundColor: 'red',
-                                                    borderRadius: '2px'
-                                                }} />
-                                            </div>
-                                        );
-                                    })()}
-
+                                <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
                                     <div
-                                        style={{ flex: 1, position: 'relative', borderLeft: '1px solid rgba(0,0,0,0.1)', zIndex: 1 }}
-                                        onMouseDown={(e) => handleDragStart(e, 0, currentDate)} // dayIndex 0 for day view
+                                        style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
+                                        onMouseMove={handleDragMove}
+                                        onMouseUp={handleDragEnd}
+                                        onMouseLeave={handleDragEnd}
                                     >
-                                        {isDragging && dragStart && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: `${(dragStart.startMinutes / 60) * 60}px`,
-                                                height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
-                                                left: '10px', right: '10px',
-                                                background: 'rgba(59, 130, 246, 0.25)',
-                                                backdropFilter: 'blur(4px)',
-                                                WebkitBackdropFilter: 'blur(4px)',
-                                                borderRadius: '6px',
-                                                zIndex: 100,
-                                                pointerEvents: 'none',
-                                                border: '1px solid rgba(59, 130, 246, 0.5)',
-                                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
-                                                color: '#1e3a8a',
-                                                fontSize: '0.75rem',
-                                                padding: '4px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontWeight: 600,
-                                                transition: 'height 0.1s ease-out'
-                                            }}>
-                                                {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
-                                                {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
-                                            </div>
-                                        )}
+                                        <div style={{ position: 'absolute', inset: 0, left: '70px', pointerEvents: 'none', zIndex: 0 }}>
+                                            {Array.from({ length: 24 }).map((_, i) => (
+                                                <div key={i} style={{
+                                                    height: '60px',
+                                                    borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                    borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                    boxSizing: 'border-box'
+                                                }} />
+                                            ))}
+                                        </div>
+
+                                        <div style={{
+                                            width: '60px',
+                                            flexShrink: 0,
+                                            marginRight: '10px',
+                                            zIndex: 1,
+                                            position: 'relative',
+                                            marginTop: '10px' // Compensate for the pill extending up
+                                        }}>
+
+                                            {Array.from({ length: 24 }).map((_, i) => (
+                                                <div key={i} style={{ height: '60px', position: 'relative' }}>
+                                                    <span style={{
+                                                        position: 'absolute',
+                                                        top: '-6px',
+                                                        left: 0,
+                                                        width: '100%',
+                                                        textAlign: 'center',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: 'var(--text-muted)'
+                                                    }}>
+                                                        {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
 
                                         {(() => {
-                                            const { dayEvents, dayTasks } = getItemsForDay(currentDate.getDate(), currentDate.getMonth(), currentDate.getFullYear());
-
-                                            const items = [
-                                                ...dayEvents.map(e => {
-                                                    const start = new Date(e.start.dateTime || e.start.date);
-                                                    const end = new Date(e.end.dateTime || e.end.date);
-                                                    const startMinutes = start.getHours() * 60 + start.getMinutes();
-                                                    const duration = (end - start) / (1000 * 60);
-                                                    return { ...e, type: 'google', startMinutes, duration, title: e.summary };
-                                                }),
-                                                ...dayTasks.map(t => {
-                                                    let startMinutes = 0;
-                                                    let duration = 30;
-                                                    let hasTime = false;
-
-                                                    let color = undefined;
-
-                                                    if (t.metadata) {
-                                                        if (t.metadata.time) {
-                                                            const [h, m] = t.metadata.time.split(':').map(Number);
-                                                            startMinutes = h * 60 + m;
-                                                            hasTime = true;
-                                                        }
-                                                        if (t.metadata.duration) {
-                                                            duration = parseInt(t.metadata.duration, 10);
-                                                        }
-                                                        if (t.metadata.color) {
-                                                            color = t.metadata.color;
-                                                        }
-                                                    }
-                                                    return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
-                                                })
-                                            ];
-
-                                            const { allDay, timed: timedItems } = layoutEvents(items);
-
+                                            const now = new Date();
+                                            const minutes = now.getHours() * 60 + now.getMinutes();
+                                            const topOffset = (minutes / 60) * 60;
                                             return (
-                                                <>
-                                                    <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: `${topOffset}px`,
+                                                    left: '70px',
+                                                    right: 0,
+                                                    height: '2px',
+                                                    backgroundColor: 'red',
+                                                    zIndex: 50,
+                                                    pointerEvents: 'none'
+                                                }}>
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        left: '-2px',
+                                                        top: '-6px',
+                                                        width: '4px',
+                                                        height: '14px',
+                                                        backgroundColor: 'red',
+                                                        borderRadius: '2px'
+                                                    }} />
+                                                </div>
+                                            );
+                                        })()}
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', width: '100%', gap: '0', zIndex: 1 }}>
+                                            {getDaysInWeek().map((dayObj, i) => {
+                                                const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
+
+                                                const items = [
+                                                    ...dayEvents.map(e => {
+                                                        const start = new Date(e.start.dateTime || e.start.date);
+                                                        const end = new Date(e.end.dateTime || e.end.date);
+                                                        const startMinutes = start.getHours() * 60 + start.getMinutes();
+                                                        const duration = (end - start) / (1000 * 60);
+                                                        return { ...e, type: 'google', startMinutes, duration, title: e.summary };
+                                                    }),
+                                                    ...dayTasks.map(t => {
+                                                        let startMinutes = 0;
+                                                        let duration = 30;
+                                                        let hasTime = false;
+                                                        let color = undefined;
+
+                                                        if (t.metadata) {
+                                                            if (t.metadata.time) {
+                                                                const [h, m] = t.metadata.time.split(':').map(Number);
+                                                                startMinutes = h * 60 + m;
+                                                                hasTime = true;
+                                                            }
+                                                            if (t.metadata.duration) {
+                                                                duration = parseInt(t.metadata.duration, 10);
+                                                            }
+                                                            if (t.metadata.color) {
+                                                                color = t.metadata.color;
+                                                            }
+                                                        }
+                                                        return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
+                                                    })
+                                                ];
+
+                                                const { allDay, timed } = layoutEvents(items);
+
+                                                return (
+                                                    <div key={i}
+                                                        style={{
+                                                            position: 'relative',
+                                                            borderRight: '1px solid rgba(0,0,0,0.1)',
+                                                            borderLeft: i === 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
+                                                            height: '100%'
+                                                        }}
+                                                        onMouseDown={(e) => handleDragStart(e, i, dayObj.dateObj)}
+                                                    >
+                                                        {isDragging && dragStart && dragStart.dayIndex === i && (
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                top: `${(dragStart.startMinutes / 60) * 60}px`,
+                                                                height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
+                                                                left: '4px', right: '4px',
+                                                                background: 'rgba(59, 130, 246, 0.25)',
+                                                                backdropFilter: 'blur(4px)',
+                                                                WebkitBackdropFilter: 'blur(4px)',
+                                                                borderRadius: '6px',
+                                                                zIndex: 100,
+                                                                pointerEvents: 'none',
+                                                                border: '1px solid rgba(59, 130, 246, 0.5)',
+                                                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                                                                color: '#1e3a8a',
+                                                                fontSize: '0.75rem',
+                                                                padding: '4px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                fontWeight: 600,
+                                                                transition: 'height 0.1s ease-out'
+                                                            }}>
+                                                                {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
+                                                                {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
+                                                            </div>
+                                                        )}
+
                                                         {allDay.map((item, idx) => {
                                                             const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
                                                             const color = customColor || item.color || item.calendarColor || '#3b82f6';
                                                             return (
                                                                 <div key={`ad-${idx}`} className={`event-pill ${item.type}`}
-                                                                    onClick={(e) => handleEventClick(e, item, currentDate)}
+                                                                    onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
                                                                     style={{
                                                                         position: 'relative',
-                                                                        marginBottom: '4px',
-                                                                        padding: '4px 8px',
-                                                                        backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
+                                                                        marginBottom: '2px',
+                                                                        fontSize: '0.7rem',
+                                                                        padding: '2px 4px',
+                                                                        whiteSpace: 'nowrap',
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        backgroundColor: color ? `${color}4d` : undefined,
                                                                         backdropFilter: color ? 'blur(4px)' : undefined,
                                                                         border: color ? `1px solid ${color}66` : undefined,
                                                                         borderLeft: color ? `3px solid ${color}` : undefined,
                                                                         color: color ? '#000' : undefined,
                                                                         borderRadius: '4px',
-                                                                        fontSize: '0.85rem',
+                                                                        fontWeight: 300,
                                                                         cursor: 'pointer'
                                                                     }}>
-                                                                    <span style={{ fontWeight: 300 }}>All Day:</span> {item.title}
+                                                                    {item.title}
+                                                                </div>
+                                                            );
+                                                        })}
+
+                                                        {timed.map((item, idx) => {
+                                                            const top = (item.startMinutes / 60) * 60;
+                                                            const height = (item.duration / 60) * 60;
+                                                            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                            const color = customColor || item.color || item.calendarColor || '#3b82f6';
+
+                                                            return (
+                                                                <div key={`t-${idx}`} className={`event-pill ${item.type}`}
+                                                                    onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        top: `${top}px`,
+                                                                        height: `${Math.max(height, 20)}px`,
+                                                                        left: `${item.layoutLeft}%`,
+                                                                        width: `calc(${item.layoutWidth}% - 2px)`,
+                                                                        fontSize: '0.75rem',
+                                                                        padding: '2px 4px',
+                                                                        overflow: 'hidden',
+                                                                        zIndex: item.zIndex || 10,
+                                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                                                        display: 'flex',
+                                                                        flexDirection: 'column',
+                                                                        backgroundColor: color || undefined,
+                                                                        border: '1px solid white',
+                                                                        color: '#fff',
+                                                                        borderRadius: '4px',
+                                                                        cursor: 'pointer'
+                                                                    }}>
+                                                                    <div style={{ fontWeight: 300, fontSize: '0.7rem' }}>{item.title}</div>
+                                                                    {height > 30 && (
+                                                                        <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>
+                                                                            {Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             );
                                                         })}
                                                     </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-                                                    {timedItems.map((item, idx) => {
-                                                        const top = (item.startMinutes / 60) * 60;
-                                                        const height = (item.duration / 60) * 60;
-                                                        const isExpanded = expandedEventId === (item.id || idx);
-                                                        const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                        const color = customColor || item.color || item.calendarColor || '#3b82f6';
+                    {view === 'day' && (
+                        <div key={`day-${viewTransition}`} className={viewTransition} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                                    <div
+                                        style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
+                                        onMouseMove={handleDragMove}
+                                        onMouseUp={handleDragEnd}
+                                        onMouseLeave={handleDragEnd}
+                                    >
+                                        <div style={{ position: 'absolute', inset: 0, left: '70px', pointerEvents: 'none', zIndex: 0 }}>
+                                            {Array.from({ length: 24 }).map((_, i) => (
+                                                <div key={i} style={{
+                                                    height: '60px',
+                                                    borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                    borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                    boxSizing: 'border-box'
+                                                }} />
+                                            ))}
+                                        </div>
 
-                                                        return (
-                                                            <div key={idx}
-                                                                className={`event-pill ${item.type}`}
-                                                                style={{
-                                                                    position: 'absolute',
-                                                                    top: `${top}px`,
-                                                                    height: isExpanded ? 'auto' : `${Math.max(height, 40)}px`,
-                                                                    minHeight: `${Math.max(height, 40)}px`,
-                                                                    left: `${item.layoutLeft}%`,
-                                                                    width: `calc(${item.layoutWidth}% - 4px)`,
-                                                                    padding: '8px',
-                                                                    zIndex: isExpanded ? 50 : (item.zIndex || 10),
-                                                                    boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
-                                                                    display: 'flex',
-                                                                    flexDirection: 'column',
-                                                                    cursor: 'pointer',
-                                                                    backgroundColor: color || undefined,
-                                                                    border: '1px solid white',
-                                                                    color: '#fff',
-                                                                    borderRadius: '6px'
-                                                                }}
-                                                                onClick={(e) => handleEventClick(e, item, currentDate)}
-                                                            >
-                                                                <div style={{ fontWeight: 300, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
-                                                                <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.5rem' }}>
-                                                                    <span>{Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}</span>
-                                                                    {item.type === 'google' && item.hangoutLink && <Video size={12} />}
-                                                                </div>
-                                                                {isExpanded && item.hangoutLink && (
-                                                                    <div style={{ marginTop: '0.5rem' }}>
-                                                                        <a href={item.hangoutLink} target="_blank" rel="noopener noreferrer"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            style={{
-                                                                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                                                                color: 'var(--primary)', textDecoration: 'none', fontWeight: 600,
-                                                                                background: 'rgba(37, 99, 235, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem'
-                                                                            }}>
-                                                                            <Video size={14} /> Join Meet
-                                                                        </a>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </>
+                                        <div style={{
+                                            width: '60px',
+                                            flexShrink: 0,
+                                            marginRight: '10px',
+                                            zIndex: 1,
+                                            position: 'relative',
+                                            marginTop: '10px'
+                                        }}>
+
+                                            {Array.from({ length: 24 }).map((_, i) => (
+                                                <div key={i} style={{ height: '60px', position: 'relative' }}>
+                                                    <span style={{
+                                                        position: 'absolute',
+                                                        top: '-6px',
+                                                        left: 0,
+                                                        width: '100%',
+                                                        textAlign: 'center',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: 'var(--text-muted)'
+                                                    }}>
+                                                        {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {(() => {
+                                            const now = new Date();
+                                            const minutes = now.getHours() * 60 + now.getMinutes();
+                                            const topOffset = (minutes / 60) * 60;
+                                            return (
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: `${topOffset}px`,
+                                                    left: '70px',
+                                                    right: 0,
+                                                    height: '2px',
+                                                    backgroundColor: 'red',
+                                                    zIndex: 50,
+                                                    pointerEvents: 'none'
+                                                }}>
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        left: '-2px',
+                                                        top: '-6px',
+                                                        width: '4px',
+                                                        height: '14px',
+                                                        backgroundColor: 'red',
+                                                        borderRadius: '2px'
+                                                    }} />
+                                                </div>
                                             );
                                         })()}
-                                    </div >
-                                    {/* Task List Sidebar Logic for Day View - Click handling */}
+
+                                        <div
+                                            style={{ flex: 1, position: 'relative', borderLeft: '1px solid rgba(0,0,0,0.1)', zIndex: 1 }}
+                                            onMouseDown={(e) => handleDragStart(e, 0, currentDate)} // dayIndex 0 for day view
+                                        >
+                                            {isDragging && dragStart && (
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: `${(dragStart.startMinutes / 60) * 60}px`,
+                                                    height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
+                                                    left: '10px', right: '10px',
+                                                    background: 'rgba(59, 130, 246, 0.25)',
+                                                    backdropFilter: 'blur(4px)',
+                                                    WebkitBackdropFilter: 'blur(4px)',
+                                                    borderRadius: '6px',
+                                                    zIndex: 100,
+                                                    pointerEvents: 'none',
+                                                    border: '1px solid rgba(59, 130, 246, 0.5)',
+                                                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                                                    color: '#1e3a8a',
+                                                    fontSize: '0.75rem',
+                                                    padding: '4px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontWeight: 600,
+                                                    transition: 'height 0.1s ease-out'
+                                                }}>
+                                                    {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
+                                                    {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
+                                                </div>
+                                            )}
+
+                                            {(() => {
+                                                const { dayEvents, dayTasks } = getItemsForDay(currentDate.getDate(), currentDate.getMonth(), currentDate.getFullYear());
+
+                                                const items = [
+                                                    ...dayEvents.map(e => {
+                                                        const start = new Date(e.start.dateTime || e.start.date);
+                                                        const end = new Date(e.end.dateTime || e.end.date);
+                                                        const startMinutes = start.getHours() * 60 + start.getMinutes();
+                                                        const duration = (end - start) / (1000 * 60);
+                                                        return { ...e, type: 'google', startMinutes, duration, title: e.summary };
+                                                    }),
+                                                    ...dayTasks.map(t => {
+                                                        let startMinutes = 0;
+                                                        let duration = 30;
+                                                        let hasTime = false;
+
+                                                        let color = undefined;
+
+                                                        if (t.metadata) {
+                                                            if (t.metadata.time) {
+                                                                const [h, m] = t.metadata.time.split(':').map(Number);
+                                                                startMinutes = h * 60 + m;
+                                                                hasTime = true;
+                                                            }
+                                                            if (t.metadata.duration) {
+                                                                duration = parseInt(t.metadata.duration, 10);
+                                                            }
+                                                            if (t.metadata.color) {
+                                                                color = t.metadata.color;
+                                                            }
+                                                        }
+                                                        return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
+                                                    })
+                                                ];
+
+                                                const { allDay, timed: timedItems } = layoutEvents(items);
+
+                                                return (
+                                                    <>
+                                                        <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
+                                                            {allDay.map((item, idx) => {
+                                                                const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                                const color = customColor || item.color || item.calendarColor || '#3b82f6';
+                                                                return (
+                                                                    <div key={`ad-${idx}`} className={`event-pill ${item.type}`}
+                                                                        onClick={(e) => handleEventClick(e, item, currentDate)}
+                                                                        style={{
+                                                                            position: 'relative',
+                                                                            marginBottom: '4px',
+                                                                            padding: '4px 8px',
+                                                                            backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
+                                                                            backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                            border: color ? `1px solid ${color}66` : undefined,
+                                                                            borderLeft: color ? `3px solid ${color}` : undefined,
+                                                                            color: color ? '#000' : undefined,
+                                                                            borderRadius: '4px',
+                                                                            fontSize: '0.85rem',
+                                                                            cursor: 'pointer'
+                                                                        }}>
+                                                                        <span style={{ fontWeight: 300 }}>All Day:</span> {item.title}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        {timedItems.map((item, idx) => {
+                                                            const top = (item.startMinutes / 60) * 60;
+                                                            const height = (item.duration / 60) * 60;
+                                                            const isExpanded = expandedEventId === (item.id || idx);
+                                                            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                            const color = customColor || item.color || item.calendarColor || '#3b82f6';
+
+                                                            return (
+                                                                <div key={idx}
+                                                                    className={`event-pill ${item.type}`}
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        top: `${top}px`,
+                                                                        height: isExpanded ? 'auto' : `${Math.max(height, 40)}px`,
+                                                                        minHeight: `${Math.max(height, 40)}px`,
+                                                                        left: `${item.layoutLeft}%`,
+                                                                        width: `calc(${item.layoutWidth}% - 4px)`,
+                                                                        padding: '8px',
+                                                                        zIndex: isExpanded ? 50 : (item.zIndex || 10),
+                                                                        boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
+                                                                        display: 'flex',
+                                                                        flexDirection: 'column',
+                                                                        cursor: 'pointer',
+                                                                        backgroundColor: color || undefined,
+                                                                        border: '1px solid white',
+                                                                        color: '#fff',
+                                                                        borderRadius: '6px'
+                                                                    }}
+                                                                    onClick={(e) => handleEventClick(e, item, currentDate)}
+                                                                >
+                                                                    <div style={{ fontWeight: 300, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
+                                                                    <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.5rem' }}>
+                                                                        <span>{Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}</span>
+                                                                        {item.type === 'google' && item.hangoutLink && <Video size={12} />}
+                                                                    </div>
+                                                                    {isExpanded && item.hangoutLink && (
+                                                                        <div style={{ marginTop: '0.5rem' }}>
+                                                                            <a href={item.hangoutLink} target="_blank" rel="noopener noreferrer"
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                style={{
+                                                                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                                                    color: 'var(--primary)', textDecoration: 'none', fontWeight: 600,
+                                                                                    background: 'rgba(37, 99, 235, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem'
+                                                                                }}>
+                                                                                <Video size={14} /> Join Meet
+                                                                            </a>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </>
+                                                );
+                                            })()}
+                                        </div >
+                                        {/* Task List Sidebar Logic for Day View - Click handling */}
+                                    </div>
                                 </div>
                             </div>
                         </div>

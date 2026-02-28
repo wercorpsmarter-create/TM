@@ -1040,6 +1040,7 @@ function App() {
             {/* Dynamic Island Notch Navigation - Arrows Moved to Keyboard */}
             <div style={{
                 display: 'flex',
+                flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
                 padding: '0.5rem 0 0.6rem 0',
@@ -1124,6 +1125,71 @@ function App() {
                             );
                         })}
                 </div>
+
+                {/* Visible Menu Bar Tabs Edit Mode */}
+                {isCustomizing && (
+                    <div style={{
+                        display: 'flex',
+                        gap: '0.5rem',
+                        flexWrap: 'wrap',
+                        pointerEvents: 'auto',
+                        background: 'rgba(255, 255, 255, 0.65)',
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '24px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.8)'
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: 'var(--text-main)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            marginRight: '0.5rem'
+                        }}>Visible Tabs</div>
+                        {[
+                            { id: 'dashboard', label: 'Dashboard' },
+                            { id: 'calendar', label: 'Calendar' },
+                            { id: 'emails', label: 'Emails' },
+                            { id: 'notes', label: 'Notes' }
+                        ].map(tab => {
+                            const isVisible = menuBarItems.includes(tab.id);
+                            // Ensure at least one tab remains visible
+                            const canToggle = !(isVisible && menuBarItems.length === 1);
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => {
+                                        if (!canToggle) return;
+                                        if (isVisible) {
+                                            setMenuBarItems(menuBarItems.filter(t => t !== tab.id));
+                                        } else {
+                                            setMenuBarItems([...menuBarItems, tab.id]);
+                                        }
+                                    }}
+                                    style={{
+                                        padding: '0.4rem 0.8rem',
+                                        borderRadius: '12px',
+                                        border: `1px solid ${isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.2)'}`,
+                                        background: isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                        color: isVisible ? 'white' : 'var(--text-muted)',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        cursor: canToggle ? 'pointer' : 'not-allowed',
+                                        transition: 'all 0.2s',
+                                        opacity: canToggle ? 1 : 0.5
+                                    }}
+                                >
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Calendar View Switcher - Only visible on Calendar Tab, on the far right */}
                 {activeTab === 'calendar' && (

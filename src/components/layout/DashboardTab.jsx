@@ -84,6 +84,8 @@ export default function DashboardTab({
                 onNextWeek={onNextWeek}
                 onPrevWeek={onPrevWeek}
                 onOpenCalendarPopup={onOpenCalendarPopup}
+                isCustomizing={isCustomizing}
+                setVisibleDays={setVisibleDays}
             />
         </div>
     );

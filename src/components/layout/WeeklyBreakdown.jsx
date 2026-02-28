@@ -462,7 +462,9 @@ export default function WeeklyBreakdown({
     currentWeekOffset = 0,
     onNextWeek,
     onPrevWeek,
-    onOpenCalendarPopup
+    onOpenCalendarPopup,
+    isCustomizing,
+    setVisibleDays
 }) {
     const [activeTask, setActiveTask] = useState(null);
 
@@ -534,6 +536,47 @@ export default function WeeklyBreakdown({
                     <button onClick={onNextWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ChevronRight size={14} />
                     </button>
+
+                    {isCustomizing && (
+                        <div style={{
+                            display: 'flex',
+                            gap: '0.5rem',
+                            flexWrap: 'wrap',
+                            marginLeft: '1rem'
+                        }}>
+                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                                const isVisible = visibleDays.includes(day);
+                                const canToggle = !(isVisible && visibleDays.length === 1);
+                                return (
+                                    <button
+                                        key={day}
+                                        onClick={() => {
+                                            if (!canToggle || !setVisibleDays) return;
+                                            if (isVisible) {
+                                                setVisibleDays(visibleDays.filter(d => d !== day));
+                                            } else {
+                                                setVisibleDays([...visibleDays, day]);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '0.2rem 0.6rem',
+                                            borderRadius: '8px',
+                                            border: `1px solid ${isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.2)'}`,
+                                            background: isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                            color: isVisible ? 'white' : 'var(--text-muted)',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 600,
+                                            cursor: canToggle ? 'pointer' : 'not-allowed',
+                                            transition: 'all 0.2s',
+                                            opacity: canToggle ? 1 : 0.5
+                                        }}
+                                    >
+                                        {day.substring(0, 3)}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 <div className="weekly-breakdown">

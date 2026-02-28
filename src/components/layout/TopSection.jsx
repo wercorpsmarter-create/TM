@@ -915,48 +915,6 @@ export default function TopSection({
                     borderRadius: '12px',
                     border: '1px solid rgba(255, 255, 255, 0.2)'
                 }}>
-                    <div style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        marginBottom: '0.75rem',
-                        color: 'var(--text-main)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                    }}>Visible Days</div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                            const isVisible = visibleDays.includes(day);
-                            const canToggle = !(isVisible && visibleDays.length === 1);
-                            return (
-                                <button
-                                    key={day}
-                                    onClick={() => {
-                                        if (!canToggle) return;
-                                        if (isVisible) {
-                                            setVisibleDays(visibleDays.filter(d => d !== day));
-                                        } else {
-                                            setVisibleDays([...visibleDays, day]);
-                                        }
-                                    }}
-                                    style={{
-                                        padding: '0.4rem 0.8rem',
-                                        borderRadius: '12px',
-                                        border: `1px solid ${isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.2)'}`,
-                                        background: isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                                        color: isVisible ? 'white' : 'var(--text-muted)',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        cursor: canToggle ? 'pointer' : 'not-allowed',
-                                        transition: 'all 0.2s',
-                                        opacity: canToggle ? 1 : 0.5
-                                    }}
-                                >
-                                    {day.substring(0, 3)}
-                                </button>
-                            );
-                        })}
-                    </div>
-
                     {/* Color Picker */}
                     <div style={{
                         fontSize: '0.75rem',

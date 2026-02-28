@@ -188,9 +188,9 @@ export default function NotesTab() {
     return (
         <div style={{ flex: 1, display: 'flex', height: '100%', width: '100%', overflow: 'hidden', gap: 0 }}>
 
-            {/* ===== LEFT: Folder Sidebar ===== */}
+            {/* ===== LEFT: Combined Sidebar (Folders & Notes) ===== */}
             <div style={{
-                width: folderSidebarCollapsed ? '0px' : '180px',
+                width: folderSidebarCollapsed ? '0px' : '280px',
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
@@ -203,240 +203,9 @@ export default function NotesTab() {
                 transition: 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 minWidth: 0
             }}>
-                {/* Folder Header */}
-                <div style={{
-                    padding: '16px 12px 8px 12px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                }}>
-                    <span style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        color: '#86868b',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                    }}>Folders</span>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        <button
-                            onClick={() => setFolderEditMode(!folderEditMode)}
-                            title={folderEditMode ? 'Done' : 'Edit Folders'}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                color: folderEditMode ? '#1d1d1f' : '#86868b',
-                                padding: '2px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                borderRadius: '4px',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                transition: 'color 0.15s'
-                            }}
-                        >
-                            {folderEditMode ? 'Done' : 'Edit'}
-                        </button>
-                        <button
-                            onClick={createFolder}
-                            title="New Folder"
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                color: '#86868b',
-                                padding: '2px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                borderRadius: '4px',
-                                transition: 'color 0.15s'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.color = '#1d1d1f'}
-                            onMouseLeave={e => e.currentTarget.style.color = '#86868b'}
-                        >
-                            <FolderPlus size={14} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Folder List */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 12px 8px' }}>
-                    {folders.map(folder => {
-                        const isActive = activeFolderId === folder.id;
-                        const isEditing = editingFolderId === folder.id;
-                        const count = folderNoteCounts[folder.id] || 0;
-
-                        return (
-                            <div
-                                key={folder.id}
-                                onClick={() => { setActiveFolderId(folder.id); setSearchQuery(''); }}
-                                onDoubleClick={() => {
-                                    if (!folder.system) {
-                                        setEditingFolderId(folder.id);
-                                        setEditingFolderName(folder.name);
-                                    }
-                                }}
-                                onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; }}
-                                onDragLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(0,0,0,0.06)' : 'transparent'; }}
-                                onDrop={e => {
-                                    e.preventDefault();
-                                    e.currentTarget.style.background = isActive ? 'rgba(0,0,0,0.06)' : 'transparent';
-                                    const noteId = e.dataTransfer.getData('noteId');
-                                    if (noteId && folder.id !== 'all') {
-                                        setNotes(prev => prev.map(n =>
-                                            n.id === noteId ? { ...n, folderId: folder.id, updatedAt: Date.now() } : n
-                                        ));
-                                    }
-                                }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '6px 10px',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    background: isActive ? 'rgba(0,0,0,0.06)' : 'transparent',
-                                    color: '#1d1d1f',
-                                    fontSize: '0.85rem',
-                                    fontWeight: isActive ? 600 : 400,
-                                    transition: 'all 0.15s',
-                                    marginBottom: '2px',
-                                    position: 'relative'
-                                }}
-                            >
-                                {/* Delete button in edit mode */}
-                                {folderEditMode && !folder.system && (
-                                    <button
-                                        onClick={e => { e.stopPropagation(); deleteFolder(folder.id); }}
-                                        title="Delete Folder"
-                                        style={{
-                                            background: '#ff3b30',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            color: 'white',
-                                            width: '16px',
-                                            height: '16px',
-                                            borderRadius: '50%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            flexShrink: 0,
-                                            padding: 0,
-                                            fontSize: '11px',
-                                            fontWeight: 700,
-                                            lineHeight: 1
-                                        }}
-                                    >
-                                        −
-                                    </button>
-                                )}
-                                {folder.icon === 'notes' ?
-                                    <FileText size={15} style={{ flexShrink: 0 }} /> :
-                                    <Folder size={15} style={{ flexShrink: 0 }} />
-                                }
-                                {isEditing ? (
-                                    <input
-                                        ref={folderInputRef}
-                                        autoFocus
-                                        value={editingFolderName}
-                                        onChange={e => setEditingFolderName(e.target.value)}
-                                        onBlur={() => renameFolder(folder.id, editingFolderName)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') renameFolder(folder.id, editingFolderName);
-                                            if (e.key === 'Escape') setEditingFolderId(null);
-                                        }}
-                                        onClick={e => e.stopPropagation()}
-                                        style={{
-                                            border: 'none',
-                                            outline: 'none',
-                                            background: 'rgba(255,255,255,0.8)',
-                                            borderRadius: '4px',
-                                            padding: '2px 4px',
-                                            fontSize: 'inherit',
-                                            color: 'inherit',
-                                            fontWeight: 'inherit',
-                                            flex: 1,
-                                            minWidth: 0
-                                        }}
-                                    />
-                                ) : (
-                                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {folder.name}
-                                    </span>
-                                )}
-                                {/* Add note button in edit mode */}
-                                {folderEditMode && folder.id !== 'all' && (
-                                    <button
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            setActiveFolderId(folder.id);
-                                            const newNote = {
-                                                id: Date.now().toString(),
-                                                title: '',
-                                                content: '',
-                                                folderId: folder.id,
-                                                updatedAt: Date.now()
-                                            };
-                                            setNotes([newNote, ...notes]);
-                                            setActiveNoteId(newNote.id);
-                                        }}
-                                        title="Add note to this folder"
-                                        style={{
-                                            background: 'rgba(0,0,0,0.08)',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            color: '#1d1d1f',
-                                            width: '16px',
-                                            height: '16px',
-                                            borderRadius: '50%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            flexShrink: 0,
-                                            padding: 0,
-                                            fontSize: '13px',
-                                            fontWeight: 500,
-                                            lineHeight: 1
-                                        }}
-                                    >
-                                        +
-                                    </button>
-                                )}
-                                {!folderEditMode && (
-                                    <span style={{
-                                        fontSize: '0.7rem',
-                                        color: '#86868b',
-                                        fontWeight: 500,
-                                        minWidth: '16px',
-                                        textAlign: 'right'
-                                    }}>
-                                        {count > 0 ? count : ''}
-                                    </span>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-
-
-            </div>
-
-            {/* ===== MIDDLE: Note List ===== */}
-            <div style={{
-                width: '260px',
-                flexShrink: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                background: 'rgba(255,255,255,0.92)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                borderRight: '1px solid rgba(0,0,0,0.06)',
-                overflow: 'hidden',
-                borderRadius: folderSidebarCollapsed ? '16px 0 0 16px' : '0'
-            }}>
-                {/* List Header */}
-                <div style={{ padding: '12px 12px 8px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                {/* Header & Controls */}
+                <div style={{ padding: '16px 12px 12px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <button
                                 onClick={() => setFolderSidebarCollapsed(!folderSidebarCollapsed)}
@@ -457,17 +226,52 @@ export default function NotesTab() {
                             >
                                 {folderSidebarCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
                             </button>
-                            <h3 style={{
-                                margin: 0,
-                                fontSize: '1.15rem',
+                            <span style={{
+                                fontSize: '1.05rem',
                                 fontWeight: 700,
                                 color: '#1d1d1f',
                                 letterSpacing: '-0.01em'
-                            }}>
-                                {activeFolder?.name || 'Notes'}
-                            </h3>
+                            }}>Notes</span>
                         </div>
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <button
+                                onClick={() => setFolderEditMode(!folderEditMode)}
+                                title={folderEditMode ? 'Done' : 'Edit Folders'}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: folderEditMode ? '#1d1d1f' : '#86868b',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    borderRadius: '4px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    transition: 'color 0.15s'
+                                }}
+                            >
+                                {folderEditMode ? 'Done' : 'Edit'}
+                            </button>
+                            <button
+                                onClick={createFolder}
+                                title="New Folder"
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#86868b',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    borderRadius: '4px',
+                                    transition: 'color 0.15s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#1d1d1f'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#86868b'}
+                            >
+                                <FolderPlus size={14} />
+                            </button>
                             <button
                                 onClick={createNote}
                                 title="New Note"
@@ -485,7 +289,7 @@ export default function NotesTab() {
                                 onMouseEnter={e => e.currentTarget.style.color = '#1d1d1f'}
                                 onMouseLeave={e => e.currentTarget.style.color = '#86868b'}
                             >
-                                <Edit3 size={16} />
+                                <Edit3 size={15} />
                             </button>
                         </div>
                     </div>
@@ -504,7 +308,7 @@ export default function NotesTab() {
                             type="text"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Search"
+                            placeholder="Search notes"
                             style={{
                                 border: 'none',
                                 outline: 'none',
@@ -518,77 +322,253 @@ export default function NotesTab() {
                     </div>
                 </div>
 
-                {/* Note List grouped by time */}
+                {/* Accordion Folders and Notes */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 12px 8px' }}>
-                    {filteredNotes.length === 0 && (
-                        <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#86868b', fontSize: '0.85rem' }}>
-                            No notes yet
-                        </div>
-                    )}
-                    {timeGroups.map(group => (
-                        <div key={group.label}>
-                            <div style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                color: '#86868b',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.04em',
-                                padding: '14px 8px 6px 8px'
-                            }}>
-                                {group.label}
+                    {folders.filter(f => f.id !== 'all').map(folder => {
+                        const isEditing = editingFolderId === folder.id;
+                        const isExpanded = expandedFolders[folder.id] || searchQuery.length > 0;
+                        const folderNotes = notes.filter(n => (n.folderId || 'general') === folder.id).filter(n => {
+                            return !searchQuery ||
+                                (n.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                (n.content || '').toLowerCase().includes(searchQuery.toLowerCase());
+                        }).sort((a, b) => b.updatedAt - a.updatedAt);
+
+                        const count = folderNotes.length;
+
+                        // Only show folder if it matches search or has matching notes, or if not searching.
+                        if (searchQuery && count === 0 && !folder.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+                            return null;
+                        }
+
+                        return (
+                            <div key={folder.id} style={{ marginBottom: '4px' }}>
+                                {/* Folder Header */}
+                                <div
+                                    onClick={() => setExpandedFolders({ ...expandedFolders, [folder.id]: !isExpanded })}
+                                    onDoubleClick={() => {
+                                        if (!folder.system) {
+                                            setEditingFolderId(folder.id);
+                                            setEditingFolderName(folder.name);
+                                        }
+                                    }}
+                                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; }}
+                                    onDragLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                    onDrop={e => {
+                                        e.preventDefault();
+                                        e.currentTarget.style.background = 'transparent';
+                                        const noteId = e.dataTransfer.getData('noteId');
+                                        if (noteId) {
+                                            setNotes(prev => prev.map(n =>
+                                                n.id === noteId ? { ...n, folderId: folder.id, updatedAt: Date.now() } : n
+                                            ));
+                                        }
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 8px',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        background: 'transparent',
+                                        color: '#1d1d1f',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                        transition: 'all 0.15s',
+                                        position: 'relative'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                    {isExpanded ? <ChevronDown size={14} color="#86868b" /> : <ChevronRight size={14} color="#86868b" />}
+
+                                    {/* Delete button in edit mode */}
+                                    {folderEditMode && !folder.system && (
+                                        <button
+                                            onClick={e => { e.stopPropagation(); deleteFolder(folder.id); }}
+                                            title="Delete Folder"
+                                            style={{
+                                                background: '#ff3b30',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: 'white',
+                                                width: '16px',
+                                                height: '16px',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                flexShrink: 0,
+                                                padding: 0,
+                                                fontSize: '11px',
+                                                fontWeight: 700,
+                                                lineHeight: 1
+                                            }}
+                                        >
+                                            −
+                                        </button>
+                                    )}
+
+                                    {folder.icon === 'notes' ?
+                                        <FileText size={15} style={{ flexShrink: 0, color: '#86868b' }} /> :
+                                        <Folder size={15} style={{ flexShrink: 0, color: '#86868b' }} />
+                                    }
+
+                                    {isEditing ? (
+                                        <input
+                                            ref={folderInputRef}
+                                            autoFocus
+                                            value={editingFolderName}
+                                            onChange={e => setEditingFolderName(e.target.value)}
+                                            onBlur={() => renameFolder(folder.id, editingFolderName)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') renameFolder(folder.id, editingFolderName);
+                                                if (e.key === 'Escape') setEditingFolderId(null);
+                                            }}
+                                            onClick={e => e.stopPropagation()}
+                                            style={{
+                                                border: 'none',
+                                                outline: 'none',
+                                                background: 'rgba(255,255,255,0.8)',
+                                                borderRadius: '4px',
+                                                padding: '2px 4px',
+                                                fontSize: 'inherit',
+                                                color: 'inherit',
+                                                fontWeight: 'inherit',
+                                                flex: 1,
+                                                minWidth: 0
+                                            }}
+                                        />
+                                    ) : (
+                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {folder.name}
+                                        </span>
+                                    )}
+
+                                    {/* Add note button in edit mode */}
+                                    {folderEditMode && (
+                                        <button
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setActiveFolderId(folder.id);
+                                                setExpandedFolders({ ...expandedFolders, [folder.id]: true });
+                                                const newNote = {
+                                                    id: Date.now().toString(),
+                                                    title: '',
+                                                    content: '',
+                                                    folderId: folder.id,
+                                                    updatedAt: Date.now()
+                                                };
+                                                setNotes([newNote, ...notes]);
+                                                setActiveNoteId(newNote.id);
+                                            }}
+                                            title="Add note to this folder"
+                                            style={{
+                                                background: 'rgba(0,0,0,0.08)',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#1d1d1f',
+                                                width: '16px',
+                                                height: '16px',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                flexShrink: 0,
+                                                padding: 0,
+                                                fontSize: '13px',
+                                                fontWeight: 500,
+                                                lineHeight: 1
+                                            }}
+                                        >
+                                            +
+                                        </button>
+                                    )}
+
+                                    {!folderEditMode && (
+                                        <span style={{
+                                            fontSize: '0.7rem',
+                                            color: '#86868b',
+                                            fontWeight: 500,
+                                            textAlign: 'right'
+                                        }}>
+                                            {folderNoteCounts[folder.id] > 0 ? folderNoteCounts[folder.id] : ''}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Folders Notes (Expanded State) */}
+                                <AnimatePresence>
+                                    {isExpanded && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            style={{ overflow: 'hidden', paddingLeft: '22px' }}
+                                        >
+                                            <div style={{ paddingTop: '4px', paddingBottom: '4px' }}>
+                                                {folderNotes.length === 0 && (
+                                                    <div style={{ padding: '8px 12px', color: '#86868b', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                                        Empty folder
+                                                    </div>
+                                                )}
+                                                {folderNotes.map(note => {
+                                                    const isActive = activeNoteId === note.id;
+                                                    const preview = (note.content || '').substring(0, 40).replace(/\n/g, ' ');
+                                                    return (
+                                                        <div
+                                                            key={note.id}
+                                                            draggable
+                                                            onDragStart={e => { e.dataTransfer.setData('noteId', note.id); }}
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                setActiveNoteId(note.id);
+                                                            }}
+                                                            style={{
+                                                                padding: '8px 10px',
+                                                                borderRadius: '8px',
+                                                                cursor: 'pointer',
+                                                                background: isActive ? 'rgba(0,0,0,0.06)' : 'transparent',
+                                                                marginBottom: '2px',
+                                                                transition: 'background 0.15s'
+                                                            }}
+                                                            onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
+                                                            onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                                                        >
+                                                            <div style={{
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: isActive ? 600 : 500,
+                                                                color: '#1d1d1f',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                                marginBottom: '2px'
+                                                            }}>
+                                                                <FileText size={12} style={{ display: 'inline', marginRight: '6px', color: isActive ? '#1d1d1f' : '#86868b', verticalAlign: '-1px' }} />
+                                                                {note.title || 'Untitled Note'}
+                                                            </div>
+                                                            {preview && (
+                                                                <div style={{
+                                                                    fontSize: '0.7rem',
+                                                                    color: isActive ? 'rgba(0,0,0,0.7)' : '#86868b',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                    whiteSpace: 'nowrap',
+                                                                    paddingLeft: '18px'
+                                                                }}>
+                                                                    {preview}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                            {group.notes.map(note => {
-                                const isActive = activeNoteId === note.id;
-                                const preview = (note.content || '').substring(0, 60).replace(/\n/g, ' ');
-                                return (
-                                    <motion.div
-                                        key={note.id}
-                                        initial={{ opacity: 0, y: 6 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.97 }}
-                                        draggable
-                                        onDragStart={e => { e.dataTransfer.setData('noteId', note.id); }}
-                                        onClick={() => setActiveNoteId(note.id)}
-                                        style={{
-                                            padding: '10px 12px',
-                                            borderRadius: '10px',
-                                            cursor: 'pointer',
-                                            background: isActive ? 'rgba(0,0,0,0.06)' : 'transparent',
-                                            marginBottom: '2px',
-                                            transition: 'background 0.15s'
-                                        }}
-                                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
-                                        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-                                    >
-                                        <div style={{
-                                            fontSize: '0.88rem',
-                                            fontWeight: 600,
-                                            color: isActive ? '#1d1d1f' : '#1d1d1f',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                            marginBottom: '2px'
-                                        }}>
-                                            {note.title || 'Untitled Note'}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '0.78rem',
-                                            color: isActive ? 'rgba(0,0,0,0.7)' : '#86868b',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                            display: 'flex',
-                                            gap: '8px',
-                                            alignItems: 'center'
-                                        }}>
-                                            <span style={{ fontWeight: 500 }}>{formatNoteDate(note.updatedAt)}</span>
-                                            <span style={{ opacity: 0.8 }}>{preview || 'No additional text'}</span>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 

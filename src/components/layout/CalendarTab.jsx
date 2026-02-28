@@ -23,12 +23,10 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         if (newView === view) return;
 
         if (view === 'week' && newView === 'day') {
-            // Week → Day: collapse columns first, then switch
-            setWeekCollapseIndex(getActiveDayIndex());
-            setTimeout(() => {
-                setWeekCollapseIndex(-1);
-                setView(newView);
-            }, 600);
+            // Week → Day: switch immediately, no lag
+            setFadingIn(true);
+            setView(newView);
+            setTimeout(() => setFadingIn(false), 200);
         } else if (view === 'day' && newView === 'week') {
             // Day → Week: switch immediately, then expand columns
             setWeekExpanding(true);
@@ -1495,7 +1493,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     )}
 
                     {view === 'day' && (
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: fadingIn ? 0 : 1, transition: 'opacity 0.2s ease' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                                 {/* Day Date Header */}
                                 <div style={{ display: 'flex', paddingLeft: '40px', marginBottom: '0.5rem', flexShrink: 0 }}>
@@ -1748,7 +1746,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 </div>
 
                 {view === 'day' && (
-                    <>
+                    <div style={{ opacity: fadingIn ? 0 : 1, transition: 'opacity 0.2s ease', display: 'flex' }}>
                         {/* Subtle toggle button for task list */}
                         {!showSplitView && (
                             <button
@@ -2032,7 +2030,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                             </div>
                         )}
-                    </>
+                    </div>
                 )}
             </div>
 

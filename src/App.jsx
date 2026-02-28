@@ -1372,56 +1372,6 @@ function App() {
                 )
             }
 
-            <div style={{ marginTop: '0', textAlign: 'center', opacity: 0.3, fontSize: '0.75rem', color: 'white' }}>
-                Task Master • Glassmorphism Edit
-                <div style={{ marginTop: '0.5rem' }}>
-                    <button
-                        onClick={() => { window.history.pushState({}, '', '/privacy'); setActiveTab('privacy'); }}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'inherit',
-                            textDecoration: 'underline',
-                            cursor: 'pointer',
-                            fontSize: 'inherit',
-                            padding: 0
-                        }}
-                    >
-                        Privacy Policy
-                    </button>
-                    {' • '}
-                    <button
-                        onClick={() => { window.history.pushState({}, '', '/terms'); setActiveTab('terms'); }}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'inherit',
-                            textDecoration: 'underline',
-                            cursor: 'pointer',
-                            fontSize: 'inherit',
-                            padding: 0
-                        }}
-                    >
-                        Terms of Service
-                    </button>
-                    {' • '}
-                    <button
-                        onClick={() => { window.history.pushState({}, '', '/tokusho'); setActiveTab('tokusho'); }}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'inherit',
-                            textDecoration: 'underline',
-                            cursor: 'pointer',
-                            fontSize: 'inherit',
-                            padding: 0
-                        }}
-                    >
-                        特定商取引法に基づく表記
-                    </button>
-                </div>
-            </div>
-
         </div >
     );
 }

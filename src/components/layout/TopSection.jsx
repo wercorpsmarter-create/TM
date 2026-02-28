@@ -961,7 +961,7 @@ export default function TopSection({
                 <div style={{
                     display: 'flex',
                     gap: '0.5rem',
-                    justifyContent: 'flex-end',
+                    justifyContent: 'flex-start',
                     marginBottom: '1rem',
                     flexWrap: 'wrap'
                 }}>

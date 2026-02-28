@@ -445,8 +445,19 @@ export default function NotesTab() {
                                         </span>
                                     )}
 
-                                    {/* Add note button in edit mode */}
-                                    {folderEditMode && (
+                                    {/* Note Count */}
+                                    <span style={{
+                                        fontSize: '0.7rem',
+                                        color: '#86868b',
+                                        fontWeight: 500,
+                                        textAlign: 'right',
+                                        marginLeft: 'auto'
+                                    }}>
+                                        {folderNoteCounts[folder.id] > 0 ? folderNoteCounts[folder.id] : ''}
+                                    </span>
+
+                                    {/* Add note button */}
+                                    {!isEditing && (
                                         <button
                                             onClick={e => {
                                                 e.stopPropagation();
@@ -461,39 +472,31 @@ export default function NotesTab() {
                                                 };
                                                 setNotes([newNote, ...notes]);
                                                 setActiveNoteId(newNote.id);
+                                                setSearchQuery('');
                                             }}
                                             title="Add note to this folder"
                                             style={{
-                                                background: 'rgba(0,0,0,0.08)',
+                                                background: 'none',
                                                 border: 'none',
                                                 cursor: 'pointer',
-                                                color: '#1d1d1f',
-                                                width: '16px',
-                                                height: '16px',
-                                                borderRadius: '50%',
+                                                color: '#86868b',
+                                                padding: '2px',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
-                                                flexShrink: 0,
-                                                padding: 0,
-                                                fontSize: '13px',
-                                                fontWeight: 500,
-                                                lineHeight: 1
+                                                borderRadius: '4px',
+                                                transition: 'color 0.15s, background 0.15s'
+                                            }}
+                                            onMouseEnter={e => {
+                                                e.currentTarget.style.color = '#1d1d1f';
+                                                e.currentTarget.style.background = 'rgba(0,0,0,0.06)';
+                                            }}
+                                            onMouseLeave={e => {
+                                                e.currentTarget.style.color = '#86868b';
+                                                e.currentTarget.style.background = 'none';
                                             }}
                                         >
-                                            +
+                                            <Plus size={14} />
                                         </button>
-                                    )}
-
-                                    {!folderEditMode && (
-                                        <span style={{
-                                            fontSize: '0.7rem',
-                                            color: '#86868b',
-                                            fontWeight: 500,
-                                            textAlign: 'right'
-                                        }}>
-                                            {folderNoteCounts[folder.id] > 0 ? folderNoteCounts[folder.id] : ''}
-                                        </span>
                                     )}
                                 </div>
 

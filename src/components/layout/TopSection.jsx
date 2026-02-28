@@ -126,9 +126,12 @@ export default function TopSection({
     visibleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
     setVisibleDays,
     accentColor = '#3b82f6',
-    setAccentColor
+    setAccentColor,
+    isCustomizing,
+    setIsCustomizing,
+    menuBarItems = ['dashboard', 'calendar', 'emails', 'notes'],
+    setMenuBarItems
 }) {
-    const [isCustomizing, setIsCustomizing] = useState(false);
     const [poppingBubble, setPoppingBubble] = useState(null);
     const [activeDragId, setActiveDragId] = useState(null);
     const [isEditingGoals, setIsEditingGoals] = useState(false);
@@ -987,6 +990,56 @@ export default function TopSection({
                                 aria-label={`Select color ${color}`}
                             />
                         ))}
+                    </div>
+
+                    {/* Menu Bar Tabs */}
+                    <div style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        marginBottom: '0.75rem',
+                        color: 'var(--text-main)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        marginTop: '1rem'
+                    }}>Visible Menu Bar Tabs</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {[
+                            { id: 'dashboard', label: 'Dashboard' },
+                            { id: 'calendar', label: 'Calendar' },
+                            { id: 'emails', label: 'Emails' },
+                            { id: 'notes', label: 'Notes' }
+                        ].map(tab => {
+                            const isVisible = menuBarItems.includes(tab.id);
+                            // Ensure at least one tab remains visible
+                            const canToggle = !(isVisible && menuBarItems.length === 1);
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => {
+                                        if (!canToggle || !setMenuBarItems) return;
+                                        if (isVisible) {
+                                            setMenuBarItems(menuBarItems.filter(t => t !== tab.id));
+                                        } else {
+                                            setMenuBarItems([...menuBarItems, tab.id]);
+                                        }
+                                    }}
+                                    style={{
+                                        padding: '0.4rem 0.8rem',
+                                        borderRadius: '12px',
+                                        border: `1px solid ${isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.2)'}`,
+                                        background: isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                        color: isVisible ? 'white' : 'var(--text-muted)',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        cursor: canToggle ? 'pointer' : 'not-allowed',
+                                        transition: 'all 0.2s',
+                                        opacity: canToggle ? 1 : 0.5
+                                    }}
+                                >
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}

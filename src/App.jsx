@@ -68,6 +68,8 @@ function App() {
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity']);
     const [visibleDays, setVisibleDays] = useLocalStorage('prohub-visible-days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
     const [accentColor, setAccentColor] = useLocalStorage('prohub-accent-color', '#3b82f6');
+    const [menuBarItems, setMenuBarItems] = useLocalStorage('prohub-menubar-items', ['dashboard', 'calendar', 'emails', 'notes']);
+    const [isCustomizing, setIsCustomizing] = useState(false);
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
     const [linkedAccounts, setLinkedAccounts] = useLocalStorage('prohub-linked-accounts-v1', []);
     const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
@@ -1070,54 +1072,57 @@ function App() {
                         { key: 'calendar', label: 'Calendar', icon: <CalendarIcon size={18} /> },
                         { key: 'emails', label: 'Emails', icon: <Mail size={18} /> },
                         { key: 'notes', label: 'Notes', icon: <FileText size={18} /> }
-                    ].map(tab => {
-                        const isActive = activeTab === tab.key;
-                        return (
-                            <button
-                                key={tab.key}
-                                onClick={() => setActiveTab(tab.key)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.6rem',
-                                    padding: '0.6rem 1.4rem',
-                                    borderRadius: '20px',
-                                    border: isActive ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
-                                    background: isActive
-                                        ? 'rgba(255, 255, 255, 0.6)'
-                                        : 'transparent',
-                                    backdropFilter: isActive ? 'blur(20px)' : 'none',
-                                    WebkitBackdropFilter: isActive ? 'blur(20px)' : 'none',
-                                    color: isActive ? 'var(--text-main)' : 'rgba(0, 0, 0, 0.45)',
-                                    fontWeight: 500,
-                                    cursor: 'pointer',
-                                    fontSize: '0.95rem',
-                                    letterSpacing: '-0.01em',
-                                    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                                    boxShadow: isActive
-                                        ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
-                                        : 'none',
-                                    position: 'relative',
-                                    zIndex: isActive ? 2 : 1
-                                }}
-                                onMouseEnter={e => {
-                                    if (!isActive) {
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                                        e.currentTarget.style.color = 'var(--text-main)';
-                                    }
-                                }}
-                                onMouseLeave={e => {
-                                    if (!isActive) {
-                                        e.currentTarget.style.background = 'transparent';
-                                        e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
-                                    }
-                                }}
-                            >
-                                {tab.icon}
-                                <span style={{ opacity: isActive ? 1 : 0.8 }}>{tab.label}</span>
-                            </button>
-                        );
-                    })}
+                    ]
+                        .filter(tab => menuBarItems?.includes(tab.key))
+                        .sort((a, b) => menuBarItems.indexOf(a.key) - menuBarItems.indexOf(b.key))
+                        .map(tab => {
+                            const isActive = activeTab === tab.key;
+                            return (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setActiveTab(tab.key)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.6rem',
+                                        padding: '0.6rem 1.4rem',
+                                        borderRadius: '20px',
+                                        border: isActive ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
+                                        background: isActive
+                                            ? 'rgba(255, 255, 255, 0.6)'
+                                            : 'transparent',
+                                        backdropFilter: isActive ? 'blur(20px)' : 'none',
+                                        WebkitBackdropFilter: isActive ? 'blur(20px)' : 'none',
+                                        color: isActive ? 'var(--text-main)' : 'rgba(0, 0, 0, 0.45)',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        fontSize: '0.95rem',
+                                        letterSpacing: '-0.01em',
+                                        transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                                        boxShadow: isActive
+                                            ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
+                                            : 'none',
+                                        position: 'relative',
+                                        zIndex: isActive ? 2 : 1
+                                    }}
+                                    onMouseEnter={e => {
+                                        if (!isActive) {
+                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                            e.currentTarget.style.color = 'var(--text-main)';
+                                        }
+                                    }}
+                                    onMouseLeave={e => {
+                                        if (!isActive) {
+                                            e.currentTarget.style.background = 'transparent';
+                                            e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                                        }
+                                    }}
+                                >
+                                    {tab.icon}
+                                    <span style={{ opacity: isActive ? 1 : 0.8 }}>{tab.label}</span>
+                                </button>
+                            );
+                        })}
                 </div>
 
                 {/* Calendar View Switcher - Only visible on Calendar Tab, on the far right */}
@@ -1265,12 +1270,16 @@ function App() {
                             }}
                             visibleDays={visibleDays}
                             setVisibleDays={setVisibleDays}
+                            menuBarItems={menuBarItems}
+                            setMenuBarItems={setMenuBarItems}
                             accentColor={accentColor}
                             setAccentColor={setAccentColor}
                             currentWeekOffset={currentWeekOffset}
                             onNextWeek={() => setCurrentWeekOffset(prev => prev + 1)}
                             onPrevWeek={() => setCurrentWeekOffset(prev => prev - 1)}
                             onOpenCalendarPopup={handleOpenCalendarPopup}
+                            isCustomizing={isCustomizing}
+                            setIsCustomizing={setIsCustomizing}
                         />
                     </div>
                     <div style={{

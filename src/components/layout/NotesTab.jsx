@@ -445,17 +445,6 @@ export default function NotesTab() {
                                         </span>
                                     )}
 
-                                    {/* Note Count */}
-                                    <span style={{
-                                        fontSize: '0.7rem',
-                                        color: '#86868b',
-                                        fontWeight: 500,
-                                        textAlign: 'right',
-                                        marginLeft: 'auto'
-                                    }}>
-                                        {folderNoteCounts[folder.id] > 0 ? folderNoteCounts[folder.id] : ''}
-                                    </span>
-
                                     {/* Add note button */}
                                     {!isEditing && (
                                         <button

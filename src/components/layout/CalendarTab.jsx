@@ -1220,7 +1220,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     {view === 'week' && (
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                                <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>
+                                <div style={{ display: 'flex', paddingLeft: '40px', marginBottom: '0.5rem', flexShrink: 0 }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: weekGridColumns, width: '100%', gap: '1px', ...weekGridTransitionStyle }}>
                                         {getDaysInWeek().map((dayObj, i) => {
                                             const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
@@ -1250,7 +1250,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         onMouseUp={handleDragEnd}
                                         onMouseLeave={handleDragEnd}
                                     >
-                                        <div style={{ position: 'absolute', inset: 0, left: '70px', pointerEvents: 'none', zIndex: 0 }}>
+                                        <div style={{ position: 'absolute', inset: 0, left: '46px', pointerEvents: 'none', zIndex: 0 }}>
                                             {Array.from({ length: 24 }).map((_, i) => (
                                                 <div key={i} style={{
                                                     height: '60px',
@@ -1262,9 +1262,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         </div>
 
                                         <div style={{
-                                            width: '60px',
+                                            width: '40px',
                                             flexShrink: 0,
-                                            marginRight: '10px',
+                                            marginRight: '6px',
                                             zIndex: 1,
                                             position: 'relative',
                                             marginTop: '10px' // Compensate for the pill extending up
@@ -1296,7 +1296,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 <div style={{
                                                     position: 'absolute',
                                                     top: `${topOffset}px`,
-                                                    left: '70px',
+                                                    left: '46px',
                                                     right: 0,
                                                     height: '2px',
                                                     backgroundColor: 'red',
@@ -1471,7 +1471,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                                 {/* Day Date Header */}
-                                <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>
+                                <div style={{ display: 'flex', paddingLeft: '40px', marginBottom: '0.5rem', flexShrink: 0 }}>
                                     <div style={{ flex: 1, textAlign: 'center' }}>
                                         <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                                             {currentDate.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -1494,7 +1494,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         onMouseUp={handleDragEnd}
                                         onMouseLeave={handleDragEnd}
                                     >
-                                        <div style={{ position: 'absolute', inset: 0, left: '70px', pointerEvents: 'none', zIndex: 0 }}>
+                                        <div style={{ position: 'absolute', inset: 0, left: '46px', pointerEvents: 'none', zIndex: 0 }}>
                                             {Array.from({ length: 24 }).map((_, i) => (
                                                 <div key={i} style={{
                                                     height: '60px',
@@ -1506,9 +1506,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         </div>
 
                                         <div style={{
-                                            width: '60px',
+                                            width: '40px',
                                             flexShrink: 0,
-                                            marginRight: '10px',
+                                            marginRight: '6px',
                                             zIndex: 1,
                                             position: 'relative',
                                             marginTop: '10px'
@@ -1540,7 +1540,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 <div style={{
                                                     position: 'absolute',
                                                     top: `${topOffset}px`,
-                                                    left: '70px',
+                                                    left: '46px',
                                                     right: 0,
                                                     height: '2px',
                                                     backgroundColor: 'red',

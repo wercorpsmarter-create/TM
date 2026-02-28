@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 
-import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video, ChevronLeft, ChevronRight, MoreHorizontal, StickyNote, X } from 'lucide-react';
+
+import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video, ChevronLeft, ChevronRight, MoreHorizontal, X } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -143,8 +143,6 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
     });
 
     const [showMenu, setShowMenu] = useState(false);
-    const [isNotePopupOpen, setIsNotePopupOpen] = useState(false);
-    const [noteText, setNoteText] = useState(task.metadata?.note || '');
     const [isNew, setIsNew] = useState(true);
     const mountedRef = useRef(false);
 
@@ -155,12 +153,6 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
             return () => clearTimeout(timer);
         }
     }, []);
-
-    const handleSaveNote = () => {
-        onUpdateTask(task.id, { metadata: { ...task.metadata, note: noteText } });
-        setIsNotePopupOpen(false);
-        setShowMenu(false);
-    };
 
     const color = task.metadata?.color;
 
@@ -180,227 +172,94 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
     };
 
     return (
-        <>
-            <div
-                ref={setNodeRef}
-                style={style}
-                {...listeners}
-                {...attributes}
-                className={`compact-task ${task.status === 'Completed' ? 'completed' : ''} ${isNew && !isDragging ? 'task-enter-animation' : ''}`}
-                onPointerDown={(e) => {
-                    e.stopPropagation();
-                    if (e.nativeEvent) {
-                        e.nativeEvent.stopImmediatePropagation();
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...listeners}
+            {...attributes}
+            className={`compact-task ${task.status === 'Completed' ? 'completed' : ''} ${isNew && !isDragging ? 'task-enter-animation' : ''}`}
+            onPointerDown={(e) => {
+                e.stopPropagation();
+                if (e.nativeEvent) {
+                    e.nativeEvent.stopImmediatePropagation();
+                }
+
+                if (onInteractionStart) onInteractionStart();
+                if (listeners && listeners.onPointerDown) {
+                    listeners.onPointerDown(e);
+                }
+            }}
+            onTouchStart={(e) => {
+                e.stopPropagation();
+                if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+            }}
+            onMouseDown={(e) => {
+                e.stopPropagation();
+                if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+            }}
+            onPointerUp={(e) => {
+                if (onInteractionEnd) onInteractionEnd();
+            }}
+            onMouseEnter={() => setShowMenu(true)}
+            onMouseLeave={() => setShowMenu(false)}
+            onClick={(e) => {
+                if (isDragging) return;
+                onToggleTask(task.id);
+            }}
+        >
+            <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+                <div style={{ marginTop: '3px' }}>
+                    {task.status === 'Completed' ?
+                        <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
+                        <Circle size={18} color={task.metadata?.color || "rgba(0, 0, 0, 0.2)"} />
                     }
+                </div>
 
-                    if (onInteractionStart) onInteractionStart();
-                    if (listeners && listeners.onPointerDown) {
-                        listeners.onPointerDown(e);
-                    }
-                }}
-                onTouchStart={(e) => {
-                    e.stopPropagation();
-                    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-                }}
-                onMouseDown={(e) => {
-                    e.stopPropagation();
-                    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-                }}
-                onPointerUp={(e) => {
-                    if (onInteractionEnd) onInteractionEnd();
-                }}
-                onMouseEnter={() => setShowMenu(true)}
-                onMouseLeave={() => setShowMenu(false)}
-                onClick={(e) => {
-                    if (isDragging) return;
-                    onToggleTask(task.id);
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
-                    <div style={{ marginTop: '3px' }}>
-                        {task.status === 'Completed' ?
-                            <CheckCircle size={18} color="#475569" fill="rgba(71, 85, 105, 0.1)" /> :
-                            <Circle size={18} color={task.metadata?.color || "rgba(0, 0, 0, 0.2)"} />
-                        }
-                    </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: '0.4rem', marginRight: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.85rem' }}>{task.text}</span>
 
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: '0.4rem', marginRight: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '0.85rem' }}>{task.text}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {(task.metadata?.meetLink || task.metadata?.hangoutLink) && (
+                                <a
+                                    href={task.metadata.meetLink || task.metadata.hangoutLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Join Google Meet"
+                                    className="meet-link-btn"
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: 'rgba(37, 99, 235, 0.1)',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        color: 'var(--primary)',
+                                        textDecoration: 'none'
+                                    }}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                    <Video size={12} style={{ marginRight: '4px' }} />
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>Join</span>
+                                </a>
+                            )}
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {(task.metadata?.meetLink || task.metadata?.hangoutLink) && (
-                                    <a
-                                        href={task.metadata.meetLink || task.metadata.hangoutLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        title="Join Google Meet"
-                                        className="meet-link-btn"
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            background: 'rgba(37, 99, 235, 0.1)',
-                                            padding: '2px 6px',
-                                            borderRadius: '4px',
-                                            color: 'var(--primary)',
-                                            textDecoration: 'none'
-                                        }}
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                    >
-                                        <Video size={12} style={{ marginRight: '4px' }} />
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>Join</span>
-                                    </a>
-                                )}
 
-                                {/* Note Button - White Glassmorphic - Always visible if note exists, or on hover */}
-                                {(task.metadata?.note || showMenu || isNotePopupOpen) && !isDragging && (
-                                    <button
-                                        className="btn-icon"
-                                        style={{
-                                            padding: '4px',
-                                            height: 'auto',
-                                            background: 'rgba(255, 255, 255, 0.3)',
-                                            backdropFilter: 'blur(4px)',
-                                            border: '1px solid rgba(255, 255, 255, 0.4)',
-                                            borderRadius: '6px',
-                                            color: '#64748b', // Always gray/neutral
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                                            transition: 'all 0.2s ease',
-                                        }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsNotePopupOpen(true);
-                                        }}
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        title={task.metadata?.note ? "View/Edit Note" : "Add Note"}
-                                    >
-                                        <StickyNote
-                                            size={14}
-                                            fill={task.metadata?.note ? "rgba(0, 0, 0, 0.1)" : "none"}
-                                            strokeWidth={2}
-                                        />
-                                    </button>
-                                )}
-                            </div>
                         </div>
                     </div>
                 </div>
-
-                {isEditing && (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
-                        className="btn-delete"
-                        onPointerDown={(e) => e.stopPropagation()} // Prevent drag start when clicking delete
-                    >
-                        <Trash2 size={14} />
-                    </button>
-                )}
             </div>
 
-            {/* Note Popup Modal */}
-            {isNotePopupOpen && createPortal(
-                <div
-                    style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
+            {isEditing && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }}
+                    className="btn-delete"
+                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag start when clicking delete
                 >
-                    <div
-                        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}
-                        onClick={() => setIsNotePopupOpen(false)}
-                    />
-                    <div
-                        className="glass-card"
-                        style={{
-                            width: '500px',
-                            maxWidth: '90vw',
-                            height: '400px',
-                            padding: '24px',
-                            position: 'relative',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '16px',
-                            background: 'rgba(255, 255, 255, 0.98)',
-                            boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.25)',
-                            borderRadius: '16px',
-                            border: '1px solid rgba(255,255,255,0.4)'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <StickyNote size={18} color="var(--primary)" />
-                                <span style={{ fontWeight: 600, fontSize: '1.1rem', color: '#1e293b' }}>Note</span>
-                            </div>
-                            <button
-                                onClick={() => setIsNotePopupOpen(false)}
-                                style={{ background: 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer', color: '#64748b', padding: '6px', borderRadius: '50%', display: 'flex' }}
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <textarea
-                            value={noteText}
-                            onChange={(e) => setNoteText(e.target.value)}
-                            placeholder="Type your note here..."
-                            style={{
-                                width: '100%',
-                                flex: 1,
-                                padding: '16px',
-                                borderRadius: '12px',
-                                border: '1px solid #e2e8f0',
-                                fontSize: '1rem',
-                                fontFamily: 'inherit',
-                                resize: 'none',
-                                outline: 'none',
-                                lineHeight: '1.6',
-                                background: '#f8fafc',
-                                color: '#334155'
-                            }}
-                            autoFocus
-                        />
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                            <button
-                                onClick={() => setIsNotePopupOpen(false)}
-                                style={{
-                                    padding: '10px 20px',
-                                    background: 'transparent',
-                                    border: '1px solid #cbd5e1',
-                                    borderRadius: '8px',
-                                    fontSize: '0.9rem',
-                                    color: '#64748b',
-                                    cursor: 'pointer',
-                                    fontWeight: 500
-                                }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSaveNote}
-                                style={{
-                                    padding: '10px 24px',
-                                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontSize: '0.9rem',
-                                    color: 'white',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-                                }}
-                            >
-                                Save Note
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
+                    <Trash2 size={14} />
+                </button>
             )}
-        </>
+        </div>
     );
 };
 

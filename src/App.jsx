@@ -1046,15 +1046,20 @@ function App() {
                 position: 'relative',
                 zIndex: 1000
             }}>
-                {/* Notch Pill */}
+                {/* Notch Pill Island */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    padding: '2px',
-                    borderRadius: '24px',
+                    padding: '4px 6px',
+                    borderRadius: '100px',
                     position: 'relative',
-                    background: 'transparent'
+                    background: 'rgba(255, 255, 255, 0.65)',
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.8)',
+                    margin: '4px 0'
                 }}>
                     {[
                         { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },

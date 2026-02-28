@@ -7,30 +7,70 @@ import MiniCalendar from './MiniCalendar';
 export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask, view, setView }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
-    // View zoom transition tracking
-    const VIEW_LEVELS = { month: 0, week: 1, day: 2 };
+    // View transition — column expand/collapse for week <-> day
     const prevViewRef = useRef(view);
-    const [viewTransition, setViewTransition] = useState('');
+    const [weekCollapseIndex, setWeekCollapseIndex] = useState(-1); // -1 = not collapsing, 0-6 = collapsing to that column
+    const [weekExpanding, setWeekExpanding] = useState(false); // true = week just appeared from day, expanding columns
+    const [fadingIn, setFadingIn] = useState(false); // simple fade for month transitions
 
-    useEffect(() => {
-        const prevLevel = VIEW_LEVELS[prevViewRef.current] ?? 0;
-        const nextLevel = VIEW_LEVELS[view] ?? 0;
-        if (prevViewRef.current !== view) {
-            const prev = prevViewRef.current;
-            const next = view;
-            // Week <-> Day uses expand/collapse
-            if ((prev === 'week' && next === 'day') || (prev === 'day' && next === 'week')) {
-                setViewTransition(next === 'day' ? 'cal-expand-in' : 'cal-collapse-out');
-            } else if (nextLevel > prevLevel) {
-                setViewTransition('cal-zoom-in');
-            } else {
-                setViewTransition('cal-zoom-out');
-            }
-            prevViewRef.current = view;
-            const timer = setTimeout(() => setViewTransition(''), 400);
-            return () => clearTimeout(timer);
+    // Determine which column index corresponds to currentDate in the week
+    const getActiveDayIndex = () => {
+        return currentDate.getDay(); // Sunday=0 ... Saturday=6, matches getDaysInWeek which starts from Sunday
+    };
+
+    // Wrapper around setView to handle animated transitions
+    const handleViewChange = (newView) => {
+        if (newView === view) return;
+
+        if (view === 'week' && newView === 'day') {
+            // Week → Day: collapse columns first, then switch
+            setWeekCollapseIndex(getActiveDayIndex());
+            setTimeout(() => {
+                setWeekCollapseIndex(-1);
+                setView(newView);
+            }, 320);
+        } else if (view === 'day' && newView === 'week') {
+            // Day → Week: switch immediately, then expand columns
+            setWeekExpanding(true);
+            setView(newView);
+            // Need a frame delay so the collapsed state renders first, then transition to expanded
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    setWeekExpanding(false);
+                });
+            });
+        } else {
+            // Month <-> anything: simple fade
+            setFadingIn(true);
+            setView(newView);
+            setTimeout(() => setFadingIn(false), 300);
         }
-    }, [view]);
+        prevViewRef.current = view;
+    };
+
+    // Build grid-template-columns for the week view
+    const getWeekGridColumns = () => {
+        if (weekCollapseIndex >= 0) {
+            // Collapsing: active column gets all space, others get 0
+            return Array.from({ length: 7 }, (_, i) =>
+                i === weekCollapseIndex ? '1fr' : '0fr'
+            ).join(' ');
+        }
+        if (weekExpanding) {
+            // Just switched from day to week — start with active column expanded
+            const idx = getActiveDayIndex();
+            return Array.from({ length: 7 }, (_, i) =>
+                i === idx ? '1fr' : '0fr'
+            ).join(' ');
+        }
+        return 'repeat(7, minmax(0, 1fr))';
+    };
+
+    const weekGridColumns = getWeekGridColumns();
+    const weekGridTransitionStyle = {
+        transition: 'grid-template-columns 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+        overflow: 'hidden'
+    };
 
     // Helper for event layout
     const layoutEvents = React.useCallback((items) => {
@@ -834,11 +874,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 e.preventDefault();
                 handleNext();
             } else if (e.key.toLowerCase() === 'w') {
-                setView('week');
+                handleViewChange('week');
             } else if (e.key.toLowerCase() === 'm') {
-                setView('month');
+                handleViewChange('month');
             } else if (e.key === 'd' || e.key === 'D') {
-                setView('day');
+                handleViewChange('day');
             } else if (e.key === 'Enter') {
                 if (!showEventModal) {
                     e.preventDefault();
@@ -1042,32 +1082,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 )}
 
                 <div className="glass-card static" style={{ padding: '0.5rem 0.5rem 0 0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', position: 'relative' }}>
-                    <style>{`
-                        @keyframes calZoomIn {
-                            0% { opacity: 0; transform: scale(0.92); }
-                            100% { opacity: 1; transform: scale(1); }
-                        }
-                        @keyframes calZoomOut {
-                            0% { opacity: 0; transform: scale(1.08); }
-                            100% { opacity: 1; transform: scale(1); }
-                        }
-                        @keyframes calExpandIn {
-                            0% { opacity: 0; transform: scaleX(0.14) scaleY(0.97); }
-                            50% { opacity: 1; transform: scaleX(0.6) scaleY(1); }
-                            100% { opacity: 1; transform: scaleX(1) scaleY(1); }
-                        }
-                        @keyframes calCollapseOut {
-                            0% { opacity: 0; transform: scaleX(1.6) scaleY(1.02); }
-                            100% { opacity: 1; transform: scaleX(1) scaleY(1); }
-                        }
-                        .cal-zoom-in { animation: calZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-                        .cal-zoom-out { animation: calZoomOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-                        .cal-expand-in { animation: calExpandIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
-                        .cal-collapse-out { animation: calCollapseOut 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
-                    `}</style>
 
                     {view === 'month' && (
-                        <div key={`month-${viewTransition}`} className={viewTransition} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: fadingIn ? 0 : 1, transition: 'opacity 0.25s ease' }}>
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '32px', overflow: 'hidden' }}>
                                 <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', paddingBottom: '0' }}>
                                     <div className="calendar-grid" style={{ margin: 0, border: 'none', borderRadius: 0, background: 'transparent', gap: 0 }}>
@@ -1110,7 +1127,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''}`}
                                                     onClick={() => {
                                                         setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
-                                                        setView('day');
+                                                        handleViewChange('day');
                                                     }}
                                                     style={{
                                                         cursor: 'pointer',
@@ -1201,15 +1218,23 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     )}
 
                     {view === 'week' && (
-                        <div key={`week-${viewTransition}`} className={viewTransition} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                                 <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', width: '100%', gap: '1px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: weekGridColumns, width: '100%', gap: '1px', ...weekGridTransitionStyle }}>
                                         {getDaysInWeek().map((dayObj, i) => {
                                             const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
                                             const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                                            const isCollapsing = weekCollapseIndex >= 0 && weekCollapseIndex !== i;
+                                            const isExpandingOther = weekExpanding && getActiveDayIndex() !== i;
                                             return (
-                                                <div key={i} style={{ textAlign: 'center', opacity: isToday ? 1 : 0.7 }}>
+                                                <div key={i} style={{
+                                                    textAlign: 'center',
+                                                    opacity: (isCollapsing || isExpandingOther) ? 0 : (isToday ? 1 : 0.7),
+                                                    overflow: 'hidden',
+                                                    transition: 'opacity 0.25s ease',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
                                                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
                                                     <div style={{ fontSize: '1rem', fontWeight: 400, color: isToday ? 'var(--primary)' : 'var(--text-main)', opacity: isToday ? 1 : 0.8 }}>{dayObj.day}</div>
                                                 </div>
@@ -1291,7 +1316,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             );
                                         })()}
 
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', width: '100%', gap: '0', zIndex: 1 }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: weekGridColumns, width: '100%', gap: '0', zIndex: 1, ...weekGridTransitionStyle }}>
                                             {getDaysInWeek().map((dayObj, i) => {
                                                 const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
 
@@ -1334,7 +1359,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                             position: 'relative',
                                                             borderRight: '1px solid rgba(0,0,0,0.1)',
                                                             borderLeft: i === 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
-                                                            height: '100%'
+                                                            height: '100%',
+                                                            overflow: 'hidden'
                                                         }}
                                                         onMouseDown={(e) => handleDragStart(e, i, dayObj.dateObj)}
                                                     >
@@ -1442,7 +1468,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     )}
 
                     {view === 'day' && (
-                        <div key={`day-${viewTransition}`} className={viewTransition} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                                 {/* Day Date Header */}
                                 <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>

@@ -533,22 +533,58 @@ export default function NotesTab() {
                                                                 cursor: 'pointer',
                                                                 background: isActive ? 'rgba(0,0,0,0.06)' : 'transparent',
                                                                 marginBottom: '2px',
-                                                                transition: 'background 0.15s'
+                                                                transition: 'background 0.15s',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                position: 'relative'
                                                             }}
                                                             onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
                                                             onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                                                         >
                                                             <div style={{
-                                                                fontSize: '0.8rem',
-                                                                fontWeight: isActive ? 600 : 500,
-                                                                color: '#1d1d1f',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                                whiteSpace: 'nowrap',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px',
                                                                 marginBottom: '2px'
                                                             }}>
-                                                                <FileText size={12} style={{ display: 'inline', marginRight: '6px', color: isActive ? '#1d1d1f' : '#86868b', verticalAlign: '-1px' }} />
-                                                                {note.title || 'Untitled Note'}
+                                                                {/* Delete note button in edit mode */}
+                                                                {folderEditMode && (
+                                                                    <button
+                                                                        onClick={e => { e.stopPropagation(); deleteNote(note.id, e); }}
+                                                                        title="Delete Note"
+                                                                        style={{
+                                                                            background: '#ff3b30',
+                                                                            border: 'none',
+                                                                            cursor: 'pointer',
+                                                                            color: 'white',
+                                                                            width: '14px',
+                                                                            height: '14px',
+                                                                            borderRadius: '50%',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            flexShrink: 0,
+                                                                            padding: 0,
+                                                                            fontSize: '10px',
+                                                                            fontWeight: 700,
+                                                                            lineHeight: 1
+                                                                        }}
+                                                                    >
+                                                                        −
+                                                                    </button>
+                                                                )}
+                                                                <FileText size={12} style={{ display: 'inline', color: isActive ? '#1d1d1f' : '#86868b', flexShrink: 0 }} />
+                                                                <div style={{
+                                                                    fontSize: '0.8rem',
+                                                                    fontWeight: isActive ? 600 : 500,
+                                                                    color: '#1d1d1f',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                    whiteSpace: 'nowrap',
+                                                                    flex: 1
+                                                                }}>
+                                                                    {note.title || 'Untitled Note'}
+                                                                </div>
                                                             </div>
                                                             {preview && (
                                                                 <div style={{
@@ -557,7 +593,7 @@ export default function NotesTab() {
                                                                     overflow: 'hidden',
                                                                     textOverflow: 'ellipsis',
                                                                     whiteSpace: 'nowrap',
-                                                                    paddingLeft: '18px'
+                                                                    paddingLeft: folderEditMode ? '38px' : '18px'
                                                                 }}>
                                                                     {preview}
                                                                 </div>

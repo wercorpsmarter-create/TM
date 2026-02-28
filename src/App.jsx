@@ -1085,9 +1085,10 @@ function App() {
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '0.6rem',
-                                        padding: '0.6rem 1.4rem',
-                                        borderRadius: '20px',
+                                        justifyContent: 'center',
+                                        width: '42px',
+                                        height: '42px',
+                                        borderRadius: '50%',
                                         border: isActive ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
                                         background: isActive
                                             ? 'rgba(255, 255, 255, 0.6)'
@@ -1095,10 +1096,7 @@ function App() {
                                         backdropFilter: isActive ? 'blur(20px)' : 'none',
                                         WebkitBackdropFilter: isActive ? 'blur(20px)' : 'none',
                                         color: isActive ? 'var(--text-main)' : 'rgba(0, 0, 0, 0.45)',
-                                        fontWeight: 500,
                                         cursor: 'pointer',
-                                        fontSize: '0.95rem',
-                                        letterSpacing: '-0.01em',
                                         transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                                         boxShadow: isActive
                                             ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
@@ -1118,9 +1116,9 @@ function App() {
                                             e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
                                         }
                                     }}
+                                    title={tab.label}
                                 >
                                     {tab.icon}
-                                    <span style={{ opacity: isActive ? 1 : 0.8 }}>{tab.label}</span>
                                 </button>
                             );
                         })}

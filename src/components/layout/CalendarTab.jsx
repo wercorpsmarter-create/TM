@@ -1088,7 +1088,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                             onClick={() => setShowSplitView(prev => !prev)}
                             style={{
                                 position: 'absolute',
-                                top: '12px',
+                                top: '20px',
                                 right: '8px',
                                 width: '22px',
                                 height: '22px',

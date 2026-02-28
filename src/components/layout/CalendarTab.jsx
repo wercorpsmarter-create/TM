@@ -16,13 +16,18 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         const prevLevel = VIEW_LEVELS[prevViewRef.current] ?? 0;
         const nextLevel = VIEW_LEVELS[view] ?? 0;
         if (prevViewRef.current !== view) {
-            if (nextLevel > prevLevel) {
+            const prev = prevViewRef.current;
+            const next = view;
+            // Week <-> Day uses expand/collapse
+            if ((prev === 'week' && next === 'day') || (prev === 'day' && next === 'week')) {
+                setViewTransition(next === 'day' ? 'cal-expand-in' : 'cal-collapse-out');
+            } else if (nextLevel > prevLevel) {
                 setViewTransition('cal-zoom-in');
             } else {
                 setViewTransition('cal-zoom-out');
             }
             prevViewRef.current = view;
-            const timer = setTimeout(() => setViewTransition(''), 350);
+            const timer = setTimeout(() => setViewTransition(''), 400);
             return () => clearTimeout(timer);
         }
     }, [view]);
@@ -1039,15 +1044,26 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                 <div className="glass-card static" style={{ padding: '0.5rem 0.5rem 0 0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', position: 'relative' }}>
                     <style>{`
                         @keyframes calZoomIn {
-                            0% { opacity: 0; transform: scale(0.88); }
+                            0% { opacity: 0; transform: scale(0.92); }
                             100% { opacity: 1; transform: scale(1); }
                         }
                         @keyframes calZoomOut {
-                            0% { opacity: 0; transform: scale(1.12); }
+                            0% { opacity: 0; transform: scale(1.08); }
                             100% { opacity: 1; transform: scale(1); }
                         }
-                        .cal-zoom-in { animation: calZoomIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
-                        .cal-zoom-out { animation: calZoomOut 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+                        @keyframes calExpandIn {
+                            0% { opacity: 0; transform: scaleX(0.14) scaleY(0.97); }
+                            50% { opacity: 1; transform: scaleX(0.6) scaleY(1); }
+                            100% { opacity: 1; transform: scaleX(1) scaleY(1); }
+                        }
+                        @keyframes calCollapseOut {
+                            0% { opacity: 0; transform: scaleX(1.6) scaleY(1.02); }
+                            100% { opacity: 1; transform: scaleX(1) scaleY(1); }
+                        }
+                        .cal-zoom-in { animation: calZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+                        .cal-zoom-out { animation: calZoomOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+                        .cal-expand-in { animation: calExpandIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
+                        .cal-collapse-out { animation: calCollapseOut 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
                     `}</style>
 
                     {view === 'month' && (
@@ -1428,6 +1444,23 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     {view === 'day' && (
                         <div key={`day-${viewTransition}`} className={viewTransition} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                {/* Day Date Header */}
+                                <div style={{ display: 'flex', paddingLeft: '60px', marginBottom: '0.5rem', flexShrink: 0 }}>
+                                    <div style={{ flex: 1, textAlign: 'center' }}>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                                            {currentDate.toLocaleDateString('en-US', { weekday: 'short' })}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '1.5rem',
+                                            fontWeight: 300,
+                                            color: new Date().toDateString() === currentDate.toDateString() ? 'var(--primary)' : 'var(--text-main)',
+                                            lineHeight: 1.2
+                                        }}>
+                                            {currentDate.getDate()}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
                                     <div
                                         style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}

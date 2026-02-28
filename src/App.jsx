@@ -1086,8 +1086,8 @@ function App() {
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        width: '42px',
-                                        height: '42px',
+                                        width: isActive ? '56px' : '42px',
+                                        height: isActive ? '56px' : '42px',
                                         borderRadius: '50%',
                                         border: isActive ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
                                         background: isActive
@@ -1102,7 +1102,8 @@ function App() {
                                             ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
                                             : 'none',
                                         position: 'relative',
-                                        zIndex: isActive ? 2 : 1
+                                        zIndex: isActive ? 2 : 1,
+
                                     }}
                                     onMouseEnter={e => {
                                         if (!isActive) {
@@ -1118,7 +1119,7 @@ function App() {
                                     }}
                                     title={tab.label}
                                 >
-                                    {tab.icon}
+                                    {React.cloneElement(tab.icon, { size: isActive ? 24 : 18 })}
                                 </button>
                             );
                         })}

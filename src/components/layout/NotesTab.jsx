@@ -622,6 +622,28 @@ export default function NotesTab() {
                             flexShrink: 0
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {folderSidebarCollapsed && (
+                                    <button
+                                        onClick={() => setFolderSidebarCollapsed(false)}
+                                        title="Show Folders"
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#86868b',
+                                            padding: '2px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            borderRadius: '4px',
+                                            transition: 'color 0.15s',
+                                            marginRight: '8px'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.color = '#1d1d1f'}
+                                        onMouseLeave={e => e.currentTarget.style.color = '#86868b'}
+                                    >
+                                        <PanelLeftOpen size={15} />
+                                    </button>
+                                )}
                                 <Folder size={13} color="#86868b" />
                                 <select
                                     value={activeNote.folderId || 'general'}

@@ -1228,7 +1228,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '0 1.5rem 0.5rem 1.5rem',
+                        padding: '1rem 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'dashboard' ? '100%' : '0px',
                         overflow: activeTab === 'dashboard' ? 'auto' : 'hidden'
                     }}>
@@ -1272,7 +1272,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '0 1.5rem 0.5rem 16px',
+                        padding: '1rem 1.5rem 0.5rem 16px',
                         height: activeTab === 'calendar' ? '100%' : '0px',
                         overflow: activeTab === 'calendar' ? 'auto' : 'hidden'
                     }}>
@@ -1300,7 +1300,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '0 1.5rem 0.5rem 1.5rem',
+                        padding: '1rem 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'emails' ? '100%' : '0px',
                         overflow: activeTab === 'emails' ? 'auto' : 'hidden'
                     }}>
@@ -1319,7 +1319,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '0 1.5rem 0.5rem 1.5rem',
+                        padding: '1rem 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'notes' ? '100%' : '0px',
                         overflow: activeTab === 'notes' ? 'hidden' : 'hidden',
                         display: 'flex',

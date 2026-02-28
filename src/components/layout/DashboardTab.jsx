@@ -37,7 +37,7 @@ export default function DashboardTab({
     setAccentColor
 }) {
     return (
-        <div className="dashboard-tab" style={{ paddingBottom: '0' }}>
+        <div className="dashboard-tab" style={{ paddingBottom: '2rem' }}>
             <TopSection
                 tasks={tasks}
                 upcomingEvents={upcomingEvents}

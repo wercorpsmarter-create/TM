@@ -129,7 +129,7 @@ export default function TopSection({
     setAccentColor,
     isCustomizing,
     setIsCustomizing,
-    menuBarItems = ['dashboard', 'calendar', 'emails', 'notes'],
+    menuBarItems = ['dashboard', 'calendar', 'emails', 'notes', 'timer'],
     setMenuBarItems
 }) {
     const [poppingBubble, setPoppingBubble] = useState(null);
@@ -365,12 +365,13 @@ export default function TopSection({
 
                         <div style={{
                             position: 'relative',
-                            height: '180px',
+                            minHeight: '180px',
                             width: '100%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             overflow: 'visible',
+                            padding: '1rem 0'
                         }}>
                             {ecosystemNodes.length === 0 && !isEditingGoals && (
                                 <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem', fontStyle: 'italic' }}>
@@ -793,7 +794,6 @@ export default function TopSection({
                                     if (!eventEnd) return true; // Show if we can't determine time
                                     return eventEnd > now;
                                 })
-                                .slice(0, 3)
                                 .map(event => (
                                     <div key={event.id} style={{
                                         padding: '0.75rem',
@@ -849,19 +849,25 @@ export default function TopSection({
     };
 
     return (
-        <div className="top-section-container">
-            <div className="top-section-header">
-                <button
-                    onClick={() => setIsCustomizing(!isCustomizing)}
-                    className={`customize-toggle ${isCustomizing ? 'active' : ''}`}
-                >
-                    {isCustomizing ? (
-                        <><Check size={16} /> Done</>
-                    ) : (
-                        <><Settings2 size={16} /> Customize Dashboard</>
-                    )}
-                </button>
-            </div>
+        <div className="top-section-container" style={{ position: 'relative' }}>
+            <button
+                onClick={() => setIsCustomizing(!isCustomizing)}
+                className={`btn-icon ${isCustomizing ? 'active' : ''}`}
+                title={isCustomizing ? "Done" : "Customize Dashboard"}
+                style={{
+                    position: 'absolute',
+                    top: '0.75rem',
+                    right: '0.75rem',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '10px',
+                    background: isCustomizing ? '#22c55e' : 'rgba(0,0,0,0.05)',
+                    color: isCustomizing ? 'white' : 'var(--text-muted)',
+                    zIndex: 100,
+                }}
+            >
+                {isCustomizing ? <Check size={18} /> : <Settings2 size={18} />}
+            </button>
 
 
             {isCustomizing && (

@@ -41,7 +41,7 @@ export default function DashboardTab({
     setMenuBarItems
 }) {
     return (
-        <div className="dashboard-tab" style={{ paddingBottom: '0' }}>
+        <div className="dashboard-tab" style={{ paddingBottom: '4rem' }}>
             <TopSection
                 tasks={tasks}
                 upcomingEvents={upcomingEvents}

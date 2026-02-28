@@ -349,7 +349,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
     return (
         <div className="day-column">
             <div className="day-title">{dayName} <span style={{ opacity: 0.5, fontSize: '0.7em', display: 'block' }}>{displayDate}</span></div>
-            <div className="glass-card" style={{ padding: '1rem', minHeight: '400px', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+            <div className="glass-card" style={{ padding: '1rem', height: 'fit-content', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
 
                 {/* Daily Progress Donut */}
                 <div className="donut-container" style={{ height: '100px', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -415,7 +415,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
                     items={dayTasks.map(t => t.id)}
                     strategy={verticalListSortingStrategy}
                 >
-                    <div className="compact-task-list" style={{ marginTop: isEditing ? '0' : '1rem', minHeight: '100px' }} ref={setNodeRef}>
+                    <div className="compact-task-list" style={{ marginTop: isEditing ? '0' : '1rem' }} ref={setNodeRef}>
                         {dayTasks.map(task => (
                             <SortableTask
                                 key={task.id}
@@ -429,7 +429,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
                             />
                         ))}
                         {dayTasks.length === 0 && !isEditing && (
-                            <div style={{ textAlign: 'center', opacity: 0.2, fontSize: '0.75rem', marginTop: '2rem' }}>
+                            <div style={{ textAlign: 'center', opacity: 0.2, fontSize: '0.75rem', marginTop: '1rem' }}>
                                 No tasks
                             </div>
                         )}
@@ -520,7 +520,7 @@ export default function WeeklyBreakdown({
     };
 
     return (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', marginTop: '0.5rem' }}>
             <style>{taskAnimationStyles}</style>
             <DndContext
                 sensors={sensors}
@@ -529,22 +529,26 @@ export default function WeeklyBreakdown({
                 collisionDetection={closestCenter}
                 autoScroll={false}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0 1rem' }}>
-                    <button onClick={onPrevWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ChevronLeft size={14} />
-                    </button>
-                    <button onClick={onNextWeek} className="btn-icon" style={{ background: 'rgba(255, 255, 255, 0.25)', backdropFilter: 'blur(4px)', color: '#64748b', height: '20px', padding: '0 1rem', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ChevronRight size={14} />
-                    </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0rem', padding: '0 1rem' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                        <button onClick={onPrevWeek} className="btn-icon" style={{ background: 'rgba(0,0,0,0.05)', color: '#64748b', height: '24px', width: '32px', borderRadius: '6px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ChevronLeft size={14} />
+                        </button>
+                        <button onClick={onNextWeek} className="btn-icon" style={{ background: 'rgba(0,0,0,0.05)', color: '#64748b', height: '24px', width: '32px', borderRadius: '6px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ChevronRight size={14} />
+                        </button>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginLeft: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Schedule</span>
 
                     {isCustomizing && (
                         <div style={{
                             display: 'flex',
-                            gap: '0.5rem',
+                            gap: '0.3rem',
                             flexWrap: 'wrap',
-                            marginLeft: '1rem'
+                            marginLeft: 'auto'
                         }}>
-                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, idx) => {
+                                const day = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][idx];
                                 const isVisible = visibleDays.includes(day);
                                 const canToggle = !(isVisible && visibleDays.length === 1);
                                 return (
@@ -559,19 +563,18 @@ export default function WeeklyBreakdown({
                                             }
                                         }}
                                         style={{
-                                            padding: '0.2rem 0.6rem',
-                                            borderRadius: '8px',
-                                            border: `1px solid ${isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.2)'}`,
-                                            background: isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                            padding: '2px 8px',
+                                            borderRadius: '6px',
+                                            border: `1px solid ${isVisible ? 'var(--primary)' : 'rgba(0,0,0,0.05)'}`,
+                                            background: isVisible ? 'var(--primary)' : 'transparent',
                                             color: isVisible ? 'white' : 'var(--text-muted)',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 600,
+                                            fontSize: '0.65rem',
+                                            fontWeight: 700,
                                             cursor: canToggle ? 'pointer' : 'not-allowed',
                                             transition: 'all 0.2s',
-                                            opacity: canToggle ? 1 : 0.5
                                         }}
                                     >
-                                        {day.substring(0, 3)}
+                                        {label}
                                     </button>
                                 );
                             })}
@@ -579,7 +582,7 @@ export default function WeeklyBreakdown({
                     )}
                 </div>
 
-                <div className="weekly-breakdown">
+                <div className="weekly-breakdown" style={{ overflowX: 'visible', width: 'max-content', minWidth: '100%', padding: '1rem', alignItems: 'flex-start' }}>
                     {DAYS.filter(day => visibleDays.includes(day)).map((day, index) => (
                         <DayColumn
                             key={`${day}-${currentWeekOffset}`}
@@ -610,6 +613,6 @@ export default function WeeklyBreakdown({
                     ) : null}
                 </DragOverlay>
             </DndContext>
-        </>
+        </div>
     );
 }

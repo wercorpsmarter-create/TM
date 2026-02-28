@@ -194,11 +194,8 @@ export default function NotesTab() {
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                background: 'rgba(245, 245, 247, 0.95)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                borderRight: folderSidebarCollapsed ? 'none' : '1px solid rgba(0,0,0,0.08)',
-                borderRadius: '16px 0 0 16px',
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRight: folderSidebarCollapsed ? 'none' : '1px solid rgba(0,0,0,0.05)',
                 overflow: 'hidden',
                 transition: 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 minWidth: 0
@@ -605,8 +602,7 @@ export default function NotesTab() {
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
-                background: 'rgba(255,255,255,0.98)',
-                borderRadius: folderSidebarCollapsed ? '16px' : '0 16px 16px 0',
+                background: 'rgba(255,255,255,0.4)',
                 overflow: 'hidden',
                 minWidth: 0,
                 transition: 'border-radius 0.25s cubic-bezier(0.16, 1, 0.3, 1)'

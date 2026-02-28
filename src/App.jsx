@@ -1,13 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FileText } from 'lucide-react';
+import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Timer } from 'lucide-react';
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    horizontalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import api from './utils/api';
 import DashboardTab from './components/layout/DashboardTab';
 import CalendarTab from './components/layout/CalendarTab';
 import EmailTab from './components/layout/EmailTab';
 import NotesTab from './components/layout/NotesTab';
+import TimerTab from './components/layout/TimerTab';
 
 import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
@@ -49,6 +64,47 @@ const getTargetDate = (dayName) => {
     return formatLocalDate(target);
 };
 
+const SortableTab = ({ id, tab, isVisible, canToggle, onToggle, accentColor }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.3 : (canToggle ? (isVisible ? 0.6 : 1) : 0.4),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0.6rem',
+        borderRadius: '12px',
+        border: `1px solid ${isVisible ? 'rgba(0,0,0,0.1)' : 'var(--primary)'}`,
+        background: isVisible ? 'rgba(0,0,0,0.05)' : 'var(--primary)',
+        color: isVisible ? 'var(--text-muted)' : 'white',
+        cursor: isDragging ? 'grabbing' : (canToggle ? 'pointer' : 'not-allowed'),
+        zIndex: isDragging ? 2000 : 1,
+        touchAction: 'none'
+    };
+
+    return (
+        <button
+            ref={setNodeRef}
+            style={style}
+            onClick={() => !isDragging && onToggle()}
+            title={tab.label}
+            {...attributes}
+            {...listeners}
+        >
+            {React.cloneElement(tab.icon, { size: 14 })}
+        </button>
+    );
+};
+
 function App() {
     // FIXED: This now checks the URL bar before deciding which tab to show
     const containerRef = useRef(null);
@@ -68,7 +124,8 @@ function App() {
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity']);
     const [visibleDays, setVisibleDays] = useLocalStorage('prohub-visible-days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
     const [accentColor, setAccentColor] = useLocalStorage('prohub-accent-color', '#3b82f6');
-    const [menuBarItems, setMenuBarItems] = useLocalStorage('prohub-menubar-items', ['dashboard', 'calendar', 'emails', 'notes']);
+    const [menuBarItems, setMenuBarItems] = useLocalStorage('prohub-menubar-items', ['dashboard', 'calendar', 'emails', 'notes', 'timer']);
+    const [menuBarOrder, setMenuBarOrder] = useLocalStorage('prohub-menubar-order', ['dashboard', 'calendar', 'emails', 'notes', 'timer']);
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
     const [linkedAccounts, setLinkedAccounts] = useLocalStorage('prohub-linked-accounts-v1', []);
@@ -234,26 +291,38 @@ function App() {
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
+    const isInputActive = () => {
+        const activeElement = document.activeElement;
+        return ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement?.tagName) || activeElement?.isContentEditable;
+    };
+
+    const prevTab = () => {
+        const visibleOrder = menuBarOrder.filter(id => menuBarItems.includes(id));
+        const currentIndex = visibleOrder.indexOf(activeTab);
+        if (currentIndex > 0) setActiveTab(visibleOrder[currentIndex - 1]);
+    };
+
+    const nextTab = () => {
+        const visibleOrder = menuBarOrder.filter(id => menuBarItems.includes(id));
+        const currentIndex = visibleOrder.indexOf(activeTab);
+        if (currentIndex < visibleOrder.length - 1) setActiveTab(visibleOrder[currentIndex + 1]);
+    };
+
     // Handle keyboard tab switching globally
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
-            if (e.target.isContentEditable) return;
+            if (isInputActive()) return;
 
             if (e.key === 'ArrowLeft') {
-                if (activeTab === 'notes') setActiveTab('emails');
-                else if (activeTab === 'emails') setActiveTab('calendar');
-                else if (activeTab === 'calendar') setActiveTab('dashboard');
+                prevTab();
             } else if (e.key === 'ArrowRight') {
-                if (activeTab === 'dashboard') setActiveTab('calendar');
-                else if (activeTab === 'calendar') setActiveTab('emails');
-                else if (activeTab === 'emails') setActiveTab('notes');
+                nextTab();
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeTab]);
+    }, [activeTab, menuBarOrder, menuBarItems]);
 
     // Handling swipe navigation removed as per request
     const loadUserData = async () => {
@@ -515,6 +584,25 @@ function App() {
             ...initialData
         });
         // Removed setActiveTab('calendar') so it stays on dashboard
+    };
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
+
+    const handleDragEndOrder = (event) => {
+        const { active, over } = event;
+        if (active && over && active.id !== over.id) {
+            setMenuBarOrder((items) => {
+                const oldIndex = items.indexOf(active.id);
+                const newIndex = items.indexOf(over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
     };
 
     const handleSubscribe = () => {
@@ -1043,10 +1131,10 @@ function App() {
                 flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
-                padding: '0.5rem 0 0.6rem 0',
+                padding: '0.2rem 0 0.2rem 0',
                 gap: '0.5rem',
                 position: 'absolute',
-                top: 0,
+                top: '30px',
                 left: 0,
                 width: '100%',
                 zIndex: 1000,
@@ -1056,26 +1144,27 @@ function App() {
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 6px',
+                    gap: '21px',
+                    padding: '2px 14px',
                     borderRadius: '100px',
                     position: 'relative',
-                    background: 'rgba(255, 255, 255, 0.65)',
+                    background: 'rgba(255, 255, 255, 0.3)',
                     backdropFilter: 'blur(24px)',
                     WebkitBackdropFilter: 'blur(24px)',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
                     border: '1px solid rgba(255, 255, 255, 0.8)',
-                    margin: '4px 0',
+                    margin: '2px 0',
                     pointerEvents: 'auto'
                 }}>
                     {[
                         { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
                         { key: 'calendar', label: 'Calendar', icon: <CalendarIcon size={18} /> },
                         { key: 'emails', label: 'Emails', icon: <Mail size={18} /> },
-                        { key: 'notes', label: 'Notes', icon: <FileText size={18} /> }
+                        { key: 'notes', label: 'Notes', icon: <FileText size={18} /> },
+                        { key: 'timer', label: 'Timer', icon: <Timer size={18} /> }
                     ]
                         .filter(tab => menuBarItems?.includes(tab.key))
-                        .sort((a, b) => menuBarItems.indexOf(a.key) - menuBarItems.indexOf(b.key))
+                        .sort((a, b) => menuBarOrder.indexOf(a.key) - menuBarOrder.indexOf(b.key))
                         .map(tab => {
                             const isActive = activeTab === tab.key;
                             return (
@@ -1086,24 +1175,20 @@ function App() {
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        width: isActive ? '56px' : '42px',
-                                        height: isActive ? '56px' : '42px',
+                                        width: isActive ? '40px' : '30px',
+                                        height: isActive ? '40px' : '30px',
                                         borderRadius: '50%',
                                         border: isActive ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
-                                        background: isActive
-                                            ? 'rgba(255, 255, 255, 0.6)'
-                                            : 'transparent',
+                                        background: isActive ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
                                         backdropFilter: isActive ? 'blur(20px)' : 'none',
                                         WebkitBackdropFilter: isActive ? 'blur(20px)' : 'none',
-                                        color: isActive ? 'var(--text-main)' : 'rgba(0, 0, 0, 0.45)',
+                                        color: isActive ? 'var(--text-main)' : 'rgba(0, 0, 0, 0.2)',
+                                        opacity: isActive ? 1 : 0.6,
                                         cursor: 'pointer',
                                         transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                                        boxShadow: isActive
-                                            ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
-                                            : 'none',
+                                        boxShadow: isActive ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)' : 'none',
                                         position: 'relative',
                                         zIndex: isActive ? 2 : 1,
-
                                     }}
                                     onMouseEnter={e => {
                                         if (!isActive) {
@@ -1149,44 +1234,51 @@ function App() {
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
                             marginRight: '0.5rem'
-                        }}>Visible Tabs</div>
-                        {[
-                            { id: 'dashboard', label: 'Dashboard' },
-                            { id: 'calendar', label: 'Calendar' },
-                            { id: 'emails', label: 'Emails' },
-                            { id: 'notes', label: 'Notes' }
-                        ].map(tab => {
-                            const isVisible = menuBarItems.includes(tab.id);
-                            // Ensure at least one tab remains visible
-                            const canToggle = !(isVisible && menuBarItems.length === 1);
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => {
-                                        if (!canToggle) return;
-                                        if (isVisible) {
-                                            setMenuBarItems(menuBarItems.filter(t => t !== tab.id));
-                                        } else {
-                                            setMenuBarItems([...menuBarItems, tab.id]);
-                                        }
-                                    }}
-                                    style={{
-                                        padding: '0.4rem 0.8rem',
-                                        borderRadius: '12px',
-                                        border: `1px solid ${isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.2)'}`,
-                                        background: isVisible ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                                        color: isVisible ? 'white' : 'var(--text-muted)',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        cursor: canToggle ? 'pointer' : 'not-allowed',
-                                        transition: 'all 0.2s',
-                                        opacity: canToggle ? 1 : 0.5
-                                    }}
-                                >
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
+                        }}>Choose & Reorder Tabs</div>
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEndOrder}
+                        >
+                            <SortableContext
+                                items={menuBarOrder}
+                                strategy={horizontalListSortingStrategy}
+                            >
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    {menuBarOrder.map(tabId => {
+                                        const metadata = [
+                                            { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={14} /> },
+                                            { id: 'calendar', label: 'Calendar', icon: <CalendarIcon size={14} /> },
+                                            { id: 'emails', label: 'Emails', icon: <Mail size={14} /> },
+                                            { id: 'notes', label: 'Notes', icon: <FileText size={14} /> },
+                                            { id: 'timer', label: 'Timer', icon: <Timer size={14} /> }
+                                        ].find(t => t.id === tabId);
+
+                                        const isVisible = menuBarItems.includes(tabId);
+                                        const canToggle = !(isVisible && menuBarItems.length === 1);
+
+                                        return (
+                                            <SortableTab
+                                                key={tabId}
+                                                id={tabId}
+                                                tab={metadata}
+                                                isVisible={isVisible}
+                                                canToggle={canToggle}
+                                                accentColor={accentColor}
+                                                onToggle={() => {
+                                                    if (!canToggle) return;
+                                                    if (isVisible) {
+                                                        setMenuBarItems(menuBarItems.filter(t => t !== tabId));
+                                                    } else {
+                                                        setMenuBarItems([...menuBarItems, tabId]);
+                                                    }
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </SortableContext>
+                        </DndContext>
                     </div>
                 )}
 
@@ -1291,171 +1383,177 @@ function App() {
             <div ref={containerRef} style={{ overflowX: 'hidden', width: '100%', flex: 1, position: 'relative', minHeight: 0 }}>
                 <motion.div
                     className="tab-track"
-                    style={{ display: 'flex', width: '400%', height: '100%', touchAction: 'pan-y', alignItems: 'flex-start' }}
+                    style={{ display: 'flex', width: '500%', height: '100%', touchAction: 'pan-y', alignItems: 'flex-start' }}
                     animate={{
-                        x: activeTab === 'dashboard' ? '0%' :
-                            activeTab === 'calendar' ? '-25%' :
-                                activeTab === 'emails' ? '-50%' : '-75%'
+                        x: `-${menuBarOrder.indexOf(activeTab) * 20}%`
                     }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 >
-                    <div style={{
-                        width: '25%',
-                        flexShrink: 0,
-                        padding: '5rem 1.5rem 0.5rem 1.5rem',
-                        height: activeTab === 'dashboard' ? '100%' : '0px',
-                        overflow: activeTab === 'dashboard' ? 'auto' : 'hidden'
-                    }}>
-                        <DashboardTab
-                            tasks={tasks}
-                            upcomingEvents={upcomingEvents}
-                            habits={habits}
-                            setHabits={updateHabitHistory}
-                            onAddHabit={addHabit}
-                            onDeleteHabit={deleteHabit}
-                            goals={goals}
-                            onAddGoal={addGoal}
-                            onDeleteGoal={deleteGoal}
-                            monthlyGoals={monthlyGoals}
-                            onAddMonthlyGoal={addMonthlyGoal}
-                            onDeleteMonthlyGoal={deleteMonthlyGoal}
-                            onSyncClick={handleSyncClick}
-                            layout={dashboardLayout}
-                            setLayout={setDashboardLayout}
-                            onMoveTask={moveTask}
-                            onAddTask={(...args) => addTask(...args)}
-                            onDeleteTask={deleteTask}
-                            onToggleTask={toggleTask}
-                            onUpdateTask={updateTask}
-                            onReorderTasks={reorderTasks}
-                            onTaskDragStart={() => setIsTaskInteractionLocked(true)}
-                            onTaskDragEnd={() => {
-                                // Add delay before re-enabling swipe to prevent accidental triggers
-                                setTimeout(() => setIsTaskInteractionLocked(false), 500);
-                            }}
-                            visibleDays={visibleDays}
-                            setVisibleDays={setVisibleDays}
-                            menuBarItems={menuBarItems}
-                            setMenuBarItems={setMenuBarItems}
-                            accentColor={accentColor}
-                            setAccentColor={setAccentColor}
-                            currentWeekOffset={currentWeekOffset}
-                            onNextWeek={() => setCurrentWeekOffset(prev => prev + 1)}
-                            onPrevWeek={() => setCurrentWeekOffset(prev => prev - 1)}
-                            onOpenCalendarPopup={handleOpenCalendarPopup}
-                            isCustomizing={isCustomizing}
-                            setIsCustomizing={setIsCustomizing}
-                        />
-                    </div>
-                    <div style={{
-                        width: '25%',
-                        flexShrink: 0,
-                        padding: '5rem 1.5rem 0.5rem 16px',
-                        height: activeTab === 'calendar' ? '100%' : '0px',
-                        overflow: activeTab === 'calendar' ? 'auto' : 'hidden'
-                    }}>
-                        {activeTab === 'calendar' && (
-                            <CalendarTab
-                                user={googleUser}
-                                setUser={setGoogleUser}
-                                tasks={tasks} // Pass tasks for read-only view in calendar
+                    {menuBarOrder.map((orderedTabId) => {
+                        const isActive = activeTab === orderedTabId;
+
+                        const renderTabWrapper = (content, maxWidth = '100%', scrollable = true, customPadding = null, internalPadding = '1.5rem', rootTab = false, outerScroll = false) => (
+                            <div key={orderedTabId} className={`tab-outer-wrapper ${outerScroll ? 'outer-scroll' : ''}`} style={{
+                                width: '20%',
+                                flexShrink: 0,
+                                padding: customPadding || '6.5rem 0.75rem 0.75rem 0.75rem',
+                                height: outerScroll ? 'auto' : '100%',
+                                minHeight: outerScroll ? '100vh' : 'auto',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                overflowX: 'hidden',
+                                overflowY: outerScroll ? 'visible' : 'hidden'
+                            }}>
+                                <div
+                                    className={`glass-card ${rootTab ? 'root-tab' : ''}`}
+                                    style={{
+                                        maxWidth: maxWidth,
+                                        width: '100%',
+                                        height: outerScroll ? 'auto' : '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        borderRadius: '32px',
+                                        background: 'rgba(255, 255, 255, 0.45)',
+                                        backdropFilter: 'blur(30px) saturate(180%)',
+                                        boxShadow: '0 40px 100px -20px rgba(0,0,0,0.1)',
+                                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                                        overflow: outerScroll ? 'visible' : (scrollable ? 'auto' : 'hidden'),
+                                        position: 'relative',
+                                        padding: internalPadding
+                                    }}
+                                >
+                                    {content}
+                                </div>
+                            </div>
+                        );
+
+                        if (orderedTabId === 'dashboard') return renderTabWrapper(
+                            <DashboardTab
+                                tasks={tasks}
+                                upcomingEvents={upcomingEvents}
+                                habits={habits}
+                                setHabits={updateHabitHistory}
+                                onAddHabit={addHabit}
+                                onDeleteHabit={deleteHabit}
+                                goals={goals}
+                                onAddGoal={addGoal}
+                                onDeleteGoal={deleteGoal}
+                                monthlyGoals={monthlyGoals}
+                                onAddMonthlyGoal={addMonthlyGoal}
+                                onDeleteMonthlyGoal={deleteMonthlyGoal}
                                 onSyncClick={handleSyncClick}
-                                onAddTask={addTask}
-                                onLogin={() => login()}
-                                linkedAccounts={linkedAccounts}
-                                onAddLinkedAccount={() => attachLinkedAccount()}
-                                externalPopupTrigger={calendarPopupTrigger}
-                                isActive={activeTab === 'calendar'}
-                                accentColor={accentColor}
+                                layout={dashboardLayout}
+                                setLayout={setDashboardLayout}
+                                onMoveTask={moveTask}
+                                onAddTask={(...args) => addTask(...args)}
                                 onDeleteTask={deleteTask}
                                 onToggleTask={toggleTask}
                                 onUpdateTask={updateTask}
-                                view={calendarView}
-                                setView={setCalendarView}
-                            />
-                        )}
-                    </div>
-                    <div style={{
-                        width: '25%',
-                        flexShrink: 0,
-                        padding: '5rem 1.5rem 0.5rem 1.5rem',
-                        height: activeTab === 'emails' ? '100%' : '0px',
-                        overflow: activeTab === 'emails' ? 'auto' : 'hidden'
-                    }}>
-                        <EmailTab
-                            user={googleUser}
-                            isActive={activeTab === 'emails'}
-                            onRefresh={() => {
-                                // Optional: trigger any refresh logic
-                            }}
-                            onAddTask={addTask}
-                            tasks={tasks}
-                            upcomingEvents={upcomingEvents}
-                        />
-                    </div>
-
-                    <div style={{
-                        width: '25%',
-                        flexShrink: 0,
-                        padding: '5rem 1.5rem 0.5rem 1.5rem',
-                        height: activeTab === 'notes' ? '100%' : '0px',
-                        overflow: activeTab === 'notes' ? 'hidden' : 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column'
-                    }}>
-                        <NotesTab />
-                    </div>
-
+                                onReorderTasks={reorderTasks}
+                                onTaskDragStart={() => setIsTaskInteractionLocked(true)}
+                                onTaskDragEnd={() => {
+                                    setTimeout(() => setIsTaskInteractionLocked(false), 500);
+                                }}
+                                visibleDays={visibleDays}
+                                setVisibleDays={setVisibleDays}
+                                menuBarItems={menuBarItems}
+                                setMenuBarItems={setMenuBarItems}
+                                accentColor={accentColor}
+                                setAccentColor={setAccentColor}
+                                currentWeekOffset={currentWeekOffset}
+                                onNextWeek={() => setCurrentWeekOffset(prev => prev + 1)}
+                                onPrevWeek={() => setCurrentWeekOffset(prev => prev - 1)}
+                                onOpenCalendarPopup={handleOpenCalendarPopup}
+                                isCustomizing={isCustomizing}
+                                setIsCustomizing={setIsCustomizing}
+                            />, '100%', false, '6.5rem 0.75rem 12rem 0.75rem', '1.25rem', true, true // Dashboard: centered, outer scroll, root wrapper card, increased gutter
+                        );
+                        if (orderedTabId === 'calendar') return renderTabWrapper(
+                            isActive && (
+                                <CalendarTab
+                                    user={googleUser}
+                                    setUser={setGoogleUser}
+                                    tasks={tasks}
+                                    onSyncClick={handleSyncClick}
+                                    onAddTask={addTask}
+                                    onLogin={() => login()}
+                                    linkedAccounts={linkedAccounts}
+                                    onAddLinkedAccount={() => attachLinkedAccount()}
+                                    externalPopupTrigger={calendarPopupTrigger}
+                                    isActive={activeTab === 'calendar'}
+                                    accentColor={accentColor}
+                                    onDeleteTask={deleteTask}
+                                    onToggleTask={toggleTask}
+                                    onUpdateTask={updateTask}
+                                    view={calendarView}
+                                    setView={setCalendarView}
+                                />
+                            ), '100%', false, null, '0' // Calendar handles its own scroll, no internal padding
+                        );
+                        if (orderedTabId === 'emails') return renderTabWrapper(
+                            <EmailTab
+                                user={googleUser}
+                                isActive={activeTab === 'emails'}
+                                onRefresh={() => { }}
+                                onAddTask={addTask}
+                                tasks={tasks}
+                                upcomingEvents={upcomingEvents}
+                            />, '100%', true, null, '0.2rem'
+                        );
+                        if (orderedTabId === 'notes') return renderTabWrapper(
+                            <NotesTab />, '100%', false // Notes handles its own scroll
+                        );
+                        if (orderedTabId === 'timer') return renderTabWrapper(
+                            <TimerTab accentColor={accentColor} />, '480px', false, null, '2rem'
+                        );
+                        return null;
+                    })}
                 </motion.div>
             </div>
 
             {/* Unified Import Modal */}
-            {
-                isImportModalOpen && (
-                    <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
-                        <div className="modal-content glass-card" onClick={e => e.stopPropagation()} style={{ padding: '2rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h3 style={{ margin: 0 }}>Select Calendar to Import</h3>
-                                <button onClick={() => setIsImportModalOpen(false)} className="btn-icon" style={{ width: '32px', height: '32px', background: 'none' }}>
-                                    <X size={20} />
-                                </button>
-                            </div>
-                            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '1.5rem' }}>
-                                Choose a calendar to pull events from and add them to your Hub dashboard as tasks.
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                                {calendarList.map(cal => (
-                                    <div
-                                        key={cal.id}
-                                        className="calendar-list-item"
-                                        onClick={() => importFromCalendar(cal.id)}
-                                        style={{ opacity: importLoading ? 0.5 : 1, pointerEvents: importLoading ? 'none' : 'auto' }}
-                                    >
-                                        <span>{cal.summary}</span>
-                                        {cal.primary && <span style={{ fontSize: '0.65rem', opacity: 0.5, marginLeft: 'auto', background: 'rgba(96, 165, 250, 0.2)', padding: '2px 6px', borderRadius: '4px' }}>PRIMARY</span>}
-                                    </div>
-                                ))}
-                            </div>
-                            {importLoading && (
-                                <div style={{ marginTop: '1.5rem', textAlign: 'center', color: 'var(--primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-
-                                    <RefreshCcw size={16} className="spin" /> Syncing...
-                                </div>
-                            )}
-                            <button
-                                className="btn-icon"
-                                style={{ width: '100%', marginTop: '1.5rem', background: 'rgba(255,255,255,0.05)' }}
-                                onClick={() => setIsImportModalOpen(false)}
-                                disabled={importLoading}
-                            >
-                                Cancel
+            {isImportModalOpen && (
+                <div className="modal-overlay" onClick={() => setIsImportModalOpen(false)}>
+                    <div className="modal-content glass-card" onClick={e => e.stopPropagation()} style={{ padding: '2rem', paddingBottom: '4rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0 }}>Select Calendar to Import</h3>
+                            <button onClick={() => setIsImportModalOpen(false)} className="btn-icon" style={{ width: '32px', height: '32px', background: 'none' }}>
+                                <X size={20} />
                             </button>
                         </div>
+                        <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '1.5rem' }}>
+                            Choose a calendar to pull events from and add them to your Hub dashboard as tasks.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                            {calendarList.map(cal => (
+                                <div
+                                    key={cal.id}
+                                    className="calendar-list-item"
+                                    onClick={() => importFromCalendar(cal.id)}
+                                    style={{ opacity: importLoading ? 0.5 : 1, pointerEvents: importLoading ? 'none' : 'auto' }}
+                                >
+                                    <span>{cal.summary}</span>
+                                    {cal.primary && <span style={{ fontSize: '0.65rem', opacity: 0.5, marginLeft: 'auto', background: 'rgba(96, 165, 250, 0.2)', padding: '2px 6px', borderRadius: '4px' }}>PRIMARY</span>}
+                                </div>
+                            ))}
+                        </div>
+                        {importLoading && (
+                            <div style={{ marginTop: '1.5rem', textAlign: 'center', color: 'var(--primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                <RefreshCcw size={16} className="spin" /> Syncing...
+                            </div>
+                        )}
+                        <button
+                            className="btn-icon"
+                            style={{ width: '100%', marginTop: '1.5rem', background: 'rgba(255,255,255,0.05)' }}
+                            onClick={() => setIsImportModalOpen(false)}
+                            disabled={importLoading}
+                        >
+                            Cancel
+                        </button>
                     </div>
-                )
-            }
-
-        </div >
+                </div>
+            )}
+        </div>
     );
 }
 

@@ -24,12 +24,11 @@
 }
 
 html {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
 }
 
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
@@ -37,10 +36,9 @@ body {
   background: radial-gradient(circle at 50% 50%, var(--bg-silver) 0%, var(--bg-deep) 100%);
   background-attachment: fixed;
   color: var(--text-main);
-  height: 100%;
+  min-height: 100vh;
   padding: 0;
   margin: 0;
-  overflow: hidden;
 }
 
 .app-container {
@@ -50,10 +48,9 @@ body {
   padding: 0 1rem;
   position: relative;
   z-index: 2;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -100,6 +97,7 @@ body {
   box-shadow: var(--shadow-soft);
   border-color: var(--glass-border);
 }
+
 
 .card-title {
   font-size: 1.25rem;
@@ -896,7 +894,7 @@ body {
   pointer-events: none;
 }
 
-.glass-card:hover .widget-edit-trigger,
+.glass-card:not(.root-tab):hover .widget-edit-trigger,
 .day-column:hover .widget-edit-trigger {
   opacity: 1;
   pointer-events: auto;
@@ -955,4 +953,16 @@ body {
 .active-icon {
   color: var(--primary);
   filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.5));
+}
+
+@keyframes calendarSidebarIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
 }

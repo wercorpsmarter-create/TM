@@ -4,6 +4,26 @@ import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight,
 
 import MiniCalendar from './MiniCalendar';
 
+// Helper to soften solid hex colors into pastels
+const toPastel = (hex, mix = 0.6) => {
+    if (!hex || typeof hex !== 'string' || hex[0] !== '#') return hex;
+    try {
+        let r = parseInt(hex.substring(1, 3), 16);
+        let g = parseInt(hex.substring(3, 5), 16);
+        let b = parseInt(hex.substring(5, 7), 16);
+
+        // Blend with white (255, 255, 255)
+        const nr = Math.round(r * (1 - mix) + 255 * mix);
+        const ng = Math.round(g * (1 - mix) + 255 * mix);
+        const nb = Math.round(b * (1 - mix) + 255 * mix);
+
+        const toHex = (n) => Math.min(255, n).toString(16).padStart(2, '0');
+        return `#${toHex(nr)}${toHex(ng)}${toHex(nb)}`;
+    } catch (e) {
+        return hex;
+    }
+};
+
 export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask, view, setView }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -197,7 +217,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             location: item.location || '',
             description: item.description || '',
             participants,
-            color,
+            color: color || '#b1cdfb',
             calendarId: item.calendarId || 'primary',
             eventType: item.type === 'task' ? 'task' : 'event',
             addMeet: !!item.hangoutLink,
@@ -234,7 +254,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
     const [newTaskText, setNewTaskText] = useState('');
     const [isEditingTasks, setIsEditingTasks] = useState(false);
-    const [newTaskColor, setNewTaskColor] = useState('#3b82f6');
+    const [newTaskColor, setNewTaskColor] = useState('#b1cdfb');
     const [showTaskColorPicker, setShowTaskColorPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(() => {
         const saved = localStorage.getItem('calendar_show_sidebar');
@@ -258,7 +278,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
         eventType: 'event', // 'event', 'task', 'appointment'
         addMeet: false,
         allDay: false,
-        color: '#3b82f6',
+        color: '#b1cdfb',
         calendarId: 'primary' // Default to primary calendar
     });
 
@@ -425,7 +445,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             eventType: 'event',
             addMeet: false,
             allDay: false,
-            color: '#3b82f6', // Default color for new events
+            color: '#b1cdfb', // Default color for new events
             calendarId: 'primary'
         });
         setShowEventModal(true);
@@ -504,12 +524,17 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     console.error('Error updating event:', err);
                 }
             } else {
-                // Task updates can be addressed via onUpdateTask if available
+                // Task updates
                 if (onUpdateTask) {
                     await onUpdateTask(newEventData.editingEventId, {
                         text: newEventData.title,
                         date: newEventData.dateStr,
-                        // Not handling full time updates here to keep it simple, typically you might update metadata too
+                        metadata: {
+                            ...(newEventData._originalItem?.metadata || {}),
+                            color: newEventData.color,
+                            time: newEventData.timeStr,
+                            duration: newEventData.duration
+                        }
                     });
                 }
             }
@@ -582,8 +607,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             const primaryLinkedItems = linkedItemsArray.flat().filter(cal => cal.primary === true);
 
             const allItems = [...mainItems, ...primaryLinkedItems];
-            // Deduplicate by calendar ID so we don't show the same holiday/shared calendar multiple times
-            const items = Array.from(new Map(allItems.map(item => [item.id, item])).values());
+            // Deduplicate by calendar ID and apply pastel effect
+            const items = Array.from(new Map(allItems.map(item => [item.id, item])).values()).map(cal => ({
+                ...cal,
+                backgroundColor: toPastel(cal.backgroundColor)
+            }));
             setCalendars(items);
 
             // Try to load selection from local storage
@@ -723,8 +751,10 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     return (data.items || []).map(item => ({
                         ...item,
                         calendarId,
-                        // If the event doesn't have a color, use the calendar color (we'll need to look this up from the calendars list)
-                        calendarColor: cal?.backgroundColor,
+                        // If the event doesn't have a color, use the calendar color (already made pastel)
+                        // If it has a specific color, we make that pastel too
+                        color: toPastel(item.color || item.backgroundColor),
+                        calendarColor: cal?.backgroundColor, // This is already pastel from setCalendars
                         isPrimary: cal?.primary || false
                     }));
                 } catch (e) {
@@ -920,568 +950,400 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            padding: `0 ${showEventModal ? '376px' : '0.5rem'} 0 0`, // Dynamically resize when modal opens
-            transition: 'padding-right 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            padding: '0',
+            position: 'relative'
         }}>
-            {/* Calendar Header SCOOTED UP to match Dynamic Island Level */}
-            <div style={{
-                position: 'fixed',
-                top: '0.75rem',
-                left: '1.2rem',
-                zIndex: 1001,
-                pointerEvents: 'none'
-            }}>
-                <h2 style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    color: 'var(--text-main)',
-                    margin: 0,
-                    fontSize: '1.3rem',
-                    fontWeight: 600,
-                    pointerEvents: 'auto'
-                }}>
-                    {view === 'month' && `${monthName} ${currentDate.getFullYear()}`}
-                    {view === 'week' && `${monthName} ${weekRange}`}
-                    {view === 'day' && currentDate.toDateString()}
-                </h2>
-            </div>
+            <div style={{ position: 'relative', display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                {/* Floating Month Navigator / Sidebar Trigger (The "March 1" thing) */}
+                {!showSidebar && (
+                    <div
+                        onClick={() => setShowSidebar(true)}
+                        style={{
+                            position: 'absolute',
+                            top: '12px',
+                            left: '12px',
+                            zIndex: 50,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.8rem',
+                            padding: '6px 14px',
+                            background: 'rgba(255, 255, 255, 0.75)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            borderRadius: '18px',
+                            border: '1px solid rgba(255, 255, 255, 0.6)',
+                            boxShadow: '0 8px 24px -10px rgba(0,0,0,0.1)',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            pointerEvents: 'auto'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.75)'; }}
+                    >
+                        <AlignLeft size={16} color="var(--text-muted)" />
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+                            {view === 'month' && `${monthName} ${currentDate.getFullYear()}`}
+                            {view === 'week' && `${monthName} ${weekRange}`}
+                            {view === 'day' && currentDate.toDateString()}
+                        </span>
+                    </div>
+                )}
 
-            <div style={{ display: 'flex', gap: '16px', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                {/* Floating Pop-up Sidebar */}
                 {showSidebar && user && (
-                    <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-                        <div className="glass-card static" style={{ padding: '1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
-                            <MiniCalendar
-                                currentMainDate={currentDate}
-                                onDateSelect={(date) => {
-                                    setCurrentDate(date);
-                                    // Optional: Switch to day/week view? User said "zooms to it".
-                                    // Navigating to the date in the current view is standard, but 'zoom' implies detail.
-                                    // If we are in 'month' view, maybe we stay in month view but just go there?
-                                    // Notion Calendar behavior: clicking a date in mini cal just navigates.
-                                    // But user used the word "zoom". Let's stick to navigation.
-                                }}
-                            />
+                    <div style={{
+                        position: 'absolute',
+                        top: '12px',
+                        left: '12px',
+                        bottom: '12px',
+                        width: '270px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        background: 'rgba(255, 255, 255, 0.85)',
+                        backdropFilter: 'blur(34px) saturate(180%)',
+                        WebkitBackdropFilter: 'blur(34px) saturate(180%)',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(255, 255, 255, 0.8)',
+                        boxShadow: '0 24px 60px rgba(0,0,0,0.15)',
+                        zIndex: 100,
+                        animation: 'calendarSidebarIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}>
+                        <div style={{ padding: '1rem 1.2rem 0.5rem 1.2rem', minHeight: '50px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <h2 style={{
+                                color: 'var(--text-main)',
+                                margin: 0,
+                                fontSize: '1.1rem',
+                                fontWeight: 800,
+                                letterSpacing: '-0.02em'
+                            }}>
+                                {monthName} {currentDate.getFullYear()}
+                            </h2>
+                            <button
+                                onClick={() => setShowSidebar(false)}
+                                className="btn-icon"
+                                style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.03)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                        <div style={{ padding: '0 0.8rem 0.8rem 0.8rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                            <MiniCalendar currentMainDate={currentDate} onDateSelect={(date) => { setCurrentDate(date); }} />
                             <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', margin: '0.5rem 0 1rem 0' }}></div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                                <h3 style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Calendars</h3>
-                                <button
-                                    onClick={() => onAddLinkedAccount()}
-                                    title="Add calendar from another Gmail"
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: 'var(--text-muted)',
-                                        cursor: 'pointer',
-                                        padding: '4px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        borderRadius: '4px',
-                                        transition: 'background-color 0.2s',
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
-                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                                >
-                                    <Plus size={14} />
-                                </button>
+                                <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Calendars</h3>
+                                <button onClick={() => onAddLinkedAccount()} title="Add calendar" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}><Plus size={14} /></button>
                             </div>
-
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {calendars.filter(cal => cal.primary || cal.id === user?.email || linkedAccounts.some(acc => cal.id === acc.email)).map(cal => (
                                     <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', cursor: 'pointer', padding: '2px 4px', borderRadius: '6px', opacity: selectedCalendarIds.has(cal.id) ? 1 : 0.4, transition: 'opacity 0.2s' }} className="calendar-item">
                                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedCalendarIds.has(cal.id)}
-                                                onChange={(e) => {
-                                                    const newSet = new Set(selectedCalendarIds);
-                                                    if (e.target.checked) {
-                                                        newSet.add(cal.id);
-                                                    } else {
-                                                        newSet.delete(cal.id);
-                                                    }
-                                                    setSelectedCalendarIds(newSet);
-                                                }}
-                                                style={{ opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer' }}
-                                            />
-                                            <div style={{
-                                                width: '16px',
-                                                height: '16px',
-                                                borderRadius: '4px',
-                                                border: `2px solid ${cal.backgroundColor}`,
-                                                backgroundColor: selectedCalendarIds.has(cal.id) ? cal.backgroundColor : 'transparent',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                transition: 'all 0.2s'
-                                            }}>
-                                                {selectedCalendarIds.has(cal.id) && (
-                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                                    </svg>
-                                                )}
-                                            </div>
+                                            <input type="checkbox" checked={selectedCalendarIds.has(cal.id)} onChange={(e) => { const newSet = new Set(selectedCalendarIds); if (e.target.checked) newSet.add(cal.id); else newSet.delete(cal.id); setSelectedCalendarIds(newSet); }} style={{ opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer' }} />
+                                            <div style={{ width: '14px', height: '14px', borderRadius: '3px', border: `2px solid ${cal.backgroundColor}`, backgroundColor: selectedCalendarIds.has(cal.id) ? cal.backgroundColor : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{selectedCalendarIds.has(cal.id) && <Check size={10} color="white" strokeWidth={4} />}</div>
                                         </div>
-                                        <span style={{ color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {cal.summary}
-                                        </span>
+                                        <span style={{ color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cal.summary}</span>
                                     </label>
                                 ))}
                             </div>
-
-                            {calendars.filter(cal => !cal.primary && cal.id !== user?.email && !linkedAccounts.some(acc => cal.id === acc.email)).length > 0 && (
-                                <div style={{ marginTop: '1.5rem' }}>
-                                    <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Other Calendars</h3>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        {calendars.filter(cal => !cal.primary && cal.id !== user?.email && !linkedAccounts.some(acc => cal.id === acc.email)).map(cal => (
-                                            <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', cursor: 'pointer', padding: '2px 4px', borderRadius: '6px', opacity: selectedCalendarIds.has(cal.id) ? 1 : 0.4, transition: 'opacity 0.2s' }} className="calendar-item">
-                                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedCalendarIds.has(cal.id)}
-                                                        onChange={(e) => {
-                                                            const newSet = new Set(selectedCalendarIds);
-                                                            if (e.target.checked) {
-                                                                newSet.add(cal.id);
-                                                            } else {
-                                                                newSet.delete(cal.id);
-                                                            }
-                                                            setSelectedCalendarIds(newSet);
-                                                        }}
-                                                        style={{ opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer' }}
-                                                    />
-                                                    <div style={{
-                                                        width: '16px',
-                                                        height: '16px',
-                                                        borderRadius: '4px',
-                                                        border: `2px solid ${cal.backgroundColor}`,
-                                                        backgroundColor: selectedCalendarIds.has(cal.id) ? cal.backgroundColor : 'transparent',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        transition: 'all 0.2s'
-                                                    }}>
-                                                        {selectedCalendarIds.has(cal.id) && (
-                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <span style={{ color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {cal.summary}
-                                                </span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 )}
+                <div style={{ padding: '0', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
 
-                <div className="glass-card static" style={{ padding: '0.5rem 0.5rem 0 0.5rem', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', position: 'relative' }}>
-                    {/* Small toggle button for task list at top-right (day view only) */}
-                    {view === 'day' && (
-                        <button
-                            onClick={() => setShowSplitView(prev => !prev)}
+                    {/* Floating Month Navigator / Sidebar Trigger (The "March 1" thing) */}
+                    {!showSidebar && (
+                        <div
+                            onClick={() => setShowSidebar(true)}
                             style={{
                                 position: 'absolute',
-                                top: '20px',
-                                right: '8px',
-                                width: '22px',
-                                height: '22px',
-                                background: 'none',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
+                                top: '12px',
+                                left: '12px',
+                                zIndex: 50,
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                color: showSplitView ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.2)',
-                                padding: 0,
-                                zIndex: 5,
-                                transition: 'color 0.2s, background 0.2s'
+                                gap: '0.8rem',
+                                padding: '6px 14px',
+                                background: 'rgba(255, 255, 255, 0.75)',
+                                backdropFilter: 'blur(20px)',
+                                WebkitBackdropFilter: 'blur(20px)',
+                                borderRadius: '18px',
+                                border: '1px solid rgba(255, 255, 255, 0.6)',
+                                boxShadow: '0 8px 24px -10px rgba(0,0,0,0.1)',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                pointerEvents: 'auto'
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,0,0,0.5)'; e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = showSplitView ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.2)'; e.currentTarget.style.background = 'none'; }}
-                            title={showSplitView ? 'Hide task list' : 'Show task list'}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.75)'; }}
                         >
-                            <AlignLeft size={14} />
-                        </button>
+                            <AlignLeft size={16} color="var(--text-muted)" />
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+                                {view === 'month' && `${monthName} ${currentDate.getFullYear()}`}
+                                {view === 'week' && `${monthName} ${weekRange}`}
+                                {view === 'day' && currentDate.toDateString()}
+                            </span>
+                        </div>
                     )}
 
-                    {view === 'month' && (
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: fadingIn ? 0 : 1, transition: 'opacity 0.25s ease' }}>
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '32px', overflow: 'hidden' }}>
-                                <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', paddingBottom: '0' }}>
-                                    <div className="calendar-grid" style={{ margin: 0, border: 'none', borderRadius: 0, background: 'transparent', gap: 0 }}>
-                                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                                            <div key={d} className="calendar-header-cell" style={{ textAlign: 'center', padding: '10px 0', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{d}</div>
-                                        ))}
-                                        {getDaysInMonth().map((dayObj, i) => {
-                                            const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
-                                            const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
+                    {/* Floating Pop-up Sidebar */}
+                    {showSidebar && user && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '12px',
+                            left: '12px',
+                            bottom: '12px',
+                            width: '270px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            background: 'rgba(255, 255, 255, 0.85)',
+                            backdropFilter: 'blur(34px) saturate(180%)',
+                            WebkitBackdropFilter: 'blur(34px) saturate(180%)',
+                            borderRadius: '24px',
+                            border: '1px solid rgba(255, 255, 255, 0.8)',
+                            boxShadow: '0 24px 60px rgba(0,0,0,0.15)',
+                            zIndex: 100,
+                            animation: 'calendarSidebarIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}>
+                            <div style={{ padding: '1rem 1.2rem 0.5rem 1.2rem', minHeight: '50px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <h2 style={{
+                                    color: 'var(--text-main)',
+                                    margin: 0,
+                                    fontSize: '1.1rem',
+                                    fontWeight: 800,
+                                    letterSpacing: '-0.02em'
+                                }}>
+                                    {monthName} {currentDate.getFullYear()}
+                                </h2>
+                                <button
+                                    onClick={() => setShowSidebar(false)}
+                                    className="btn-icon"
+                                    style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(0,0,0,0.03)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                            <div style={{ padding: '0 0.8rem 0.8rem 0.8rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                                <MiniCalendar
+                                    currentMainDate={currentDate}
+                                    onDateSelect={(date) => {
+                                        setCurrentDate(date);
+                                    }}
+                                />
+                                <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', margin: '0.5rem 0 1rem 0' }}></div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                    <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Calendars</h3>
+                                    <button
+                                        onClick={() => onAddLinkedAccount()}
+                                        title="Add calendar"
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--text-muted)',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: '4px',
+                                        }}
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                </div>
 
-                                            // Merge and sort items
-                                            const allItems = [
-                                                ...dayEvents.map(e => ({ ...e, type: 'google' })),
-                                                ...dayTasks.map(t => ({ ...t, type: 'task', title: t.text }))
-                                            ].sort((a, b) => {
-                                                // Simple sort by time if available, otherwise prioritize all-day events?
-                                                // Or just keep grouped. I'll stick to a simple merge.
-                                                // Actually, let's sort by start time if possible.
-                                                const getMinutes = (item) => {
-                                                    if (item.type === 'google' && item.start.dateTime) {
-                                                        const d = new Date(item.start.dateTime);
-                                                        return d.getHours() * 60 + d.getMinutes();
-                                                    }
-                                                    if (item.type === 'task' && item.metadata?.time) {
-                                                        const [h, m] = item.metadata.time.split(':').map(Number);
-                                                        return h * 60 + m;
-                                                    }
-                                                    return -1; // All day / no time
-                                                };
-                                                return getMinutes(a) - getMinutes(b);
-                                            });
-
-                                            const MAX_VISIBLE = 4;
-                                            const visibleItems = allItems.slice(0, MAX_VISIBLE);
-                                            const overflowCount = allItems.length - MAX_VISIBLE;
-
-                                            return (
-                                                <div
-                                                    key={i}
-                                                    className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''}`}
-                                                    onClick={() => {
-                                                        setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
-                                                        handleViewChange('day');
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {calendars.filter(cal => cal.primary || cal.id === user?.email || linkedAccounts.some(acc => cal.id === acc.email)).map(cal => (
+                                        <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', cursor: 'pointer', padding: '2px 4px', borderRadius: '6px', opacity: selectedCalendarIds.has(cal.id) ? 1 : 0.4, transition: 'opacity 0.2s' }} className="calendar-item">
+                                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCalendarIds.has(cal.id)}
+                                                    onChange={(e) => {
+                                                        const newSet = new Set(selectedCalendarIds);
+                                                        if (e.target.checked) newSet.add(cal.id);
+                                                        else newSet.delete(cal.id);
+                                                        setSelectedCalendarIds(newSet);
                                                     }}
-                                                    style={{
-                                                        cursor: 'pointer',
-                                                        color: dayObj.currentMonth ? '#000' : '#9ca3af',
-                                                        minHeight: '170px',
-                                                        height: '170px',
-                                                        overflow: 'hidden',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        padding: '8px',
-                                                        position: 'relative',
-                                                        borderRight: '1px solid rgba(0, 0, 0, 0.05)',
-                                                        borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
-                                                        background: dayObj.currentMonth ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
-                                                    }}
-                                                >
-                                                    <div className="day-number" style={{
-                                                        color: isToday ? 'white' : 'inherit',
-                                                        background: isToday ? '#ef4444' : 'transparent',
-                                                        borderRadius: '4px',
-                                                        padding: isToday ? '2px 4px' : '0',
-                                                        width: 'fit-content',
-                                                        minWidth: isToday ? '20px' : 'auto',
-                                                        textAlign: 'center',
-                                                        alignSelf: 'flex-end',
-                                                        marginBottom: '4px',
-                                                        fontWeight: isToday ? 600 : 400,
-                                                        fontSize: '0.75rem',
-                                                        opacity: isToday ? 1 : 0.6
-                                                    }}>
-                                                        {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'short' })} 1` : dayObj.day}
-                                                    </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                                                        {visibleItems.map((item, idx) => {
-                                                            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                            const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
-
-                                                            const style = color ? {
-                                                                backgroundColor: `${color}4d`, // 30% opacity
-                                                                backdropFilter: 'blur(4px)',
-                                                                borderLeft: `3px solid ${color}`,
-                                                                color: '#000', // Text color - Changed to black
-                                                                // Glassmorphic border
-                                                                borderTop: `1px solid ${color}40`,
-                                                                borderRight: `1px solid ${color}40`,
-                                                                borderBottom: `1px solid ${color}40`,
-                                                            } : {
-                                                                // Default gray style if no color (though mostly should have color)
-                                                                backgroundColor: 'rgba(0,0,0,0.05)',
-                                                                color: 'var(--text-main)',
-                                                                borderLeft: '3px solid rgba(0,0,0,0.2)'
-                                                            };
-
-                                                            return (
-                                                                <div key={`${item.id}-${idx}`} className="event-pill" title={item.summary || item.title}
-                                                                    onClick={(e) => handleEventClick(e, item, new Date(dayObj.year, dayObj.month, dayObj.day))}
-                                                                    style={{
-                                                                        ...style,
-                                                                        padding: '2px 4px',
-                                                                        fontSize: '0.75rem',
-                                                                        borderRadius: '4px',
-                                                                        marginBottom: '1px',
-                                                                        overflow: 'hidden',
-                                                                        whiteSpace: 'nowrap',
-                                                                        textOverflow: 'ellipsis',
-                                                                        display: 'block',
-                                                                        fontWeight: 300,
-                                                                        cursor: 'pointer'
-                                                                    }}
-                                                                >
-                                                                    {item.summary || item.title}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {overflowCount > 0 && (
-                                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '4px', marginTop: '2px', fontWeight: 600 }}>
-                                                                +{overflowCount} more...
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    style={{ opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer' }}
+                                                />
+                                                <div style={{
+                                                    width: '14px',
+                                                    height: '14px',
+                                                    borderRadius: '3px',
+                                                    border: `2px solid ${cal.backgroundColor}`,
+                                                    backgroundColor: selectedCalendarIds.has(cal.id) ? cal.backgroundColor : 'transparent',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                }}>
+                                                    {selectedCalendarIds.has(cal.id) && (
+                                                        <Check size={10} color="white" strokeWidth={4} />
+                                                    )}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                            </div>
+                                            <span style={{ color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {cal.summary}
+                                            </span>
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {view === 'week' && (
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                                <div style={{ display: 'flex', paddingLeft: '40px', marginBottom: '0.5rem', flexShrink: 0 }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: weekGridColumns, width: '100%', gap: '1px', ...weekGridTransitionStyle }}>
-                                        {getDaysInWeek().map((dayObj, i) => {
-                                            const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
-                                            const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-                                            const isCollapsing = weekCollapseIndex >= 0 && weekCollapseIndex !== i;
-                                            const isExpandingOther = weekExpanding && getActiveDayIndex() !== i;
-                                            return (
-                                                <div key={i} style={{
-                                                    textAlign: 'center',
-                                                    opacity: (isCollapsing || isExpandingOther) ? 0 : (isToday ? 1 : 0.7),
-                                                    overflow: 'hidden',
-                                                    transition: 'opacity 0.5s ease',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
-                                                    <div style={{ fontSize: '1rem', fontWeight: 400, color: isToday ? 'var(--primary)' : 'var(--text-main)', opacity: isToday ? 1 : 0.8 }}>{dayObj.day}</div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                    <div style={{ padding: '0', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
+                        {/* Small toggle button for task list at top-right (day view only) */}
+                        {view === 'day' && (
+                            <button
+                                onClick={() => setShowSplitView(prev => !prev)}
+                                style={{
+                                    position: 'absolute',
+                                    top: '20px',
+                                    right: '8px',
+                                    width: '22px',
+                                    height: '22px',
+                                    background: 'none',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: showSplitView ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.2)',
+                                    padding: 0,
+                                    zIndex: 5,
+                                    transition: 'color 0.2s, background 0.2s'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,0,0,0.5)'; e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = showSplitView ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.2)'; e.currentTarget.style.background = 'none'; }}
+                                title={showSplitView ? 'Hide task list' : 'Show task list'}
+                            >
+                                <AlignLeft size={14} />
+                            </button>
+                        )}
 
-                                <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-                                    <div
-                                        style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
-                                        onMouseMove={handleDragMove}
-                                        onMouseUp={handleDragEnd}
-                                        onMouseLeave={handleDragEnd}
-                                    >
-                                        <div style={{ position: 'absolute', inset: 0, left: '46px', pointerEvents: 'none', zIndex: 0 }}>
-                                            {Array.from({ length: 24 }).map((_, i) => (
-                                                <div key={i} style={{
-                                                    height: '60px',
-                                                    borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
-                                                    borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
-                                                    boxSizing: 'border-box'
-                                                }} />
+                        {view === 'month' && (
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: fadingIn ? 0 : 1, transition: 'opacity 0.25s ease' }}>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                    <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '0' }}>
+                                        <div className="calendar-grid" style={{ margin: 0, border: 'none', borderRadius: 0, background: 'transparent', gap: 0 }}>
+                                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
+                                                <div key={d} className="calendar-header-cell" style={{ textAlign: 'center', padding: '16px 0 12px 0', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid rgba(0, 0, 0, 0.05)', borderRight: i === 6 ? 'none' : '1px solid rgba(0, 0, 0, 0.05)' }}>{d}</div>
                                             ))}
-                                        </div>
-
-                                        <div style={{
-                                            width: '40px',
-                                            flexShrink: 0,
-                                            marginRight: '6px',
-                                            zIndex: 1,
-                                            position: 'relative',
-                                            marginTop: '10px' // Compensate for the pill extending up
-                                        }}>
-
-                                            {Array.from({ length: 24 }).map((_, i) => (
-                                                <div key={i} style={{ height: '60px', position: 'relative' }}>
-                                                    <span style={{
-                                                        position: 'absolute',
-                                                        top: '-6px',
-                                                        left: 0,
-                                                        width: '100%',
-                                                        textAlign: 'center',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600,
-                                                        color: 'var(--text-muted)'
-                                                    }}>
-                                                        {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {(() => {
-                                            const now = new Date();
-                                            const minutes = now.getHours() * 60 + now.getMinutes();
-                                            const topOffset = (minutes / 60) * 60;
-                                            return (
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    top: `${topOffset}px`,
-                                                    left: '46px',
-                                                    right: 0,
-                                                    height: '2px',
-                                                    backgroundColor: 'red',
-                                                    zIndex: 50,
-                                                    pointerEvents: 'none'
-                                                }}>
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        left: '-2px',
-                                                        top: '-6px',
-                                                        width: '4px',
-                                                        height: '14px',
-                                                        backgroundColor: 'red',
-                                                        borderRadius: '2px'
-                                                    }} />
-                                                </div>
-                                            );
-                                        })()}
-
-                                        <div style={{ display: 'grid', gridTemplateColumns: weekGridColumns, width: '100%', gap: '0', zIndex: 1, ...weekGridTransitionStyle }}>
-                                            {getDaysInWeek().map((dayObj, i) => {
+                                            {getDaysInMonth().map((dayObj, i) => {
                                                 const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
+                                                const isToday = new Date().toDateString() === new Date(dayObj.year, dayObj.month, dayObj.day).toDateString();
 
-                                                const items = [
-                                                    ...dayEvents.map(e => {
-                                                        const start = new Date(e.start.dateTime || e.start.date);
-                                                        const end = new Date(e.end.dateTime || e.end.date);
-                                                        const startMinutes = start.getHours() * 60 + start.getMinutes();
-                                                        const duration = (end - start) / (1000 * 60);
-                                                        return { ...e, type: 'google', startMinutes, duration, title: e.summary };
-                                                    }),
-                                                    ...dayTasks.map(t => {
-                                                        let startMinutes = 0;
-                                                        let duration = 30;
-                                                        let hasTime = false;
-                                                        let color = undefined;
-
-                                                        if (t.metadata) {
-                                                            if (t.metadata.time) {
-                                                                const [h, m] = t.metadata.time.split(':').map(Number);
-                                                                startMinutes = h * 60 + m;
-                                                                hasTime = true;
-                                                            }
-                                                            if (t.metadata.duration) {
-                                                                duration = parseInt(t.metadata.duration, 10);
-                                                            }
-                                                            if (t.metadata.color) {
-                                                                color = t.metadata.color;
-                                                            }
+                                                // Merge and sort items
+                                                const allItems = [
+                                                    ...dayEvents.map(e => ({ ...e, type: 'google' })),
+                                                    ...dayTasks.map(t => ({ ...t, type: 'task', title: t.text }))
+                                                ].sort((a, b) => {
+                                                    // Simple sort by time if available, otherwise prioritize all-day events?
+                                                    // Or just keep grouped. I'll stick to a simple merge.
+                                                    // Actually, let's sort by start time if possible.
+                                                    const getMinutes = (item) => {
+                                                        if (item.type === 'google' && item.start.dateTime) {
+                                                            const d = new Date(item.start.dateTime);
+                                                            return d.getHours() * 60 + d.getMinutes();
                                                         }
-                                                        return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
-                                                    })
-                                                ];
+                                                        if (item.type === 'task' && item.metadata?.time) {
+                                                            const [h, m] = item.metadata.time.split(':').map(Number);
+                                                            return h * 60 + m;
+                                                        }
+                                                        return -1; // All day / no time
+                                                    };
+                                                    return getMinutes(a) - getMinutes(b);
+                                                });
 
-                                                const { allDay, timed } = layoutEvents(items);
+                                                const MAX_VISIBLE = 4;
+                                                const visibleItems = allItems.slice(0, MAX_VISIBLE);
+                                                const overflowCount = allItems.length - MAX_VISIBLE;
 
                                                 return (
-                                                    <div key={i}
-                                                        style={{
-                                                            position: 'relative',
-                                                            borderRight: '1px solid rgba(0,0,0,0.1)',
-                                                            borderLeft: i === 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
-                                                            height: '100%',
-                                                            overflow: 'hidden'
+                                                    <div
+                                                        key={i}
+                                                        className={`calendar-day ${!dayObj.currentMonth ? 'other-month' : ''}`}
+                                                        onClick={() => {
+                                                            setCurrentDate(new Date(dayObj.year, dayObj.month, dayObj.day));
+                                                            handleViewChange('day');
                                                         }}
-                                                        onMouseDown={(e) => handleDragStart(e, i, dayObj.dateObj)}
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            color: dayObj.currentMonth ? '#000' : '#9ca3af',
+                                                            minHeight: '170px',
+                                                            height: '170px',
+                                                            overflow: 'hidden',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            padding: '8px',
+                                                            position: 'relative',
+                                                            borderRight: (i + 1) % 7 === 0 ? 'none' : '1px solid rgba(0, 0, 0, 0.05)',
+                                                            borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+                                                            background: dayObj.currentMonth ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
+                                                        }}
                                                     >
-                                                        {isDragging && dragStart && dragStart.dayIndex === i && (
-                                                            <div style={{
-                                                                position: 'absolute',
-                                                                top: `${(dragStart.startMinutes / 60) * 60}px`,
-                                                                height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
-                                                                left: '4px', right: '4px',
-                                                                background: 'rgba(59, 130, 246, 0.25)',
-                                                                backdropFilter: 'blur(4px)',
-                                                                WebkitBackdropFilter: 'blur(4px)',
-                                                                borderRadius: '6px',
-                                                                zIndex: 100,
-                                                                pointerEvents: 'none',
-                                                                border: '1px solid rgba(59, 130, 246, 0.5)',
-                                                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
-                                                                color: '#1e3a8a',
-                                                                fontSize: '0.75rem',
-                                                                padding: '4px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                fontWeight: 600,
-                                                                transition: 'height 0.1s ease-out'
-                                                            }}>
-                                                                {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
-                                                                {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
-                                                            </div>
-                                                        )}
+                                                        <div className="day-number" style={{
+                                                            color: isToday ? 'white' : 'inherit',
+                                                            background: isToday ? '#ef4444' : 'transparent',
+                                                            borderRadius: '4px',
+                                                            padding: isToday ? '2px 4px' : '0',
+                                                            width: 'fit-content',
+                                                            minWidth: isToday ? '20px' : 'auto',
+                                                            textAlign: 'center',
+                                                            alignSelf: 'flex-end',
+                                                            marginBottom: '4px',
+                                                            fontWeight: isToday ? 600 : 400,
+                                                            fontSize: '0.75rem',
+                                                            opacity: isToday ? 1 : 0.6
+                                                        }}>
+                                                            {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'short' })} 1` : dayObj.day}
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                                                            {visibleItems.map((item, idx) => {
+                                                                const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                                const color = customColor || item.metadata?.color || item.color || (item.calendarId ? (calendars.find(c => c.id === item.calendarId)?.backgroundColor || '#3b82f6') : undefined);
 
-                                                        {allDay.map((item, idx) => {
-                                                            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                            const color = customColor || item.color || item.calendarColor || '#3b82f6';
-                                                            return (
-                                                                <div key={`ad-${idx}`} className={`event-pill ${item.type}`}
-                                                                    onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
-                                                                    style={{
-                                                                        position: 'relative',
-                                                                        marginBottom: '2px',
-                                                                        fontSize: '0.7rem',
-                                                                        padding: '2px 4px',
-                                                                        whiteSpace: 'nowrap',
-                                                                        overflow: 'hidden',
-                                                                        textOverflow: 'ellipsis',
-                                                                        backgroundColor: color ? `${color}4d` : undefined,
-                                                                        backdropFilter: color ? 'blur(4px)' : undefined,
-                                                                        border: color ? `1px solid ${color}66` : undefined,
-                                                                        borderLeft: color ? `3px solid ${color}` : undefined,
-                                                                        color: color ? '#000' : undefined,
-                                                                        borderRadius: '4px',
-                                                                        fontWeight: 300,
-                                                                        cursor: 'pointer'
-                                                                    }}>
-                                                                    {item.title}
+                                                                const style = color ? {
+                                                                    backgroundColor: `${color}4d`, // 30% opacity
+                                                                    backdropFilter: 'blur(4px)',
+                                                                    borderLeft: `3px solid ${color}`,
+                                                                    color: '#000', // Text color - Changed to black
+                                                                    // Glassmorphic border
+                                                                    borderTop: `1px solid ${color}40`,
+                                                                    borderRight: `1px solid ${color}40`,
+                                                                    borderBottom: `1px solid ${color}40`,
+                                                                } : {
+                                                                    // Default gray style if no color (though mostly should have color)
+                                                                    backgroundColor: 'rgba(0,0,0,0.05)',
+                                                                    color: 'var(--text-main)',
+                                                                    borderLeft: '3px solid rgba(0,0,0,0.2)'
+                                                                };
+
+                                                                return (
+                                                                    <div key={`${item.id}-${idx}`} className="event-pill" title={item.summary || item.title}
+                                                                        onClick={(e) => handleEventClick(e, item, new Date(dayObj.year, dayObj.month, dayObj.day))}
+                                                                        style={{
+                                                                            ...style,
+                                                                            padding: '2px 4px',
+                                                                            fontSize: '0.75rem',
+                                                                            borderRadius: '4px',
+                                                                            marginBottom: '1px',
+                                                                            overflow: 'hidden',
+                                                                            whiteSpace: 'nowrap',
+                                                                            textOverflow: 'ellipsis',
+                                                                            display: 'block',
+                                                                            fontWeight: 300,
+                                                                            cursor: 'pointer'
+                                                                        }}
+                                                                    >
+                                                                        {item.summary || item.title}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {overflowCount > 0 && (
+                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '4px', marginTop: '2px', fontWeight: 600 }}>
+                                                                    +{overflowCount} more...
                                                                 </div>
-                                                            );
-                                                        })}
-
-                                                        {timed.map((item, idx) => {
-                                                            const top = (item.startMinutes / 60) * 60;
-                                                            const height = (item.duration / 60) * 60;
-                                                            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                            const color = customColor || item.color || item.calendarColor || '#3b82f6';
-
-                                                            return (
-                                                                <div key={`t-${idx}`} className={`event-pill ${item.type}`}
-                                                                    onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
-                                                                    style={{
-                                                                        position: 'absolute',
-                                                                        top: `${top}px`,
-                                                                        height: `${Math.max(height, 20)}px`,
-                                                                        left: `${item.layoutLeft}%`,
-                                                                        width: `calc(${item.layoutWidth}% - 2px)`,
-                                                                        fontSize: '0.75rem',
-                                                                        padding: '2px 4px',
-                                                                        overflow: 'hidden',
-                                                                        zIndex: item.zIndex || 10,
-                                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                                                        display: 'flex',
-                                                                        flexDirection: 'column',
-                                                                        backgroundColor: color || undefined,
-                                                                        border: '1px solid white',
-                                                                        color: '#fff',
-                                                                        borderRadius: '4px',
-                                                                        cursor: 'pointer'
-                                                                    }}>
-                                                                    <div style={{ fontWeight: 300, fontSize: '0.7rem' }}>{item.title}</div>
-                                                                    {height > 30 && (
-                                                                        <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>
-                                                                            {Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
@@ -1489,887 +1351,1157 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {view === 'day' && (
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: fadingIn ? 0 : 1, transition: 'opacity 0.2s ease' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                                {/* Day Date Header */}
-                                <div style={{ display: 'flex', paddingLeft: '40px', marginBottom: '0.5rem', flexShrink: 0 }}>
-                                    <div style={{ flex: 1, textAlign: 'center' }}>
-                                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                                            {currentDate.toLocaleDateString('en-US', { weekday: 'short' })}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '1rem',
-                                            fontWeight: 400,
-                                            color: new Date().toDateString() === currentDate.toDateString() ? 'var(--primary)' : 'var(--text-main)',
-                                            opacity: new Date().toDateString() === currentDate.toDateString() ? 1 : 0.8
-                                        }}>
-                                            {currentDate.getDate()}
+                        {view === 'week' && (
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', paddingLeft: '40px', marginBottom: '0.5rem', flexShrink: 0, paddingTop: '16px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: weekGridColumns, width: '100%', gap: '1px', ...weekGridTransitionStyle }}>
+                                            {getDaysInWeek().map((dayObj, i) => {
+                                                const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
+                                                const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                                                const isCollapsing = weekCollapseIndex >= 0 && weekCollapseIndex !== i;
+                                                const isExpandingOther = weekExpanding && getActiveDayIndex() !== i;
+                                                return (
+                                                    <div key={i} style={{
+                                                        textAlign: 'center',
+                                                        opacity: (isCollapsing || isExpandingOther) ? 0 : (isToday ? 1 : 0.7),
+                                                        overflow: 'hidden',
+                                                        transition: 'opacity 0.5s ease',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
+                                                        <div style={{ fontSize: '1rem', fontWeight: 400, color: isToday ? 'var(--primary)' : 'var(--text-main)', opacity: isToday ? 1 : 0.8 }}>{dayObj.day}</div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
-                                </div>
 
-                                <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-                                    <div
-                                        style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
-                                        onMouseMove={handleDragMove}
-                                        onMouseUp={handleDragEnd}
-                                        onMouseLeave={handleDragEnd}
-                                    >
-                                        <div style={{ position: 'absolute', inset: 0, left: '46px', pointerEvents: 'none', zIndex: 0 }}>
-                                            {Array.from({ length: 24 }).map((_, i) => (
-                                                <div key={i} style={{
-                                                    height: '60px',
-                                                    borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
-                                                    borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
-                                                    boxSizing: 'border-box'
-                                                }} />
-                                            ))}
-                                        </div>
-
-                                        <div style={{
-                                            width: '40px',
-                                            flexShrink: 0,
-                                            marginRight: '6px',
-                                            zIndex: 1,
-                                            position: 'relative',
-                                            marginTop: '10px'
-                                        }}>
-
-                                            {Array.from({ length: 24 }).map((_, i) => (
-                                                <div key={i} style={{ height: '60px', position: 'relative' }}>
-                                                    <span style={{
-                                                        position: 'absolute',
-                                                        top: '-6px',
-                                                        left: 0,
-                                                        width: '100%',
-                                                        textAlign: 'center',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600,
-                                                        color: 'var(--text-muted)'
-                                                    }}>
-                                                        {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {(() => {
-                                            const now = new Date();
-                                            const minutes = now.getHours() * 60 + now.getMinutes();
-                                            const topOffset = (minutes / 60) * 60;
-                                            return (
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    top: `${topOffset}px`,
-                                                    left: '46px',
-                                                    right: 0,
-                                                    height: '2px',
-                                                    backgroundColor: 'red',
-                                                    zIndex: 50,
-                                                    pointerEvents: 'none'
-                                                }}>
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        left: '-2px',
-                                                        top: '-6px',
-                                                        width: '4px',
-                                                        height: '14px',
-                                                        backgroundColor: 'red',
-                                                        borderRadius: '2px'
-                                                    }} />
-                                                </div>
-                                            );
-                                        })()}
-
+                                    <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
                                         <div
-                                            style={{ flex: 1, position: 'relative', borderLeft: '1px solid rgba(0,0,0,0.1)', zIndex: 1 }}
-                                            onMouseDown={(e) => handleDragStart(e, 0, currentDate)} // dayIndex 0 for day view
+                                            style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
+                                            onMouseMove={handleDragMove}
+                                            onMouseUp={handleDragEnd}
+                                            onMouseLeave={handleDragEnd}
                                         >
-                                            {isDragging && dragStart && (
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    top: `${(dragStart.startMinutes / 60) * 60}px`,
-                                                    height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
-                                                    left: '10px', right: '10px',
-                                                    background: 'rgba(59, 130, 246, 0.25)',
-                                                    backdropFilter: 'blur(4px)',
-                                                    WebkitBackdropFilter: 'blur(4px)',
-                                                    borderRadius: '6px',
-                                                    zIndex: 100,
-                                                    pointerEvents: 'none',
-                                                    border: '1px solid rgba(59, 130, 246, 0.5)',
-                                                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
-                                                    color: '#1e3a8a',
-                                                    fontSize: '0.75rem',
-                                                    padding: '4px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    fontWeight: 600,
-                                                    transition: 'height 0.1s ease-out'
-                                                }}>
-                                                    {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
-                                                    {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
-                                                </div>
-                                            )}
+                                            <div style={{ position: 'absolute', inset: 0, left: '46px', pointerEvents: 'none', zIndex: 0 }}>
+                                                {Array.from({ length: 24 }).map((_, i) => (
+                                                    <div key={i} style={{
+                                                        height: '60px',
+                                                        borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                        borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                        boxSizing: 'border-box'
+                                                    }} />
+                                                ))}
+                                            </div>
+
+                                            <div style={{
+                                                width: '40px',
+                                                flexShrink: 0,
+                                                marginRight: '6px',
+                                                zIndex: 1,
+                                                position: 'relative',
+                                                marginTop: '10px' // Compensate for the pill extending up
+                                            }}>
+
+                                                {Array.from({ length: 24 }).map((_, i) => (
+                                                    <div key={i} style={{ height: '60px', position: 'relative' }}>
+                                                        <span style={{
+                                                            position: 'absolute',
+                                                            top: '-6px',
+                                                            left: 0,
+                                                            width: '100%',
+                                                            textAlign: 'center',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 600,
+                                                            color: 'var(--text-muted)'
+                                                        }}>
+                                                            {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
 
                                             {(() => {
-                                                const { dayEvents, dayTasks } = getItemsForDay(currentDate.getDate(), currentDate.getMonth(), currentDate.getFullYear());
-
-                                                const items = [
-                                                    ...dayEvents.map(e => {
-                                                        const start = new Date(e.start.dateTime || e.start.date);
-                                                        const end = new Date(e.end.dateTime || e.end.date);
-                                                        const startMinutes = start.getHours() * 60 + start.getMinutes();
-                                                        const duration = (end - start) / (1000 * 60);
-                                                        return { ...e, type: 'google', startMinutes, duration, title: e.summary };
-                                                    }),
-                                                    ...dayTasks.map(t => {
-                                                        let startMinutes = 0;
-                                                        let duration = 30;
-                                                        let hasTime = false;
-
-                                                        let color = undefined;
-
-                                                        if (t.metadata) {
-                                                            if (t.metadata.time) {
-                                                                const [h, m] = t.metadata.time.split(':').map(Number);
-                                                                startMinutes = h * 60 + m;
-                                                                hasTime = true;
-                                                            }
-                                                            if (t.metadata.duration) {
-                                                                duration = parseInt(t.metadata.duration, 10);
-                                                            }
-                                                            if (t.metadata.color) {
-                                                                color = t.metadata.color;
-                                                            }
-                                                        }
-                                                        return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
-                                                    })
-                                                ];
-
-                                                const { allDay, timed: timedItems } = layoutEvents(items);
-
+                                                const now = new Date();
+                                                const minutes = now.getHours() * 60 + now.getMinutes();
+                                                const topOffset = (minutes / 60) * 60;
                                                 return (
-                                                    <>
-                                                        <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: `${topOffset}px`,
+                                                        left: '46px',
+                                                        right: 0,
+                                                        height: '2px',
+                                                        backgroundColor: 'red',
+                                                        zIndex: 50,
+                                                        pointerEvents: 'none'
+                                                    }}>
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            left: '-2px',
+                                                            top: '-6px',
+                                                            width: '4px',
+                                                            height: '14px',
+                                                            backgroundColor: 'red',
+                                                            borderRadius: '2px'
+                                                        }} />
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: weekGridColumns, width: '100%', gap: '0', zIndex: 1, ...weekGridTransitionStyle }}>
+                                                {getDaysInWeek().map((dayObj, i) => {
+                                                    const { dayEvents, dayTasks } = getItemsForDay(dayObj.day, dayObj.month, dayObj.year);
+
+                                                    const items = [
+                                                        ...dayEvents.map(e => {
+                                                            const start = new Date(e.start.dateTime || e.start.date);
+                                                            const end = new Date(e.end.dateTime || e.end.date);
+                                                            const startMinutes = start.getHours() * 60 + start.getMinutes();
+                                                            const duration = (end - start) / (1000 * 60);
+                                                            return { ...e, type: 'google', startMinutes, duration, title: e.summary };
+                                                        }),
+                                                        ...dayTasks.map(t => {
+                                                            let startMinutes = 0;
+                                                            let duration = 30;
+                                                            let hasTime = false;
+                                                            let color = undefined;
+
+                                                            if (t.metadata) {
+                                                                if (t.metadata.time) {
+                                                                    const [h, m] = t.metadata.time.split(':').map(Number);
+                                                                    startMinutes = h * 60 + m;
+                                                                    hasTime = true;
+                                                                }
+                                                                if (t.metadata.duration) {
+                                                                    duration = parseInt(t.metadata.duration, 10);
+                                                                }
+                                                                if (t.metadata.color) {
+                                                                    color = t.metadata.color;
+                                                                }
+                                                            }
+                                                            return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
+                                                        })
+                                                    ];
+
+                                                    const { allDay, timed } = layoutEvents(items);
+
+                                                    return (
+                                                        <div key={i}
+                                                            style={{
+                                                                position: 'relative',
+                                                                borderRight: i === 6 ? 'none' : '1px solid rgba(0,0,0,0.1)',
+                                                                borderLeft: i === 0 ? '1px solid rgba(0,0,0,0.1)' : 'none',
+                                                                height: '100%',
+                                                                overflow: 'hidden'
+                                                            }}
+                                                            onMouseDown={(e) => handleDragStart(e, i, dayObj.dateObj)}
+                                                        >
+                                                            {isDragging && dragStart && dragStart.dayIndex === i && (
+                                                                <div style={{
+                                                                    position: 'absolute',
+                                                                    top: `${(dragStart.startMinutes / 60) * 60}px`,
+                                                                    height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
+                                                                    left: '4px', right: '4px',
+                                                                    background: 'rgba(59, 130, 246, 0.25)',
+                                                                    backdropFilter: 'blur(4px)',
+                                                                    WebkitBackdropFilter: 'blur(4px)',
+                                                                    borderRadius: '6px',
+                                                                    zIndex: 100,
+                                                                    pointerEvents: 'none',
+                                                                    border: '1px solid rgba(59, 130, 246, 0.5)',
+                                                                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                                                                    color: '#1e3a8a',
+                                                                    fontSize: '0.75rem',
+                                                                    padding: '4px',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    fontWeight: 600,
+                                                                    transition: 'height 0.1s ease-out'
+                                                                }}>
+                                                                    {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
+                                                                    {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
+                                                                </div>
+                                                            )}
+
                                                             {allDay.map((item, idx) => {
                                                                 const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
                                                                 const color = customColor || item.color || item.calendarColor || '#3b82f6';
                                                                 return (
                                                                     <div key={`ad-${idx}`} className={`event-pill ${item.type}`}
-                                                                        onClick={(e) => handleEventClick(e, item, currentDate)}
+                                                                        onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
                                                                         style={{
                                                                             position: 'relative',
-                                                                            marginBottom: '4px',
-                                                                            padding: '4px 8px',
-                                                                            backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
+                                                                            marginBottom: '2px',
+                                                                            fontSize: '0.7rem',
+                                                                            padding: '2px 4px',
+                                                                            whiteSpace: 'nowrap',
+                                                                            overflow: 'hidden',
+                                                                            textOverflow: 'ellipsis',
+                                                                            backgroundColor: color ? `${color}4d` : undefined,
                                                                             backdropFilter: color ? 'blur(4px)' : undefined,
                                                                             border: color ? `1px solid ${color}66` : undefined,
                                                                             borderLeft: color ? `3px solid ${color}` : undefined,
                                                                             color: color ? '#000' : undefined,
                                                                             borderRadius: '4px',
-                                                                            fontSize: '0.85rem',
+                                                                            fontWeight: 300,
                                                                             cursor: 'pointer'
                                                                         }}>
-                                                                        <span style={{ fontWeight: 300 }}>All Day:</span> {item.title}
+                                                                        {item.title}
+                                                                    </div>
+                                                                );
+                                                            })}
+
+                                                            {timed.map((item, idx) => {
+                                                                const top = (item.startMinutes / 60) * 60;
+                                                                const height = (item.duration / 60) * 60;
+                                                                const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                                const color = customColor || item.color || item.calendarColor || '#3b82f6';
+
+                                                                return (
+                                                                    <div key={`t-${idx}`} className={`event-pill ${item.type}`}
+                                                                        onClick={(e) => handleEventClick(e, item, dayObj.dateObj)}
+                                                                        style={{
+                                                                            position: 'absolute',
+                                                                            top: `${top}px`,
+                                                                            height: `${Math.max(height, 20)}px`,
+                                                                            left: `${item.layoutLeft}%`,
+                                                                            width: `calc(${item.layoutWidth}% - 2px)`,
+                                                                            fontSize: '0.75rem',
+                                                                            padding: '2px 4px',
+                                                                            overflow: 'hidden',
+                                                                            zIndex: item.zIndex || 10,
+                                                                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                                                            display: 'flex',
+                                                                            flexDirection: 'column',
+                                                                            backgroundColor: color || undefined,
+                                                                            border: '1px solid white',
+                                                                            color: '#fff',
+                                                                            borderRadius: '4px',
+                                                                            cursor: 'pointer'
+                                                                        }}>
+                                                                        <div style={{ fontWeight: 300, fontSize: '0.7rem' }}>{item.title}</div>
+                                                                        {height > 30 && (
+                                                                            <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>
+                                                                                {Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 );
                                                             })}
                                                         </div>
-
-                                                        {timedItems.map((item, idx) => {
-                                                            const top = (item.startMinutes / 60) * 60;
-                                                            const height = (item.duration / 60) * 60;
-                                                            const isExpanded = expandedEventId === (item.id || idx);
-                                                            const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
-                                                            const color = customColor || item.color || item.calendarColor || '#3b82f6';
-
-                                                            return (
-                                                                <div key={idx}
-                                                                    className={`event-pill ${item.type}`}
-                                                                    style={{
-                                                                        position: 'absolute',
-                                                                        top: `${top}px`,
-                                                                        height: isExpanded ? 'auto' : `${Math.max(height, 40)}px`,
-                                                                        minHeight: `${Math.max(height, 40)}px`,
-                                                                        left: `${item.layoutLeft}%`,
-                                                                        width: `calc(${item.layoutWidth}% - 4px)`,
-                                                                        padding: '8px',
-                                                                        zIndex: isExpanded ? 50 : (item.zIndex || 10),
-                                                                        boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
-                                                                        display: 'flex',
-                                                                        flexDirection: 'column',
-                                                                        cursor: 'pointer',
-                                                                        backgroundColor: color || undefined,
-                                                                        border: '1px solid white',
-                                                                        color: '#fff',
-                                                                        borderRadius: '6px'
-                                                                    }}
-                                                                    onClick={(e) => handleEventClick(e, item, currentDate)}
-                                                                >
-                                                                    <div style={{ fontWeight: 300, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
-                                                                    <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.5rem' }}>
-                                                                        <span>{Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}</span>
-                                                                        {item.type === 'google' && item.hangoutLink && <Video size={12} />}
-                                                                    </div>
-                                                                    {isExpanded && item.hangoutLink && (
-                                                                        <div style={{ marginTop: '0.5rem' }}>
-                                                                            <a href={item.hangoutLink} target="_blank" rel="noopener noreferrer"
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                                style={{
-                                                                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                                                                    color: 'var(--primary)', textDecoration: 'none', fontWeight: 600,
-                                                                                    background: 'rgba(37, 99, 235, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem'
-                                                                                }}>
-                                                                                <Video size={14} /> Join Meet
-                                                                            </a>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </>
-                                                );
-                                            })()}
-                                        </div >
-                                        {/* Task List Sidebar Logic for Day View - Click handling */}
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        )}
+
+                        {view === 'day' && (
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: fadingIn ? 0 : 1, transition: 'opacity 0.2s ease' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                    {/* Day Date Header */}
+                                    <div style={{ display: 'flex', paddingLeft: '40px', marginBottom: '0.5rem', flexShrink: 0 }}>
+                                        <div style={{ flex: 1, textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                                                {currentDate.toLocaleDateString('en-US', { weekday: 'short' })}
+                                            </div>
+                                            <div style={{
+                                                fontSize: '1rem',
+                                                fontWeight: 400,
+                                                color: new Date().toDateString() === currentDate.toDateString() ? 'var(--primary)' : 'var(--text-main)',
+                                                opacity: new Date().toDateString() === currentDate.toDateString() ? 1 : 0.8
+                                            }}>
+                                                {currentDate.getDate()}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                                        <div
+                                            style={{ display: 'flex', minHeight: '1440px', position: 'relative', cursor: isDragging ? 'row-resize' : 'default', marginTop: '10px' }}
+                                            onMouseMove={handleDragMove}
+                                            onMouseUp={handleDragEnd}
+                                            onMouseLeave={handleDragEnd}
+                                        >
+                                            <div style={{ position: 'absolute', inset: 0, left: '46px', pointerEvents: 'none', zIndex: 0 }}>
+                                                {Array.from({ length: 24 }).map((_, i) => (
+                                                    <div key={i} style={{
+                                                        height: '60px',
+                                                        borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                        borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                        boxSizing: 'border-box'
+                                                    }} />
+                                                ))}
+                                            </div>
+
+                                            <div style={{
+                                                width: '40px',
+                                                flexShrink: 0,
+                                                marginRight: '6px',
+                                                zIndex: 1,
+                                                position: 'relative',
+                                                marginTop: '10px'
+                                            }}>
+
+                                                {Array.from({ length: 24 }).map((_, i) => (
+                                                    <div key={i} style={{ height: '60px', position: 'relative' }}>
+                                                        <span style={{
+                                                            position: 'absolute',
+                                                            top: '-6px',
+                                                            left: 0,
+                                                            width: '100%',
+                                                            textAlign: 'center',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 600,
+                                                            color: 'var(--text-muted)'
+                                                        }}>
+                                                            {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {(() => {
+                                                const now = new Date();
+                                                const minutes = now.getHours() * 60 + now.getMinutes();
+                                                const topOffset = (minutes / 60) * 60;
+                                                return (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: `${topOffset}px`,
+                                                        left: '46px',
+                                                        right: 0,
+                                                        height: '2px',
+                                                        backgroundColor: 'red',
+                                                        zIndex: 50,
+                                                        pointerEvents: 'none'
+                                                    }}>
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            left: '-2px',
+                                                            top: '-6px',
+                                                            width: '4px',
+                                                            height: '14px',
+                                                            backgroundColor: 'red',
+                                                            borderRadius: '2px'
+                                                        }} />
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            <div
+                                                style={{ flex: 1, position: 'relative', borderLeft: '1px solid rgba(0,0,0,0.1)', zIndex: 1 }}
+                                                onMouseDown={(e) => handleDragStart(e, 0, currentDate)} // dayIndex 0 for day view
+                                            >
+                                                {isDragging && dragStart && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: `${(dragStart.startMinutes / 60) * 60}px`,
+                                                        height: `${Math.max((dragCurrent.endMinutes - dragStart.startMinutes) / 60 * 60, 15)}px`,
+                                                        left: '10px', right: '10px',
+                                                        background: 'rgba(59, 130, 246, 0.25)',
+                                                        backdropFilter: 'blur(4px)',
+                                                        WebkitBackdropFilter: 'blur(4px)',
+                                                        borderRadius: '6px',
+                                                        zIndex: 100,
+                                                        pointerEvents: 'none',
+                                                        border: '1px solid rgba(59, 130, 246, 0.5)',
+                                                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                                                        color: '#1e3a8a',
+                                                        fontSize: '0.75rem',
+                                                        padding: '4px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontWeight: 600,
+                                                        transition: 'height 0.1s ease-out'
+                                                    }}>
+                                                        {Math.floor(dragStart.startMinutes / 60)}:{String(dragStart.startMinutes % 60).padStart(2, '0')} -
+                                                        {Math.floor(dragCurrent.endMinutes / 60)}:{String(dragCurrent.endMinutes % 60).padStart(2, '0')}
+                                                    </div>
+                                                )}
+
+                                                {(() => {
+                                                    const { dayEvents, dayTasks } = getItemsForDay(currentDate.getDate(), currentDate.getMonth(), currentDate.getFullYear());
+
+                                                    const items = [
+                                                        ...dayEvents.map(e => {
+                                                            const start = new Date(e.start.dateTime || e.start.date);
+                                                            const end = new Date(e.end.dateTime || e.end.date);
+                                                            const startMinutes = start.getHours() * 60 + start.getMinutes();
+                                                            const duration = (end - start) / (1000 * 60);
+                                                            return { ...e, type: 'google', startMinutes, duration, title: e.summary };
+                                                        }),
+                                                        ...dayTasks.map(t => {
+                                                            let startMinutes = 0;
+                                                            let duration = 30;
+                                                            let hasTime = false;
+
+                                                            let color = undefined;
+
+                                                            if (t.metadata) {
+                                                                if (t.metadata.time) {
+                                                                    const [h, m] = t.metadata.time.split(':').map(Number);
+                                                                    startMinutes = h * 60 + m;
+                                                                    hasTime = true;
+                                                                }
+                                                                if (t.metadata.duration) {
+                                                                    duration = parseInt(t.metadata.duration, 10);
+                                                                }
+                                                                if (t.metadata.color) {
+                                                                    color = t.metadata.color;
+                                                                }
+                                                            }
+                                                            return { ...t, type: 'task', startMinutes, duration, hasTime, title: t.text, color };
+                                                        })
+                                                    ];
+
+                                                    const { allDay, timed: timedItems } = layoutEvents(items);
+
+                                                    return (
+                                                        <>
+                                                            <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.01)' }}>
+                                                                {allDay.map((item, idx) => {
+                                                                    const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                                    const color = customColor || item.color || item.calendarColor || '#3b82f6';
+                                                                    return (
+                                                                        <div key={`ad-${idx}`} className={`event-pill ${item.type}`}
+                                                                            onClick={(e) => handleEventClick(e, item, currentDate)}
+                                                                            style={{
+                                                                                position: 'relative',
+                                                                                marginBottom: '4px',
+                                                                                padding: '4px 8px',
+                                                                                backgroundColor: color ? `${color}4d` : undefined, // 30% opacity
+                                                                                backdropFilter: color ? 'blur(4px)' : undefined,
+                                                                                border: color ? `1px solid ${color}66` : undefined,
+                                                                                borderLeft: color ? `3px solid ${color}` : undefined,
+                                                                                color: color ? '#000' : undefined,
+                                                                                borderRadius: '4px',
+                                                                                fontSize: '0.85rem',
+                                                                                cursor: 'pointer'
+                                                                            }}>
+                                                                            <span style={{ fontWeight: 300 }}>All Day:</span> {item.title}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            {timedItems.map((item, idx) => {
+                                                                const top = (item.startMinutes / 60) * 60;
+                                                                const height = (item.duration / 60) * 60;
+                                                                const isExpanded = expandedEventId === (item.id || idx);
+                                                                const customColor = item.isPrimary ? item.extendedProperties?.private?.customColor : undefined;
+                                                                const color = customColor || item.color || item.calendarColor || '#3b82f6';
+
+                                                                return (
+                                                                    <div key={idx}
+                                                                        className={`event-pill ${item.type}`}
+                                                                        style={{
+                                                                            position: 'absolute',
+                                                                            top: `${top}px`,
+                                                                            height: isExpanded ? 'auto' : `${Math.max(height, 40)}px`,
+                                                                            minHeight: `${Math.max(height, 40)}px`,
+                                                                            left: `${item.layoutLeft}%`,
+                                                                            width: `calc(${item.layoutWidth}% - 4px)`,
+                                                                            padding: '8px',
+                                                                            zIndex: isExpanded ? 50 : (item.zIndex || 10),
+                                                                            boxShadow: isExpanded ? '0 4px 12px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
+                                                                            display: 'flex',
+                                                                            flexDirection: 'column',
+                                                                            cursor: 'pointer',
+                                                                            backgroundColor: color || undefined,
+                                                                            border: '1px solid white',
+                                                                            color: '#fff',
+                                                                            borderRadius: '6px'
+                                                                        }}
+                                                                        onClick={(e) => handleEventClick(e, item, currentDate)}
+                                                                    >
+                                                                        <div style={{ fontWeight: 300, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
+                                                                        <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.5rem' }}>
+                                                                            <span>{Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}</span>
+                                                                            {item.type === 'google' && item.hangoutLink && <Video size={12} />}
+                                                                        </div>
+                                                                        {isExpanded && item.hangoutLink && (
+                                                                            <div style={{ marginTop: '0.5rem' }}>
+                                                                                <a href={item.hangoutLink} target="_blank" rel="noopener noreferrer"
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    style={{
+                                                                                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                                                        color: 'var(--primary)', textDecoration: 'none', fontWeight: 600,
+                                                                                        background: 'rgba(37, 99, 235, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem'
+                                                                                    }}>
+                                                                                    <Video size={14} /> Join Meet
+                                                                                </a>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div >
+                                            {/* Task List Sidebar Logic for Day View - Click handling */}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {view === 'day' && (
+                        <div style={{ opacity: fadingIn ? 0 : 1, transition: 'opacity 0.2s ease', display: 'flex' }}>
+                            {/* Subtle toggle button for task list */}
+                            {!showSplitView && (
+                                <button
+                                    onClick={() => setShowSplitView(true)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '0',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        width: '14px',
+                                        height: '44px',
+                                        background: 'rgba(0,0,0,0.04)',
+                                        border: 'none',
+                                        borderRadius: '4px 0 0 4px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'rgba(0,0,0,0.25)',
+                                        padding: 0,
+                                        zIndex: 10,
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                                    title="Show task list"
+                                >
+                                    <ChevronLeft size={10} />
+                                </button>
+                            )}
+                            {showSplitView && (
+                                <div className="glass-card static"
+                                    onMouseEnter={(e) => {
+                                        const btn = e.currentTarget.querySelector('.edit-mode-trigger');
+                                        if (btn && !isEditingTasks) btn.style.opacity = '1';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        const btn = e.currentTarget.querySelector('.edit-mode-trigger');
+                                        if (btn && !isEditingTasks) btn.style.opacity = '0';
+                                    }}
+                                    style={{ position: 'relative', width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+                                    <div style={{ padding: '0 0 0.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <button
+                                                onClick={() => setShowSplitView(false)}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    color: 'rgba(0,0,0,0.25)',
+                                                    padding: '4px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    borderRadius: '4px',
+                                                    transition: 'color 0.2s'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.color = 'rgba(0,0,0,0.5)'}
+                                                onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,0,0,0.25)'}
+                                                title="Hide task list"
+                                            >
+                                                <ChevronRight size={14} />
+                                            </button>
+                                            <div>
+                                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-main)' }}>Task List</h3>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.5rem' }}>
+                                                    {currentDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            className="edit-mode-trigger"
+                                            onClick={() => setIsEditingTasks(!isEditingTasks)}
+                                            style={{
+                                                width: '32px',
+                                                height: '32px',
+                                                borderRadius: '50%',
+                                                backgroundColor: 'white',
+                                                border: '1px solid rgba(0,0,0,0.05)',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                color: 'var(--text-muted)',
+                                                transition: 'all 0.2s',
+                                                marginTop: '2px',
+                                                opacity: isEditingTasks ? 1 : 0
+                                            }}
+                                        >
+                                            {isEditingTasks ? <Check size={14} color="#10b981" strokeWidth={3} /> : <Pencil size={14} />}
+                                        </button>
+                                    </div>
+                                    <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 0' }}>
+                                        {tasks.filter(t => {
+                                            const year = currentDate.getFullYear();
+                                            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                            const day = String(currentDate.getDate()).padStart(2, '0');
+                                            const isoDate = `${year}-${month}-${day}`;
+                                            return t.date === isoDate;
+                                        }).map(task => {
+                                            const taskColor = task.metadata?.color;
+                                            return (
+                                                <div key={task.id}
+                                                    onClick={(e) => handleEventClick(e, { ...task, type: 'task' }, currentDate)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.75rem',
+                                                        padding: '0.4rem 0.75rem',
+                                                        backgroundColor: taskColor ? `${taskColor}4d` : 'white',
+                                                        borderRadius: '8px',
+                                                        marginBottom: '0.5rem',
+                                                        border: taskColor ? `1px solid ${taskColor}66` : '1px solid rgba(0,0,0,0.05)',
+                                                        borderLeft: taskColor ? `4px solid ${taskColor}` : undefined,
+                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                                        cursor: 'pointer'
+                                                    }}>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(task.id); }}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+                                                    >
+                                                        {task.status === 'Completed' ? <CheckCircle size={18} color="var(--primary)" fill="var(--primary)" fillOpacity={0.2} /> : <Circle size={18} color="var(--text-muted)" />}
+                                                    </button>
+                                                    <span style={{
+                                                        flex: 1,
+                                                        fontSize: '0.9rem',
+                                                        color: task.status === 'Completed' ? 'var(--text-muted)' : 'var(--text-main)',
+                                                        textDecoration: task.status === 'Completed' ? 'line-through' : 'none'
+                                                    }}>
+                                                        {task.text}
+                                                    </span>
+                                                    {isEditingTasks && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); onDeleteTask && onDeleteTask(task.id); }}
+                                                            style={{
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                padding: '4px',
+                                                                opacity: 0.8,
+                                                                transition: 'opacity 0.2s',
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                                                            onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+                                                        >
+                                                            <Trash2 size={16} color="#ef4444" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {tasks.filter(t => {
+                                            const year = currentDate.getFullYear();
+                                            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                            const day = String(currentDate.getDate()).padStart(2, '0');
+                                            const isoDate = `${year}-${month}-${day}`;
+                                            return t.date === isoDate;
+                                        }).length === 0 && (
+                                                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                                    No tasks for this day.
+                                                </div>
+                                            )}
+                                    </div>
+                                    {isEditingTasks && (
+                                        <div style={{ padding: '0.25rem 0', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                                            <form
+                                                onSubmit={(e) => {
+                                                    e.preventDefault();
+                                                    if (!newTaskText.trim()) return;
+                                                    const year = currentDate.getFullYear();
+                                                    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                                    const day = String(currentDate.getDate()).padStart(2, '0');
+                                                    const isoDate = `${year}-${month}-${day}`;
+                                                    onAddTask(isoDate, newTaskText, false, null, 30, '', '', [], false, { color: newTaskColor });
+                                                    setNewTaskText('');
+                                                    setNewTaskColor('#3b82f6'); // Reset to default
+                                                    setShowTaskColorPicker(false);
+                                                }}
+                                                style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}
+                                            >
+                                                <div style={{ position: 'relative' }}>
+                                                    <button
+                                                        type="button" // Placeholder to remove the old button logic block so I can replace the whole container structure cleanly
+                                                        style={{ display: 'none' }}
+                                                    ></button>
+
+                                                    {showTaskColorPicker && (
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            bottom: '100%',
+                                                            left: 0,
+                                                            marginBottom: '0.5rem',
+                                                            background: 'white',
+                                                            padding: '0.5rem',
+                                                            borderRadius: '12px',
+                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                            display: 'flex',
+                                                            gap: '0.5rem',
+                                                            zIndex: 20,
+                                                            border: '1px solid rgba(0,0,0,0.05)'
+                                                        }}>
+                                                            {['#3b82f6', '#ef4444', '#64748b', '#ffffff', '#06b6d4', '#10b981'].map(c => (
+                                                                <button
+                                                                    key={c}
+                                                                    type="button"
+                                                                    onClick={() => { setNewTaskColor(c); setShowTaskColorPicker(false); }}
+                                                                    style={{
+                                                                        width: '24px',
+                                                                        height: '24px',
+                                                                        borderRadius: '50%',
+                                                                        background: c,
+                                                                        border: c === '#ffffff' ? '1px solid #e2e8f0' : 'none',
+                                                                        cursor: 'pointer',
+                                                                        outline: newTaskColor === c ? '2px solid var(--text-main)' : 'none',
+                                                                        outlineOffset: '2px'
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    <div style={{
+                                                        flex: 1,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        padding: '0.5rem 0.75rem',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid rgba(0,0,0,0.1)',
+                                                        background: 'white',
+                                                        gap: '0.5rem'
+                                                    }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowTaskColorPicker(!showTaskColorPicker)}
+                                                            style={{
+                                                                width: '12px',
+                                                                height: '12px',
+                                                                borderRadius: '50%',
+                                                                background: newTaskColor,
+                                                                border: newTaskColor === '#ffffff' ? '1px solid #e2e8f0' : 'none',
+                                                                cursor: 'pointer',
+                                                                padding: 0,
+                                                                flexShrink: 0
+                                                            }}
+                                                        />
+                                                        <input
+                                                            value={newTaskText}
+                                                            onChange={e => setNewTaskText(e.target.value)}
+                                                            placeholder="Add a task..."
+                                                            style={{
+                                                                flex: 1,
+                                                                border: 'none',
+                                                                outline: 'none',
+                                                                fontSize: '0.9rem',
+                                                                background: 'transparent',
+                                                                padding: 0
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="submit"
+                                                    style={{
+                                                        background: 'var(--primary)',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        width: '36px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <Plus size={18} />
+                                                </button>
+                                            </form>
+                                        </div>
+                                    )}
+
+
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
 
-                {view === 'day' && (
-                    <div style={{ opacity: fadingIn ? 0 : 1, transition: 'opacity 0.2s ease', display: 'flex' }}>
-                        {/* Subtle toggle button for task list */}
-                        {!showSplitView && (
-                            <button
-                                onClick={() => setShowSplitView(true)}
-                                style={{
-                                    position: 'absolute',
-                                    right: '0',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    width: '14px',
-                                    height: '44px',
-                                    background: 'rgba(0,0,0,0.04)',
-                                    border: 'none',
-                                    borderRadius: '4px 0 0 4px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'rgba(0,0,0,0.25)',
-                                    padding: 0,
-                                    zIndex: 10,
-                                    transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
-                                title="Show task list"
-                            >
-                                <ChevronLeft size={10} />
-                            </button>
-                        )}
-                        {showSplitView && (
-                            <div className="glass-card static"
-                                onMouseEnter={(e) => {
-                                    const btn = e.currentTarget.querySelector('.edit-mode-trigger');
-                                    if (btn && !isEditingTasks) btn.style.opacity = '1';
-                                }}
-                                onMouseLeave={(e) => {
-                                    const btn = e.currentTarget.querySelector('.edit-mode-trigger');
-                                    if (btn && !isEditingTasks) btn.style.opacity = '0';
-                                }}
-                                style={{ position: 'relative', width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
-                                <div style={{ padding: '0 0 0.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {/* Google Calendar Style Modal */}
+                {
+                    showEventModal && (
+                        <>
+                            <div
+                                style={{ position: 'absolute', inset: 0, zIndex: 998, background: 'rgba(0,0,0,0.02)', backdropFilter: 'blur(2px)' }}
+                                onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
+                            />
+
+                            <div style={{
+                                position: 'absolute',
+                                top: '12px',
+                                right: '12px',
+                                bottom: '12px',
+                                zIndex: 999,
+                                width: '360px',
+                                background: 'rgba(255, 255, 255, 0.85)',
+                                backdropFilter: 'blur(34px) saturate(180%)',
+                                WebkitBackdropFilter: 'blur(34px) saturate(180%)',
+                                borderRadius: '24px',
+                                border: '1px solid rgba(255, 255, 255, 0.8)',
+                                boxShadow: '0 24px 60px rgba(0,0,0,0.15)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflowY: 'auto',
+                                animation: 'calendarSidebarIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                                color: 'var(--text-main)',
+                            }}>
+                                {/* Top Bar */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', color: '#5f6368' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#3c4043' }}>
+                                        <select
+                                            value={newEventData.eventType || 'event'}
+                                            onChange={e => setNewEventData({ ...newEventData, eventType: e.target.value })}
+                                            style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', appearance: 'none', fontWeight: 'inherit', color: 'inherit', padding: 0 }}
+                                        >
+                                            <option value="event">Event</option>
+                                            <option value="task">Task</option>
+                                        </select>
+                                        <ChevronDown size={14} style={{ pointerEvents: 'none' }} />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                        {/* Submitting explicitly using Save when they want */}
                                         <button
-                                            onClick={() => setShowSplitView(false)}
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                color: 'rgba(0,0,0,0.25)',
-                                                padding: '4px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                borderRadius: '4px',
-                                                transition: 'color 0.2s'
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.color = 'rgba(0,0,0,0.5)'}
-                                            onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,0,0,0.25)'}
-                                            title="Hide task list"
+                                            onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#5f6368', padding: '0', display: 'flex' }}
                                         >
-                                            <ChevronRight size={14} />
+                                            <X size={18} />
                                         </button>
-                                        <div>
-                                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-main)' }}>Task List</h3>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.5rem' }}>
-                                                {currentDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
-                                            </div>
-                                        </div>
                                     </div>
-                                    <button
-                                        className="edit-mode-trigger"
-                                        onClick={() => setIsEditingTasks(!isEditingTasks)}
-                                        style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'white',
-                                            border: '1px solid rgba(0,0,0,0.05)',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: 'pointer',
-                                            color: 'var(--text-muted)',
-                                            transition: 'all 0.2s',
-                                            marginTop: '2px',
-                                            opacity: isEditingTasks ? 1 : 0
-                                        }}
-                                    >
-                                        {isEditingTasks ? <Check size={14} color="#10b981" strokeWidth={3} /> : <Pencil size={14} />}
-                                    </button>
                                 </div>
-                                <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 0' }}>
-                                    {tasks.filter(t => {
-                                        const year = currentDate.getFullYear();
-                                        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                                        const day = String(currentDate.getDate()).padStart(2, '0');
-                                        const isoDate = `${year}-${month}-${day}`;
-                                        return t.date === isoDate;
-                                    }).map(task => {
-                                        const taskColor = task.metadata?.color;
-                                        return (
-                                            <div key={task.id}
-                                                onClick={(e) => handleEventClick(e, { ...task, type: 'task' }, currentDate)}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.75rem',
-                                                    padding: '0.4rem 0.75rem',
-                                                    backgroundColor: taskColor ? `${taskColor}4d` : 'white',
-                                                    borderRadius: '8px',
-                                                    marginBottom: '0.5rem',
-                                                    border: taskColor ? `1px solid ${taskColor}66` : '1px solid rgba(0,0,0,0.05)',
-                                                    borderLeft: taskColor ? `4px solid ${taskColor}` : undefined,
-                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                                                    cursor: 'pointer'
-                                                }}>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(task.id); }}
-                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
-                                                >
-                                                    {task.status === 'Completed' ? <CheckCircle size={18} color="var(--primary)" fill="var(--primary)" fillOpacity={0.2} /> : <Circle size={18} color="var(--text-muted)" />}
-                                                </button>
-                                                <span style={{
-                                                    flex: 1,
-                                                    fontSize: '0.9rem',
-                                                    color: task.status === 'Completed' ? 'var(--text-muted)' : 'var(--text-main)',
-                                                    textDecoration: task.status === 'Completed' ? 'line-through' : 'none'
-                                                }}>
-                                                    {task.text}
-                                                </span>
-                                                {isEditingTasks && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); onDeleteTask && onDeleteTask(task.id); }}
-                                                        style={{
-                                                            background: 'none',
-                                                            border: 'none',
-                                                            cursor: 'pointer',
-                                                            padding: '4px',
-                                                            opacity: 0.8,
-                                                            transition: 'opacity 0.2s',
-                                                        }}
-                                                        onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                                                        onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
-                                                    >
-                                                        <Trash2 size={16} color="#ef4444" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                    {tasks.filter(t => {
-                                        const year = currentDate.getFullYear();
-                                        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                                        const day = String(currentDate.getDate()).padStart(2, '0');
-                                        const isoDate = `${year}-${month}-${day}`;
-                                        return t.date === isoDate;
-                                    }).length === 0 && (
-                                            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                                No tasks for this day.
-                                            </div>
-                                        )}
-                                </div>
-                                {isEditingTasks && (
-                                    <div style={{ padding: '0.25rem 0', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                                        <form
-                                            onSubmit={(e) => {
-                                                e.preventDefault();
-                                                if (!newTaskText.trim()) return;
-                                                const year = currentDate.getFullYear();
-                                                const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                                                const day = String(currentDate.getDate()).padStart(2, '0');
-                                                const isoDate = `${year}-${month}-${day}`;
-                                                onAddTask(isoDate, newTaskText, false, null, 30, '', '', [], false, { color: newTaskColor });
-                                                setNewTaskText('');
-                                                setNewTaskColor('#3b82f6'); // Reset to default
-                                                setShowTaskColorPicker(false);
+
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    {/* Title Input */}
+                                    <div style={{ padding: '8px 16px 16px 16px' }}>
+                                        <input
+                                            autoFocus
+                                            placeholder="Title"
+                                            value={newEventData.title}
+                                            onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleSaveEvent();
+                                                }
                                             }}
-                                            style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}
-                                        >
-                                            <div style={{ position: 'relative' }}>
-                                                <button
-                                                    type="button" // Placeholder to remove the old button logic block so I can replace the whole container structure cleanly
-                                                    style={{ display: 'none' }}
-                                                ></button>
-
-                                                {showTaskColorPicker && (
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        bottom: '100%',
-                                                        left: 0,
-                                                        marginBottom: '0.5rem',
-                                                        background: 'white',
-                                                        padding: '0.5rem',
-                                                        borderRadius: '12px',
-                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                                        display: 'flex',
-                                                        gap: '0.5rem',
-                                                        zIndex: 20,
-                                                        border: '1px solid rgba(0,0,0,0.05)'
-                                                    }}>
-                                                        {['#3b82f6', '#ef4444', '#64748b', '#ffffff', '#06b6d4', '#10b981'].map(c => (
-                                                            <button
-                                                                key={c}
-                                                                type="button"
-                                                                onClick={() => { setNewTaskColor(c); setShowTaskColorPicker(false); }}
-                                                                style={{
-                                                                    width: '24px',
-                                                                    height: '24px',
-                                                                    borderRadius: '50%',
-                                                                    background: c,
-                                                                    border: c === '#ffffff' ? '1px solid #e2e8f0' : 'none',
-                                                                    cursor: 'pointer',
-                                                                    outline: newTaskColor === c ? '2px solid var(--text-main)' : 'none',
-                                                                    outlineOffset: '2px'
-                                                                }}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                <div style={{
-                                                    flex: 1,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    padding: '0.5rem 0.75rem',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid rgba(0,0,0,0.1)',
-                                                    background: 'white',
-                                                    gap: '0.5rem'
-                                                }}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowTaskColorPicker(!showTaskColorPicker)}
-                                                        style={{
-                                                            width: '12px',
-                                                            height: '12px',
-                                                            borderRadius: '50%',
-                                                            background: newTaskColor,
-                                                            border: newTaskColor === '#ffffff' ? '1px solid #e2e8f0' : 'none',
-                                                            cursor: 'pointer',
-                                                            padding: 0,
-                                                            flexShrink: 0
-                                                        }}
-                                                    />
-                                                    <input
-                                                        value={newTaskText}
-                                                        onChange={e => setNewTaskText(e.target.value)}
-                                                        placeholder="Add a task..."
-                                                        style={{
-                                                            flex: 1,
-                                                            border: 'none',
-                                                            outline: 'none',
-                                                            fontSize: '0.9rem',
-                                                            background: 'transparent',
-                                                            padding: 0
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="submit"
-                                                style={{
-                                                    background: 'var(--primary)',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    width: '36px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                <Plus size={18} />
-                                            </button>
-                                        </form>
+                                            style={{
+                                                fontSize: '22px',
+                                                fontWeight: 400,
+                                                border: 'none',
+                                                outline: 'none',
+                                                width: '100%',
+                                                color: '#202124',
+                                                padding: 0,
+                                                background: 'transparent'
+                                            }}
+                                        />
                                     </div>
-                                )}
 
+                                    <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
 
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Google Calendar Style Modal */}
-            {
-                showEventModal && createPortal(
-                    <>
-                        <div
-                            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'transparent' }}
-                            onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
-                        />
-
-                        <style>{`
-                            @keyframes slideInRight {
-                                from { transform: translateX(100%); opacity: 0; }
-                                to { transform: translateX(0); opacity: 1; }
-                            }
-                        `}</style>
-                        <div style={{
-                            position: 'fixed',
-                            top: '48px',
-                            right: '16px',
-                            bottom: '0',
-                            zIndex: 9999,
-                            width: '360px',
-                            background: '#ffffff',
-                            borderRadius: '16px',
-                            border: '1px solid #e5e5e5',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-                            padding: '0',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            overflowY: 'auto',
-                            animation: 'slideInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                            color: '#3c4043',
-                            fontFamily: 'Roboto, Inter, -apple-system, sans-serif'
-                        }}>
-                            {/* Top Bar */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', color: '#5f6368' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, color: '#3c4043' }}>
-                                    <select
-                                        value={newEventData.eventType || 'event'}
-                                        onChange={e => setNewEventData({ ...newEventData, eventType: e.target.value })}
-                                        style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', appearance: 'none', fontWeight: 'inherit', color: 'inherit', padding: 0 }}
-                                    >
-                                        <option value="event">Event</option>
-                                        <option value="task">Task</option>
-                                    </select>
-                                    <ChevronDown size={14} style={{ pointerEvents: 'none' }} />
-                                </div>
-                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                    {/* Submitting explicitly using Save when they want */}
-                                    <button
-                                        onClick={() => { setShowEventModal(false); setDragStart(null); setMemberInput(''); }}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#5f6368', padding: '0', display: 'flex' }}
-                                    >
-                                        <X size={18} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                {/* Title Input */}
-                                <div style={{ padding: '8px 16px 16px 16px' }}>
-                                    <input
-                                        autoFocus
-                                        placeholder="Title"
-                                        value={newEventData.title}
-                                        onChange={e => setNewEventData({ ...newEventData, title: e.target.value })}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                handleSaveEvent();
-                                            }
-                                        }}
-                                        style={{
-                                            fontSize: '22px',
-                                            fontWeight: 400,
-                                            border: 'none',
-                                            outline: 'none',
-                                            width: '100%',
-                                            color: '#202124',
-                                            padding: 0,
-                                            background: 'transparent'
-                                        }}
-                                    />
-                                </div>
-
-                                <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
-
-                                {/* Time Section */}
-                                <style>{`
+                                    {/* Time Section */}
+                                    <style>{`
                                     input[type="time"]::-webkit-calendar-picker-indicator,
                                     input[type="date"]::-webkit-calendar-picker-indicator {
                                         display: none;
                                         -webkit-appearance: none;
                                     }
                                 `}</style>
-                                <div style={{ padding: '16px', display: 'flex', gap: '16px' }}>
-                                    <div style={{ color: '#5f6368', marginTop: '2px' }}>
-                                        <Clock size={16} />
+                                    <div style={{ padding: '16px', display: 'flex', gap: '16px' }}>
+                                        <div style={{ color: '#5f6368', marginTop: '2px' }}>
+                                            <Clock size={16} />
+                                        </div>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#202124' }}>
+                                                <input
+                                                    type="time"
+                                                    value={newEventData.timeStr || ''}
+                                                    onChange={e => setNewEventData({ ...newEventData, timeStr: e.target.value })}
+                                                    onClick={e => e.target.showPicker && e.target.showPicker()}
+                                                    style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
+                                                />
+                                                <ArrowRight size={14} color="#5f6368" />
+                                                <input
+                                                    type="time"
+                                                    value={(() => {
+                                                        if (!newEventData.timeStr) return '';
+                                                        const [h, m] = newEventData.timeStr.split(':').map(Number);
+                                                        const totalM = h * 60 + m + (newEventData.duration || 30);
+                                                        const endH = Math.floor(totalM / 60) % 24;
+                                                        const endM = totalM % 60;
+                                                        return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+                                                    })()}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        if (val && newEventData.timeStr) {
+                                                            const [sh, sm] = newEventData.timeStr.split(':').map(Number);
+                                                            const [eh, em] = val.split(':').map(Number);
+                                                            let diff = (eh * 60 + em) - (sh * 60 + sm);
+                                                            if (diff < 0) diff += 24 * 60;
+                                                            setNewEventData({ ...newEventData, duration: Math.max(15, diff) });
+                                                        }
+                                                    }}
+                                                    onClick={e => e.target.showPicker && e.target.showPicker()}
+                                                    style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
+                                                />
+                                                <span style={{ color: '#5f6368', fontWeight: 400, marginLeft: '4px' }}>
+                                                    {newEventData.duration >= 60 ? `${Math.floor(newEventData.duration / 60)}h${newEventData.duration % 60 > 0 ? ` ${newEventData.duration % 60}m` : ''}` : `${newEventData.duration}m`}
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '14px', color: '#3c4043', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input
+                                                    type="date"
+                                                    value={newEventData.dateStr}
+                                                    onChange={e => setNewEventData({ ...newEventData, dateStr: e.target.value })}
+                                                    onClick={e => e.target.showPicker && e.target.showPicker()}
+                                                    style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontFamily: 'inherit' }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#5f6368', marginTop: '4px', alignItems: 'center' }}>
+                                                <span style={{ cursor: 'pointer', color: newEventData.allDay ? '#202124' : 'inherit' }} onClick={() => setNewEventData({ ...newEventData, allDay: !newEventData.allDay })}>All-day</span>
+                                                <span style={{ cursor: 'pointer' }}>Time zone</span>
+                                                <select style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', outline: 'none', fontSize: 'inherit', padding: 0 }}>
+                                                    <option value="none">Repeat</option>
+                                                    <option value="daily">Daily</option>
+                                                    <option value="weekly">Weekly</option>
+                                                    <option value="monthly">Monthly</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#202124' }}>
-                                            <input
-                                                type="time"
-                                                value={newEventData.timeStr || ''}
-                                                onChange={e => setNewEventData({ ...newEventData, timeStr: e.target.value })}
-                                                onClick={e => e.target.showPicker && e.target.showPicker()}
-                                                style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
-                                            />
-                                            <ArrowRight size={14} color="#5f6368" />
-                                            <input
-                                                type="time"
-                                                value={(() => {
-                                                    if (!newEventData.timeStr) return '';
-                                                    const [h, m] = newEventData.timeStr.split(':').map(Number);
-                                                    const totalM = h * 60 + m + (newEventData.duration || 30);
-                                                    const endH = Math.floor(totalM / 60) % 24;
-                                                    const endM = totalM % 60;
-                                                    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-                                                })()}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    if (val && newEventData.timeStr) {
-                                                        const [sh, sm] = newEventData.timeStr.split(':').map(Number);
-                                                        const [eh, em] = val.split(':').map(Number);
-                                                        let diff = (eh * 60 + em) - (sh * 60 + sm);
-                                                        if (diff < 0) diff += 24 * 60;
-                                                        setNewEventData({ ...newEventData, duration: Math.max(15, diff) });
-                                                    }
-                                                }}
-                                                onClick={e => e.target.showPicker && e.target.showPicker()}
-                                                style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 'inherit', fontFamily: 'inherit' }}
-                                            />
-                                            <span style={{ color: '#5f6368', fontWeight: 400, marginLeft: '4px' }}>
-                                                {newEventData.duration >= 60 ? `${Math.floor(newEventData.duration / 60)}h${newEventData.duration % 60 > 0 ? ` ${newEventData.duration % 60}m` : ''}` : `${newEventData.duration}m`}
-                                            </span>
-                                        </div>
-                                        <div style={{ fontSize: '14px', color: '#3c4043', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <input
-                                                type="date"
-                                                value={newEventData.dateStr}
-                                                onChange={e => setNewEventData({ ...newEventData, dateStr: e.target.value })}
-                                                onClick={e => e.target.showPicker && e.target.showPicker()}
-                                                style={{ border: 'none', outline: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'inherit', fontFamily: 'inherit' }}
-                                            />
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#5f6368', marginTop: '4px', alignItems: 'center' }}>
-                                            <span style={{ cursor: 'pointer', color: newEventData.allDay ? '#202124' : 'inherit' }} onClick={() => setNewEventData({ ...newEventData, allDay: !newEventData.allDay })}>All-day</span>
-                                            <span style={{ cursor: 'pointer' }}>Time zone</span>
-                                            <select style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', outline: 'none', fontSize: 'inherit', padding: 0 }}>
-                                                <option value="none">Repeat</option>
-                                                <option value="daily">Daily</option>
-                                                <option value="weekly">Weekly</option>
-                                                <option value="monthly">Monthly</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
+                                    <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
 
-                                {/* Options and Participants */}
-                                <div style={{ padding: '8px 0' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <label htmlFor="participants-input" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                    {/* Options and Participants */}
+                                    <div style={{ padding: '8px 0' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <label htmlFor="participants-input" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                                <Users size={18} />
+                                                <span>Participants</span>
+                                            </label>
+                                            <div style={{ padding: '0 16px 8px 48px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                {newEventData.participants?.map((p, i) => (
+                                                    <span key={i} style={{ background: '#f1f3f4', padding: '4px 10px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: '#3c4043' }}>
+                                                        {p}
+                                                        <X size={12} cursor="pointer" onClick={() => {
+                                                            const newP = [...newEventData.participants];
+                                                            newP.splice(i, 1);
+                                                            setNewEventData({ ...newEventData, participants: newP });
+                                                        }} />
+                                                    </span>
+                                                ))}
+                                                <input
+                                                    id="participants-input"
+                                                    placeholder="Add email..."
+                                                    value={memberInput}
+                                                    onChange={e => setMemberInput(e.target.value)}
+                                                    style={{ border: 'none', outline: 'none', fontSize: '13px', background: 'transparent', minWidth: '100px', flex: 1, padding: '4px 0', color: '#202124' }}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter' && e.target.value) {
+                                                            e.preventDefault();
+                                                            const newP = [...(newEventData.participants || []), e.target.value];
+                                                            setNewEventData({ ...newEventData, participants: newP });
+                                                            setMemberInput('');
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                            onClick={() => setNewEventData({ ...newEventData, addMeet: !newEventData.addMeet })}
                                             onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                            <Users size={18} />
-                                            <span>Participants</span>
-                                        </label>
-                                        <div style={{ padding: '0 16px 8px 48px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                            {newEventData.participants?.map((p, i) => (
-                                                <span key={i} style={{ background: '#f1f3f4', padding: '4px 10px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: '#3c4043' }}>
-                                                    {p}
-                                                    <X size={12} cursor="pointer" onClick={() => {
-                                                        const newP = [...newEventData.participants];
-                                                        newP.splice(i, 1);
-                                                        setNewEventData({ ...newEventData, participants: newP });
-                                                    }} />
-                                                </span>
-                                            ))}
+                                            <Video size={18} color={newEventData.addMeet ? '#1a73e8' : 'currentColor'} />
+                                            <span style={{ color: newEventData.addMeet ? '#202124' : 'inherit' }}>Conferencing</span>
+                                            {newEventData.addMeet && <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#1a73e8' }}>Google Meet</span>}
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                <polyline points="10 9 9 9 8 9"></polyline>
+                                            </svg>
+                                            <span>AI Meeting Notes and Docs</span>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                                <circle cx="12" cy="10" r="3"></circle>
+                                            </svg>
                                             <input
-                                                id="participants-input"
-                                                placeholder="Add email..."
-                                                value={memberInput}
-                                                onChange={e => setMemberInput(e.target.value)}
-                                                style={{ border: 'none', outline: 'none', fontSize: '13px', background: 'transparent', minWidth: '100px', flex: 1, padding: '4px 0', color: '#202124' }}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter' && e.target.value) {
-                                                        e.preventDefault();
-                                                        const newP = [...(newEventData.participants || []), e.target.value];
-                                                        setNewEventData({ ...newEventData, participants: newP });
-                                                        setMemberInput('');
-                                                    }
-                                                }}
+                                                placeholder="Location"
+                                                value={newEventData.location || ''}
+                                                onChange={e => setNewEventData({ ...newEventData, location: e.target.value })}
+                                                style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: '#202124', fontSize: '14px', padding: 0 }}
                                             />
                                         </div>
                                     </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
-                                        onClick={() => setNewEventData({ ...newEventData, addMeet: !newEventData.addMeet })}
-                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                        <Video size={18} color={newEventData.addMeet ? '#1a73e8' : 'currentColor'} />
-                                        <span style={{ color: newEventData.addMeet ? '#202124' : 'inherit' }}>Conferencing</span>
-                                        {newEventData.addMeet && <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#1a73e8' }}>Google Meet</span>}
-                                    </div>
+                                    <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
-                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                            <polyline points="14 2 14 8 20 8"></polyline>
-                                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                                            <polyline points="10 9 9 9 8 9"></polyline>
-                                        </svg>
-                                        <span>AI Meeting Notes and Docs</span>
-                                    </div>
-
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
-                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                            <circle cx="12" cy="10" r="3"></circle>
-                                        </svg>
-                                        <input
-                                            placeholder="Location"
-                                            value={newEventData.location || ''}
-                                            onChange={e => setNewEventData({ ...newEventData, location: e.target.value })}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: '#202124', fontSize: '14px', padding: 0 }}
+                                    {/* Description */}
+                                    <div style={{ padding: '16px' }}>
+                                        <textarea
+                                            placeholder="Description"
+                                            value={newEventData.description || ''}
+                                            onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
+                                            style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: '#202124', fontSize: '14px', padding: 0, resize: 'vertical', minHeight: '60px', fontFamily: 'inherit' }}
                                         />
                                     </div>
-                                </div>
 
-                                <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
+                                    <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
 
-                                {/* Description */}
-                                <div style={{ padding: '16px' }}>
-                                    <textarea
-                                        placeholder="Description"
-                                        value={newEventData.description || ''}
-                                        onChange={e => setNewEventData({ ...newEventData, description: e.target.value })}
-                                        style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: '#202124', fontSize: '14px', padding: 0, resize: 'vertical', minHeight: '60px', fontFamily: 'inherit' }}
-                                    />
-                                </div>
+                                    {/* Calendar Selection and Visibility */}
+                                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: '#3c4043' }}>
+                                            <div style={{ color: '#5f6368' }}>
+                                                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: newEventData.color || '#b1cdfb', border: 'none' }} />
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '4px 0' }}>
+                                                {['#b1cdfb', '#f8b4b4', '#b2f2bb', '#fef08a', '#e9d5ff', '#ffc9c9', '#e2e8f0'].map(c => (
+                                                    <div
+                                                        key={c}
+                                                        onClick={() => setNewEventData({ ...newEventData, color: c })}
+                                                        style={{
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            borderRadius: '50%',
+                                                            backgroundColor: c,
+                                                            cursor: 'pointer',
+                                                            border: newEventData.color === c ? '2px solid #3c4043' : '1px solid rgba(0,0,0,0.1)',
+                                                            boxSizing: 'border-box',
+                                                            transition: 'transform 0.1s'
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
+                                                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
 
-                                <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
-
-                                {/* Calendar Selection and Visibility */}
-                                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: '#3c4043', cursor: 'pointer' }}>
-                                        <div style={{ width: '14px', height: '14px', borderRadius: '4px', background: newEventData.color || '#1a73e8' }} />
-                                        <select
-                                            value={newEventData.calendarId || 'primary'}
-                                            onChange={e => setNewEventData({ ...newEventData, calendarId: e.target.value })}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', appearance: 'none', flex: 1, padding: 0, color: '#202124' }}
-                                        >
-                                            <option value="primary">{user?.email || 'yumaayoshida@gmail.com'}</option>
-                                            {calendars.filter(c => c.id !== user?.email).map(cal => (
-                                                <option key={cal.id} value={cal.id}>{cal.summary}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '24px', paddingLeft: '30px', fontSize: '14px', color: '#5f6368' }}>
-                                        <select
-                                            value={newEventData.busyStatus || 'busy'}
-                                            onChange={e => setNewEventData({ ...newEventData, busyStatus: e.target.value })}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}
-                                        >
-                                            <option value="busy">Busy</option>
-                                            <option value="free">Free</option>
-                                        </select>
-                                        <select
-                                            value={newEventData.visibility || 'default'}
-                                            onChange={e => setNewEventData({ ...newEventData, visibility: e.target.value })}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}
-                                        >
-                                            <option value="default">Default visibility</option>
-                                            <option value="public">Public</option>
-                                            <option value="private">Private</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Reminders */}
-                                <div style={{ padding: '0 16px 24px 16px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                                    <Bell size={18} color="#5f6368" style={{ marginTop: '2px' }} />
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
-                                        <span style={{ color: '#5f6368' }}>Reminders</span>
-                                        <div style={{ color: '#3c4043', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: '#3c4043', cursor: 'pointer' }}>
+                                            <CalendarIcon size={18} color="#5f6368" />
                                             <select
-                                                value={newEventData.reminder || '30'}
-                                                onChange={e => setNewEventData({ ...newEventData, reminder: e.target.value })}
-                                                style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: '#202124' }}
+                                                value={newEventData.calendarId || 'primary'}
+                                                onChange={e => setNewEventData({ ...newEventData, calendarId: e.target.value })}
+                                                style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', appearance: 'none', flex: 1, padding: 0, color: '#202124' }}
                                             >
-                                                <option value="0">At time of event</option>
-                                                <option value="5">5 min</option>
-                                                <option value="10">10 min</option>
-                                                <option value="15">15 min</option>
-                                                <option value="30">30 min</option>
-                                                <option value="60">1 hour</option>
-                                                <option value="1440">1 day</option>
+                                                <option value="primary">{user?.email || 'yumaayoshida@gmail.com'}</option>
+                                                {calendars.filter(c => c.id !== user?.email).map(cal => (
+                                                    <option key={cal.id} value={cal.id}>{cal.summary}</option>
+                                                ))}
                                             </select>
-                                            <span>before</span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '24px', paddingLeft: '30px', fontSize: '14px', color: '#5f6368' }}>
+                                            <select
+                                                value={newEventData.busyStatus || 'busy'}
+                                                onChange={e => setNewEventData({ ...newEventData, busyStatus: e.target.value })}
+                                                style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}
+                                            >
+                                                <option value="busy">Busy</option>
+                                                <option value="free">Free</option>
+                                            </select>
+                                            <select
+                                                value={newEventData.visibility || 'default'}
+                                                onChange={e => setNewEventData({ ...newEventData, visibility: e.target.value })}
+                                                style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}
+                                            >
+                                                <option value="default">Default visibility</option>
+                                                <option value="public">Public</option>
+                                                <option value="private">Private</option>
+                                            </select>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px', borderTop: '1px solid #f1f3f4', background: '#f8f9fa', marginTop: 'auto' }}>
-                                    <button
-                                        onClick={handleSaveEvent}
-                                        style={{
-                                            background: '#1a73e8',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            padding: '8px 24px',
-                                            fontSize: '14px',
-                                            fontWeight: 500,
-                                            cursor: 'pointer',
-                                            transition: 'background 0.2s',
-                                            boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)'
-                                        }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = '#1557b0'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = '#1a73e8'; }}
-                                    >
-                                        Save
-                                    </button>
+                                    {/* Reminders */}
+                                    <div style={{ padding: '0 16px 24px 16px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                                        <Bell size={18} color="#5f6368" style={{ marginTop: '2px' }} />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+                                            <span style={{ color: '#5f6368' }}>Reminders</span>
+                                            <div style={{ color: '#3c4043', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                <select
+                                                    value={newEventData.reminder || '30'}
+                                                    onChange={e => setNewEventData({ ...newEventData, reminder: e.target.value })}
+                                                    style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', padding: 0, color: '#202124' }}
+                                                >
+                                                    <option value="0">At time of event</option>
+                                                    <option value="5">5 min</option>
+                                                    <option value="10">10 min</option>
+                                                    <option value="15">15 min</option>
+                                                    <option value="30">30 min</option>
+                                                    <option value="60">1 hour</option>
+                                                    <option value="1440">1 day</option>
+                                                </select>
+                                                <span>before</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px', borderTop: '1px solid #f1f3f4', background: '#f8f9fa', marginTop: 'auto' }}>
+                                        <button
+                                            onClick={handleSaveEvent}
+                                            style={{
+                                                background: '#1a73e8',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                padding: '8px 24px',
+                                                fontSize: '14px',
+                                                fontWeight: 500,
+                                                cursor: 'pointer',
+                                                transition: 'background 0.2s',
+                                                boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)'
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = '#1557b0'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = '#1a73e8'; }}
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        </div >
-                    </>
-                    , document.body)
-            }
+                            </div >
+                        </>
+                    )
+                }
+            </div>
         </div >
     );
 }

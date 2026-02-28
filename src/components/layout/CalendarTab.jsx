@@ -223,13 +223,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
     const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
     const [calendars, setCalendars] = useState([]);
     const [selectedCalendarIds, setSelectedCalendarIds] = useState(new Set());
-    const [showSplitView, setShowSplitView] = useState(view === 'day');
+    const [showSplitView, setShowSplitView] = useState(false);
 
-    // Auto-open split view when switching to Day view, close otherwise
+    // Auto-close split view when leaving Day view
     useEffect(() => {
-        if (view === 'day') {
-            setShowSplitView(true);
-        } else {
+        if (view !== 'day') {
             setShowSplitView(false);
         }
     }, [view]);

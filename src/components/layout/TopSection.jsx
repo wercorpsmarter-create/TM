@@ -969,8 +969,6 @@ export default function TopSection({
                     }}>Theme Color</div>
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                         {[
-                            '#3b82f6', // Blue
-                            '#ef4444', // Red
                             '#64748b', // Slate
                             '#ffffff', // System White
                         ].map(color => (

@@ -1041,10 +1041,13 @@ function App() {
                 justifyContent: 'center',
                 alignItems: 'center',
                 padding: '0.5rem 0 0.6rem 0',
-                flexShrink: 0,
                 gap: '0.5rem',
-                position: 'relative',
-                zIndex: 1000
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                zIndex: 1000,
+                pointerEvents: 'none'
             }}>
                 {/* Notch Pill Island */}
                 <div style={{
@@ -1059,7 +1062,8 @@ function App() {
                     WebkitBackdropFilter: 'blur(24px)',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
                     border: '1px solid rgba(255, 255, 255, 0.8)',
-                    margin: '4px 0'
+                    margin: '4px 0',
+                    pointerEvents: 'auto'
                 }}>
                     {[
                         { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
@@ -1118,7 +1122,7 @@ function App() {
 
                 {/* Calendar View Switcher - Only visible on Calendar Tab, on the far right */}
                 {activeTab === 'calendar' && (
-                    <div style={{ position: 'absolute', right: '3rem', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ position: 'absolute', right: '3rem', display: 'flex', alignItems: 'center', pointerEvents: 'auto' }}>
                         <div style={{ position: 'relative' }}>
                             <button
                                 onClick={(e) => {
@@ -1228,7 +1232,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '1rem 1.5rem 0.5rem 1.5rem',
+                        padding: '5rem 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'dashboard' ? '100%' : '0px',
                         overflow: activeTab === 'dashboard' ? 'auto' : 'hidden'
                     }}>
@@ -1272,7 +1276,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '1rem 1.5rem 0.5rem 16px',
+                        padding: '5rem 1.5rem 0.5rem 16px',
                         height: activeTab === 'calendar' ? '100%' : '0px',
                         overflow: activeTab === 'calendar' ? 'auto' : 'hidden'
                     }}>
@@ -1300,7 +1304,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '1rem 1.5rem 0.5rem 1.5rem',
+                        padding: '5rem 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'emails' ? '100%' : '0px',
                         overflow: activeTab === 'emails' ? 'auto' : 'hidden'
                     }}>
@@ -1319,7 +1323,7 @@ function App() {
                     <div style={{
                         width: '25%',
                         flexShrink: 0,
-                        padding: '1rem 1.5rem 0.5rem 1.5rem',
+                        padding: '5rem 1.5rem 0.5rem 1.5rem',
                         height: activeTab === 'notes' ? '100%' : '0px',
                         overflow: activeTab === 'notes' ? 'hidden' : 'hidden',
                         display: 'flex',

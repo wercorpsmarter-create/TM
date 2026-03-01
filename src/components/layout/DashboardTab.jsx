@@ -41,7 +41,7 @@ export default function DashboardTab({
     setMenuBarItems
 }) {
     return (
-        <div className="dashboard-tab" style={{ paddingBottom: '4rem' }}>
+        <div className="dashboard-tab" style={{ paddingBottom: '0.1rem', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
             <TopSection
                 tasks={tasks}
                 upcomingEvents={upcomingEvents}
@@ -69,24 +69,26 @@ export default function DashboardTab({
                 menuBarItems={menuBarItems}
                 setMenuBarItems={setMenuBarItems}
             />
-            <WeeklyBreakdown
-                tasks={tasks}
-                onAddTask={onAddTask}
-                onDeleteTask={onDeleteTask}
-                onToggleTask={onToggleTask}
-                onUpdateTask={onUpdateTask}
-                onMoveTask={onMoveTask}
-                onDragStart={onTaskDragStart}
-                onDragEnd={onTaskDragEnd}
-                onReorderTasks={onReorderTasks}
-                visibleDays={visibleDays}
-                currentWeekOffset={currentWeekOffset}
-                onNextWeek={onNextWeek}
-                onPrevWeek={onPrevWeek}
-                onOpenCalendarPopup={onOpenCalendarPopup}
-                isCustomizing={isCustomizing}
-                setVisibleDays={setVisibleDays}
-            />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <WeeklyBreakdown
+                    tasks={tasks}
+                    onAddTask={onAddTask}
+                    onDeleteTask={onDeleteTask}
+                    onToggleTask={onToggleTask}
+                    onUpdateTask={onUpdateTask}
+                    onMoveTask={onMoveTask}
+                    onDragStart={onTaskDragStart}
+                    onDragEnd={onTaskDragEnd}
+                    onReorderTasks={onReorderTasks}
+                    visibleDays={visibleDays}
+                    currentWeekOffset={currentWeekOffset}
+                    onNextWeek={onNextWeek}
+                    onPrevWeek={onPrevWeek}
+                    onOpenCalendarPopup={onOpenCalendarPopup}
+                    isCustomizing={isCustomizing}
+                    setVisibleDays={setVisibleDays}
+                />
+            </div>
         </div>
     );
 }

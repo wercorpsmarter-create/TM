@@ -1383,7 +1383,7 @@ function App() {
             <div ref={containerRef} style={{ overflowX: 'hidden', width: '100%', flex: 1, position: 'relative', minHeight: 0 }}>
                 <motion.div
                     className="tab-track"
-                    style={{ display: 'flex', width: '500%', height: '100%', touchAction: 'pan-y', alignItems: 'flex-start' }}
+                    style={{ display: 'flex', width: '500%', height: '100%', touchAction: 'pan-y', alignItems: 'stretch' }}
                     animate={{
                         x: `-${menuBarOrder.indexOf(activeTab) * 20}%`
                     }}
@@ -1396,13 +1396,13 @@ function App() {
                             <div key={orderedTabId} className={`tab-outer-wrapper ${outerScroll ? 'outer-scroll' : ''}`} style={{
                                 width: '20%',
                                 flexShrink: 0,
-                                padding: customPadding || '6.5rem 0.75rem 0.75rem 0.75rem',
-                                height: outerScroll ? 'auto' : '100%',
-                                minHeight: outerScroll ? '100vh' : 'auto',
+                                padding: customPadding || '7rem 2.5rem 1.5rem 2.5rem',
+                                height: '100%',
+                                minHeight: 'auto',
                                 display: 'flex',
                                 justifyContent: 'center',
                                 overflowX: 'hidden',
-                                overflowY: outerScroll ? 'visible' : 'hidden'
+                                overflowY: 'hidden'
                             }}>
                                 <div
                                     className={`glass-card ${rootTab ? 'root-tab' : ''}`}
@@ -1410,6 +1410,7 @@ function App() {
                                         maxWidth: maxWidth,
                                         width: '100%',
                                         height: outerScroll ? 'auto' : '100%',
+                                        minHeight: outerScroll ? 'auto' : 'calc(100vh - 8.5rem)',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         borderRadius: '32px',
@@ -1466,7 +1467,7 @@ function App() {
                                 onOpenCalendarPopup={handleOpenCalendarPopup}
                                 isCustomizing={isCustomizing}
                                 setIsCustomizing={setIsCustomizing}
-                            />, '100%', false, '6.5rem 0.75rem 12rem 0.75rem', '1.25rem', true, true // Dashboard: centered, outer scroll, root wrapper card, increased gutter
+                            />, '100%', true, null, '1.25rem', true, false
                         );
                         if (orderedTabId === 'calendar') return renderTabWrapper(
                             isActive && (
@@ -1488,7 +1489,7 @@ function App() {
                                     view={calendarView}
                                     setView={setCalendarView}
                                 />
-                            ), '100%', false, null, '0' // Calendar handles its own scroll, no internal padding
+                            ), '100%', false, null, '0', false, false
                         );
                         if (orderedTabId === 'emails') return renderTabWrapper(
                             <EmailTab
@@ -1498,13 +1499,13 @@ function App() {
                                 onAddTask={addTask}
                                 tasks={tasks}
                                 upcomingEvents={upcomingEvents}
-                            />, '100%', true, null, '0.2rem'
+                            />, '100%', true, null, '0.2rem', false, false
                         );
                         if (orderedTabId === 'notes') return renderTabWrapper(
-                            <NotesTab />, '100%', false // Notes handles its own scroll
+                            <NotesTab />, '100%', false, null, '1.5rem', false, false
                         );
                         if (orderedTabId === 'timer') return renderTabWrapper(
-                            <TimerTab accentColor={accentColor} />, '480px', false, null, '2rem'
+                            <TimerTab accentColor={accentColor} />, '480px', false, null, '2rem', false, false
                         );
                         return null;
                     })}

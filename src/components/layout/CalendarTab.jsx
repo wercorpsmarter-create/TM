@@ -1190,34 +1190,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
                     <div style={{ padding: '0', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
                         {/* Small toggle button for task list at top-right (day view only) */}
-                        {view === 'day' && (
-                            <button
-                                onClick={() => setShowSplitView(prev => !prev)}
-                                style={{
-                                    position: 'absolute',
-                                    top: '20px',
-                                    right: '8px',
-                                    width: '22px',
-                                    height: '22px',
-                                    background: 'none',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: showSplitView ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.2)',
-                                    padding: 0,
-                                    zIndex: 5,
-                                    transition: 'color 0.2s, background 0.2s'
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,0,0,0.5)'; e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.color = showSplitView ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.2)'; e.currentTarget.style.background = 'none'; }}
-                                title={showSplitView ? 'Hide task list' : 'Show task list'}
-                            >
-                                <AlignLeft size={14} />
-                            </button>
-                        )}
+                        {/* Removed task list toggle icon button at top right */}
 
                         {view === 'month' && (
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: fadingIn ? 0 : 1, transition: 'opacity 0.25s ease' }}>
@@ -1386,7 +1359,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             onMouseUp={handleDragEnd}
                                             onMouseLeave={handleDragEnd}
                                         >
-                                            <div style={{ position: 'absolute', inset: 0, left: '46px', pointerEvents: 'none', zIndex: 0 }}>
+                                            <div style={{ position: 'absolute', inset: 0, left: '66px', pointerEvents: 'none', zIndex: 0 }}>
                                                 {Array.from({ length: 24 }).map((_, i) => (
                                                     <div key={i} style={{
                                                         height: '60px',
@@ -1398,7 +1371,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             </div>
 
                                             <div style={{
-                                                width: '40px',
+                                                width: '60px',
                                                 flexShrink: 0,
                                                 marginRight: '6px',
                                                 zIndex: 1,
@@ -1432,7 +1405,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     <div style={{
                                                         position: 'absolute',
                                                         top: `${topOffset}px`,
-                                                        left: '46px',
+                                                        left: '66px',
                                                         right: 0,
                                                         height: '2px',
                                                         backgroundColor: 'red',
@@ -1630,7 +1603,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             onMouseUp={handleDragEnd}
                                             onMouseLeave={handleDragEnd}
                                         >
-                                            <div style={{ position: 'absolute', inset: 0, left: '46px', pointerEvents: 'none', zIndex: 0 }}>
+                                            <div style={{ position: 'absolute', inset: 0, left: '66px', pointerEvents: 'none', zIndex: 0 }}>
                                                 {Array.from({ length: 24 }).map((_, i) => (
                                                     <div key={i} style={{
                                                         height: '60px',
@@ -1642,7 +1615,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             </div>
 
                                             <div style={{
-                                                width: '40px',
+                                                width: '60px',
                                                 flexShrink: 0,
                                                 marginRight: '6px',
                                                 zIndex: 1,
@@ -1676,7 +1649,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     <div style={{
                                                         position: 'absolute',
                                                         top: `${topOffset}px`,
-                                                        left: '46px',
+                                                        left: '66px',
                                                         right: 0,
                                                         height: '2px',
                                                         backgroundColor: 'red',

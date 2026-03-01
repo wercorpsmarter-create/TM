@@ -349,7 +349,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
     return (
         <div className="day-column">
             <div className="day-title">{dayName} <span style={{ opacity: 0.5, fontSize: '0.7em', display: 'block' }}>{displayDate}</span></div>
-            <div className="glass-card" style={{ padding: '1rem', height: 'fit-content', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+            <div className="glass-card" style={{ padding: '1rem', height: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
 
                 {/* Daily Progress Donut */}
                 <div className="donut-container" style={{ height: '100px', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -520,7 +520,7 @@ export default function WeeklyBreakdown({
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', marginTop: '0.5rem', flex: 1 }}>
             <style>{taskAnimationStyles}</style>
             <DndContext
                 sensors={sensors}
@@ -582,7 +582,7 @@ export default function WeeklyBreakdown({
                     )}
                 </div>
 
-                <div className="weekly-breakdown" style={{ overflowX: 'visible', width: 'max-content', minWidth: '100%', padding: '1rem', alignItems: 'flex-start' }}>
+                <div className="weekly-breakdown" style={{ overflowX: 'visible', width: 'max-content', minWidth: '100%', padding: '1rem', alignItems: 'stretch', flex: 1 }}>
                     {DAYS.filter(day => visibleDays.includes(day)).map((day, index) => (
                         <DayColumn
                             key={`${day}-${currentWeekOffset}`}

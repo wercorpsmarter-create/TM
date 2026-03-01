@@ -243,12 +243,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
     const [selectedCalendarIds, setSelectedCalendarIds] = useState(new Set());
     const [showSplitView, setShowSplitView] = useState(false);
 
-    // Auto-close split view when leaving Day view
-    useEffect(() => {
-        if (view !== 'day') {
-            setShowSplitView(false);
-        }
-    }, [view]);
+    // Auto-close removed as per user request for persistent side pane
+
 
 
 
@@ -1047,7 +1043,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         </div>
                     </div>
                 )}
-                <div style={{ padding: '0', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
+                <div style={{ padding: '0', flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minHeight: 0, position: 'relative' }}>
 
                     {/* Floating Month Navigator / Sidebar Trigger (The "March 1" thing) */}
                     {!showSidebar && (
@@ -1829,293 +1825,292 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         )}
                     </div>
 
-                    {view === 'day' && (
-                        <div style={{ opacity: fadingIn ? 0 : 1, transition: 'opacity 0.2s ease', display: 'flex' }}>
-                            {/* Subtle toggle button for task list */}
-                            {!showSplitView && (
-                                <button
-                                    onClick={() => setShowSplitView(true)}
-                                    style={{
-                                        position: 'absolute',
-                                        right: '0',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        width: '14px',
-                                        height: '44px',
-                                        background: 'rgba(0,0,0,0.04)',
-                                        border: 'none',
-                                        borderRadius: '4px 0 0 4px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'rgba(0,0,0,0.25)',
-                                        padding: 0,
-                                        zIndex: 10,
-                                        transition: 'background 0.2s'
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
-                                    title="Show task list"
-                                >
-                                    <ChevronLeft size={10} />
-                                </button>
-                            )}
-                            {showSplitView && (
-                                <div className="glass-card static"
-                                    onMouseEnter={(e) => {
-                                        const btn = e.currentTarget.querySelector('.edit-mode-trigger');
-                                        if (btn && !isEditingTasks) btn.style.opacity = '1';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        const btn = e.currentTarget.querySelector('.edit-mode-trigger');
-                                        if (btn && !isEditingTasks) btn.style.opacity = '0';
-                                    }}
-                                    style={{ position: 'relative', width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
-                                    <div style={{ padding: '0 0 0.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <button
-                                                onClick={() => setShowSplitView(false)}
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    color: 'rgba(0,0,0,0.25)',
-                                                    padding: '4px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    borderRadius: '4px',
-                                                    transition: 'color 0.2s'
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.color = 'rgba(0,0,0,0.5)'}
-                                                onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,0,0,0.25)'}
-                                                title="Hide task list"
-                                            >
-                                                <ChevronRight size={14} />
-                                            </button>
-                                            <div>
-                                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-main)' }}>Task List</h3>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.5rem' }}>
-                                                    {currentDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
-                                                </div>
-                                            </div>
-                                        </div>
+                    <div style={{ opacity: fadingIn ? 0 : 1, transition: 'opacity 0.2s ease', display: 'flex', height: '100%' }}>
+
+                        {/* Subtle toggle button for task list */}
+                        {!showSplitView && (
+                            <button
+                                onClick={() => setShowSplitView(true)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '0',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    width: '14px',
+                                    height: '44px',
+                                    background: 'rgba(0,0,0,0.04)',
+                                    border: 'none',
+                                    borderRadius: '4px 0 0 4px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'rgba(0,0,0,0.25)',
+                                    padding: 0,
+                                    zIndex: 10,
+                                    transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
+                                title="Show task list"
+                            >
+                                <ChevronLeft size={10} />
+                            </button>
+                        )}
+                        {showSplitView && (
+                            <div className="glass-card static"
+                                onMouseEnter={(e) => {
+                                    const btn = e.currentTarget.querySelector('.edit-mode-trigger');
+                                    if (btn && !isEditingTasks) btn.style.opacity = '1';
+                                }}
+                                onMouseLeave={(e) => {
+                                    const btn = e.currentTarget.querySelector('.edit-mode-trigger');
+                                    if (btn && !isEditingTasks) btn.style.opacity = '0';
+                                }}
+                                style={{ position: 'relative', width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+                                <div style={{ padding: '0 0 0.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <button
-                                            className="edit-mode-trigger"
-                                            onClick={() => setIsEditingTasks(!isEditingTasks)}
+                                            onClick={() => setShowSplitView(false)}
                                             style={{
-                                                width: '32px',
-                                                height: '32px',
-                                                borderRadius: '50%',
-                                                backgroundColor: 'white',
-                                                border: '1px solid rgba(0,0,0,0.05)',
-                                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: 'rgba(0,0,0,0.25)',
+                                                padding: '4px',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
-                                                cursor: 'pointer',
-                                                color: 'var(--text-muted)',
-                                                transition: 'all 0.2s',
-                                                marginTop: '2px',
-                                                opacity: isEditingTasks ? 1 : 0
+                                                borderRadius: '4px',
+                                                transition: 'color 0.2s'
                                             }}
+                                            onMouseEnter={e => e.currentTarget.style.color = 'rgba(0,0,0,0.5)'}
+                                            onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,0,0,0.25)'}
+                                            title="Hide task list"
                                         >
-                                            {isEditingTasks ? <Check size={14} color="#10b981" strokeWidth={3} /> : <Pencil size={14} />}
+                                            <ChevronRight size={14} />
                                         </button>
-                                    </div>
-                                    <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 0' }}>
-                                        {tasks.filter(t => {
-                                            const year = currentDate.getFullYear();
-                                            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                                            const day = String(currentDate.getDate()).padStart(2, '0');
-                                            const isoDate = `${year}-${month}-${day}`;
-                                            return t.date === isoDate;
-                                        }).map(task => {
-                                            const taskColor = task.metadata?.color;
-                                            return (
-                                                <div key={task.id}
-                                                    onClick={(e) => handleEventClick(e, { ...task, type: 'task' }, currentDate)}
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.75rem',
-                                                        padding: '0.4rem 0.75rem',
-                                                        backgroundColor: taskColor ? `${taskColor}4d` : 'white',
-                                                        borderRadius: '8px',
-                                                        marginBottom: '0.5rem',
-                                                        border: taskColor ? `1px solid ${taskColor}66` : '1px solid rgba(0,0,0,0.05)',
-                                                        borderLeft: taskColor ? `4px solid ${taskColor}` : undefined,
-                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                                                        cursor: 'pointer'
-                                                    }}>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(task.id); }}
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
-                                                    >
-                                                        {task.status === 'Completed' ? <CheckCircle size={18} color="var(--primary)" fill="var(--primary)" fillOpacity={0.2} /> : <Circle size={18} color="var(--text-muted)" />}
-                                                    </button>
-                                                    <span style={{
-                                                        flex: 1,
-                                                        fontSize: '0.9rem',
-                                                        color: task.status === 'Completed' ? 'var(--text-muted)' : 'var(--text-main)',
-                                                        textDecoration: task.status === 'Completed' ? 'line-through' : 'none'
-                                                    }}>
-                                                        {task.text}
-                                                    </span>
-                                                    {isEditingTasks && (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); onDeleteTask && onDeleteTask(task.id); }}
-                                                            style={{
-                                                                background: 'none',
-                                                                border: 'none',
-                                                                cursor: 'pointer',
-                                                                padding: '4px',
-                                                                opacity: 0.8,
-                                                                transition: 'opacity 0.2s',
-                                                            }}
-                                                            onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                                                            onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
-                                                        >
-                                                            <Trash2 size={16} color="#ef4444" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                        {tasks.filter(t => {
-                                            const year = currentDate.getFullYear();
-                                            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                                            const day = String(currentDate.getDate()).padStart(2, '0');
-                                            const isoDate = `${year}-${month}-${day}`;
-                                            return t.date === isoDate;
-                                        }).length === 0 && (
-                                                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                                    No tasks for this day.
-                                                </div>
-                                            )}
-                                    </div>
-                                    {isEditingTasks && (
-                                        <div style={{ padding: '0.25rem 0', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <form
-                                                onSubmit={(e) => {
-                                                    e.preventDefault();
-                                                    if (!newTaskText.trim()) return;
-                                                    const year = currentDate.getFullYear();
-                                                    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                                                    const day = String(currentDate.getDate()).padStart(2, '0');
-                                                    const isoDate = `${year}-${month}-${day}`;
-                                                    onAddTask(isoDate, newTaskText, false, null, 30, '', '', [], false, { color: newTaskColor });
-                                                    setNewTaskText('');
-                                                    setNewTaskColor('#3b82f6'); // Reset to default
-                                                    setShowTaskColorPicker(false);
-                                                }}
-                                                style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}
-                                            >
-                                                <div style={{ position: 'relative' }}>
-                                                    <button
-                                                        type="button" // Placeholder to remove the old button logic block so I can replace the whole container structure cleanly
-                                                        style={{ display: 'none' }}
-                                                    ></button>
-
-                                                    {showTaskColorPicker && (
-                                                        <div style={{
-                                                            position: 'absolute',
-                                                            bottom: '100%',
-                                                            left: 0,
-                                                            marginBottom: '0.5rem',
-                                                            background: 'white',
-                                                            padding: '0.5rem',
-                                                            borderRadius: '12px',
-                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                                            display: 'flex',
-                                                            gap: '0.5rem',
-                                                            zIndex: 20,
-                                                            border: '1px solid rgba(0,0,0,0.05)'
-                                                        }}>
-                                                            {['#3b82f6', '#ef4444', '#64748b', '#ffffff', '#06b6d4', '#10b981'].map(c => (
-                                                                <button
-                                                                    key={c}
-                                                                    type="button"
-                                                                    onClick={() => { setNewTaskColor(c); setShowTaskColorPicker(false); }}
-                                                                    style={{
-                                                                        width: '24px',
-                                                                        height: '24px',
-                                                                        borderRadius: '50%',
-                                                                        background: c,
-                                                                        border: c === '#ffffff' ? '1px solid #e2e8f0' : 'none',
-                                                                        cursor: 'pointer',
-                                                                        outline: newTaskColor === c ? '2px solid var(--text-main)' : 'none',
-                                                                        outlineOffset: '2px'
-                                                                    }}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    )}
-
-                                                    <div style={{
-                                                        flex: 1,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        padding: '0.5rem 0.75rem',
-                                                        borderRadius: '8px',
-                                                        border: '1px solid rgba(0,0,0,0.1)',
-                                                        background: 'white',
-                                                        gap: '0.5rem'
-                                                    }}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowTaskColorPicker(!showTaskColorPicker)}
-                                                            style={{
-                                                                width: '12px',
-                                                                height: '12px',
-                                                                borderRadius: '50%',
-                                                                background: newTaskColor,
-                                                                border: newTaskColor === '#ffffff' ? '1px solid #e2e8f0' : 'none',
-                                                                cursor: 'pointer',
-                                                                padding: 0,
-                                                                flexShrink: 0
-                                                            }}
-                                                        />
-                                                        <input
-                                                            value={newTaskText}
-                                                            onChange={e => setNewTaskText(e.target.value)}
-                                                            placeholder="Add a task..."
-                                                            style={{
-                                                                flex: 1,
-                                                                border: 'none',
-                                                                outline: 'none',
-                                                                fontSize: '0.9rem',
-                                                                background: 'transparent',
-                                                                padding: 0
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    type="submit"
-                                                    style={{
-                                                        background: 'var(--primary)',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '8px',
-                                                        width: '36px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <Plus size={18} />
-                                                </button>
-                                            </form>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-main)' }}>Task List</h3>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.5rem' }}>
+                                                {currentDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                            </div>
                                         </div>
-                                    )}
-
-
+                                    </div>
+                                    <button
+                                        className="edit-mode-trigger"
+                                        onClick={() => setIsEditingTasks(!isEditingTasks)}
+                                        style={{
+                                            width: '32px',
+                                            height: '32px',
+                                            borderRadius: '50%',
+                                            backgroundColor: 'white',
+                                            border: '1px solid rgba(0,0,0,0.05)',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            color: 'var(--text-muted)',
+                                            transition: 'all 0.2s',
+                                            marginTop: '2px',
+                                            opacity: isEditingTasks ? 1 : 0
+                                        }}
+                                    >
+                                        {isEditingTasks ? <Check size={14} color="#10b981" strokeWidth={3} /> : <Pencil size={14} />}
+                                    </button>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 0' }}>
+                                    {tasks.filter(t => {
+                                        const year = currentDate.getFullYear();
+                                        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                        const day = String(currentDate.getDate()).padStart(2, '0');
+                                        const isoDate = `${year}-${month}-${day}`;
+                                        return t.date === isoDate;
+                                    }).map(task => {
+                                        const taskColor = task.metadata?.color;
+                                        return (
+                                            <div key={task.id}
+                                                onClick={(e) => handleEventClick(e, { ...task, type: 'task' }, currentDate)}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.75rem',
+                                                    padding: '0.4rem 0.75rem',
+                                                    backgroundColor: taskColor ? `${taskColor}4d` : 'white',
+                                                    borderRadius: '8px',
+                                                    marginBottom: '0.5rem',
+                                                    border: taskColor ? `1px solid ${taskColor}66` : '1px solid rgba(0,0,0,0.05)',
+                                                    borderLeft: taskColor ? `4px solid ${taskColor}` : undefined,
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                                    cursor: 'pointer'
+                                                }}>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(task.id); }}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+                                                >
+                                                    {task.status === 'Completed' ? <CheckCircle size={18} color="var(--primary)" fill="var(--primary)" fillOpacity={0.2} /> : <Circle size={18} color="var(--text-muted)" />}
+                                                </button>
+                                                <span style={{
+                                                    flex: 1,
+                                                    fontSize: '0.9rem',
+                                                    color: task.status === 'Completed' ? 'var(--text-muted)' : 'var(--text-main)',
+                                                    textDecoration: task.status === 'Completed' ? 'line-through' : 'none'
+                                                }}>
+                                                    {task.text}
+                                                </span>
+                                                {isEditingTasks && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onDeleteTask && onDeleteTask(task.id); }}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            padding: '4px',
+                                                            opacity: 0.8,
+                                                            transition: 'opacity 0.2s',
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                                                        onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+                                                    >
+                                                        <Trash2 size={16} color="#ef4444" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                    {tasks.filter(t => {
+                                        const year = currentDate.getFullYear();
+                                        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                        const day = String(currentDate.getDate()).padStart(2, '0');
+                                        const isoDate = `${year}-${month}-${day}`;
+                                        return t.date === isoDate;
+                                    }).length === 0 && (
+                                            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                                No tasks for this day.
+                                            </div>
+                                        )}
+                                </div>
+                                {isEditingTasks && (
+                                    <div style={{ padding: '0.25rem 0', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                                        <form
+                                            onSubmit={(e) => {
+                                                e.preventDefault();
+                                                if (!newTaskText.trim()) return;
+                                                const year = currentDate.getFullYear();
+                                                const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                                                const day = String(currentDate.getDate()).padStart(2, '0');
+                                                const isoDate = `${year}-${month}-${day}`;
+                                                onAddTask(isoDate, newTaskText, false, null, 30, '', '', [], false, { color: newTaskColor });
+                                                setNewTaskText('');
+                                                setNewTaskColor('#3b82f6'); // Reset to default
+                                                setShowTaskColorPicker(false);
+                                            }}
+                                            style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}
+                                        >
+                                            <div style={{ position: 'relative' }}>
+                                                <button
+                                                    type="button" // Placeholder to remove the old button logic block so I can replace the whole container structure cleanly
+                                                    style={{ display: 'none' }}
+                                                ></button>
+
+                                                {showTaskColorPicker && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        bottom: '100%',
+                                                        left: 0,
+                                                        marginBottom: '0.5rem',
+                                                        background: 'white',
+                                                        padding: '0.5rem',
+                                                        borderRadius: '12px',
+                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                        display: 'flex',
+                                                        gap: '0.5rem',
+                                                        zIndex: 20,
+                                                        border: '1px solid rgba(0,0,0,0.05)'
+                                                    }}>
+                                                        {['#3b82f6', '#ef4444', '#64748b', '#ffffff', '#06b6d4', '#10b981'].map(c => (
+                                                            <button
+                                                                key={c}
+                                                                type="button"
+                                                                onClick={() => { setNewTaskColor(c); setShowTaskColorPicker(false); }}
+                                                                style={{
+                                                                    width: '24px',
+                                                                    height: '24px',
+                                                                    borderRadius: '50%',
+                                                                    background: c,
+                                                                    border: c === '#ffffff' ? '1px solid #e2e8f0' : 'none',
+                                                                    cursor: 'pointer',
+                                                                    outline: newTaskColor === c ? '2px solid var(--text-main)' : 'none',
+                                                                    outlineOffset: '2px'
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div style={{
+                                                    flex: 1,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    padding: '0.5rem 0.75rem',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid rgba(0,0,0,0.1)',
+                                                    background: 'white',
+                                                    gap: '0.5rem'
+                                                }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowTaskColorPicker(!showTaskColorPicker)}
+                                                        style={{
+                                                            width: '12px',
+                                                            height: '12px',
+                                                            borderRadius: '50%',
+                                                            background: newTaskColor,
+                                                            border: newTaskColor === '#ffffff' ? '1px solid #e2e8f0' : 'none',
+                                                            cursor: 'pointer',
+                                                            padding: 0,
+                                                            flexShrink: 0
+                                                        }}
+                                                    />
+                                                    <input
+                                                        value={newTaskText}
+                                                        onChange={e => setNewTaskText(e.target.value)}
+                                                        placeholder="Add a task..."
+                                                        style={{
+                                                            flex: 1,
+                                                            border: 'none',
+                                                            outline: 'none',
+                                                            fontSize: '0.9rem',
+                                                            background: 'transparent',
+                                                            padding: 0
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                style={{
+                                                    background: 'var(--primary)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    width: '36px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Plus size={18} />
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
+
+
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Google Calendar Style Modal */}
@@ -2475,6 +2470,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                     )
                 }
             </div>
-        </div >
+        </div>
     );
 }
+

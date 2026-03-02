@@ -86,6 +86,15 @@ const syncLocalDataToSupabase = async (userId) => {
             if (error) console.error('[Migration] Monthly Goal error:', error);
         }
 
+        // 5. Weather Settings
+        const localWeather = localStorage.getItem('weather_coords');
+        if (localWeather) {
+            const { error } = await supabase.from('users').update({
+                metadata: { ...((await supabase.from('users').select('metadata').eq('id', userId).single()).data?.metadata || {}), weather_coords: JSON.parse(localWeather) }
+            }).eq('id', userId);
+            if (error) console.error('[Migration] Weather error:', error);
+        }
+
         // Mark as migrated so we don't overwrite DB next time
         localStorage.setItem(migrationKey, 'true');
         console.log('[Migration] Complete!');
@@ -139,7 +148,7 @@ export const api = {
                 name,
                 google_id: googleId,
                 subscription_status: subscriptionStatus,
-                // updated_at: new Date() // handled by trigger usually
+                metadata: { weather_coords: JSON.parse(localStorage.getItem('weather_coords')) }
             };
 
             const { data, error } = await supabase

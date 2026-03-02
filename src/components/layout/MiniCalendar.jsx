@@ -106,14 +106,7 @@ export default function MiniCalendar({ currentMainDate, onDateSelect }) {
                                 fontWeight: today || selected ? 700 : 400,
                                 position: 'relative'
                             }}
-                            className="mini-cal-day"
-                            onMouseEnter={(e) => {
-                                if (!selected) e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!selected) e.currentTarget.style.backgroundColor = 'transparent';
-                                if (selected) e.currentTarget.style.backgroundColor = 'var(--primary)';
-                            }}
+                            className={`mini-cal-day ${selected ? 'selected' : ''}`}
                         >
                             {dayObj.day}
                             {today && !selected && (

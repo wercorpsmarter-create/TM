@@ -1138,7 +1138,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                                                 alignItems: 'center',
                                                                 gap: '0.75rem',
                                                                 cursor: 'pointer',
-                                                                background: 'white',
+                                                                background: 'var(--card-bg-solid)',
                                                                 transition: 'all 0.2s',
                                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                                                             }}
@@ -1153,8 +1153,9 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                                         >
                                                             <div style={{
                                                                 width: '32px', height: '32px',
-                                                                background: '#F3F4F6',
-                                                                borderRadius: '6px',
+                                                                background: 'var(--card-bg-solid)',
+                                                                borderRadius: '50%',
+                                                                border: '1px solid var(--border-light)',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                 color: '#6B7280', flexShrink: 0
                                                             }}>
@@ -1203,7 +1204,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                             padding: '0.5rem 1.5rem',
                                             borderRadius: '100px',
                                             border: '1px solid #dadce0',
-                                            background: 'white',
+                                            background: 'var(--card-bg-solid)',
                                             color: '#3c4043',
                                             fontSize: '0.875rem',
                                             fontWeight: 500,
@@ -1300,7 +1301,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                                     padding: '0.6rem',
                                                     borderRadius: '10px',
                                                     border: '1px solid #E2E8F0',
-                                                    background: 'white',
+                                                    background: 'var(--card-bg-solid)',
                                                     color: '#334155',
                                                     fontSize: '0.85rem',
                                                     fontWeight: 500,
@@ -1323,7 +1324,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                                     padding: '0.6rem',
                                                     borderRadius: '10px',
                                                     border: '1px solid #E2E8F0',
-                                                    background: 'white',
+                                                    background: 'var(--card-bg-solid)',
                                                     color: '#334155',
                                                     fontSize: '0.85rem',
                                                     fontWeight: 500,
@@ -1437,7 +1438,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                                                 padding: '0.6rem',
                                                 borderRadius: '10px',
                                                 border: '1px solid #E2E8F0',
-                                                background: 'white',
+                                                background: 'var(--card-bg-solid)',
                                                 color: '#334155',
                                                 fontSize: '0.85rem',
                                                 outline: 'none',
@@ -1698,7 +1699,7 @@ export default function EmailTab({ user, onRefresh, onAddTask, tasks = [], upcom
                         />
 
                         {/* Footer Toolbar */}
-                        <div style={{ padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white' }}>
+                        <div style={{ padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--input-bg)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <button
                                     disabled={isSending || !composeTo.trim() || !composeSubject.trim()}

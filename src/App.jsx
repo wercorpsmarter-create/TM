@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Timer } from 'lucide-react';
+import { Calendar as CalendarIcon, LayoutDashboard, Mail, Download, RefreshCcw, LogOut, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Timer, CloudSun, Search, Bot } from 'lucide-react';
 import {
     DndContext,
     closestCenter,
@@ -23,6 +23,8 @@ import CalendarTab from './components/layout/CalendarTab';
 import EmailTab from './components/layout/EmailTab';
 import NotesTab from './components/layout/NotesTab';
 import TimerTab from './components/layout/TimerTab';
+import WeatherTab from './components/layout/WeatherTab';
+import AutomationTab from './components/layout/AutomationTab';
 
 import LoginScreen from './components/auth/LoginScreen';
 import SubscriptionPaywall from './components/auth/SubscriptionPaywall';
@@ -123,9 +125,9 @@ function App() {
     const [monthlyGoals, setMonthlyGoals] = useState([]);
     const [dashboardLayout, setDashboardLayout] = useState(['goals', 'activity']);
     const [visibleDays, setVisibleDays] = useLocalStorage('prohub-visible-days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
-    const [accentColor, setAccentColor] = useLocalStorage('prohub-accent-color', '#3b82f6');
-    const [menuBarItems, setMenuBarItems] = useLocalStorage('prohub-menubar-items', ['dashboard', 'calendar', 'emails', 'notes', 'timer']);
-    const [menuBarOrder, setMenuBarOrder] = useLocalStorage('prohub-menubar-order', ['dashboard', 'calendar', 'emails', 'notes', 'timer']);
+    const [accentColor, setAccentColor] = useLocalStorage('prohub-accent-color', '#ffffff');
+    const [menuBarItems, setMenuBarItems] = useLocalStorage('prohub-menubar-items', ['dashboard', 'calendar', 'emails', 'notes', 'timer', 'weather', 'automation']);
+    const [menuBarOrder, setMenuBarOrder] = useLocalStorage('prohub-menubar-order', ['dashboard', 'calendar', 'emails', 'notes', 'timer', 'weather', 'automation']);
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [googleUser, setGoogleUser] = useLocalStorage('prohub-google-user-v2', null);
     const [linkedAccounts, setLinkedAccounts] = useLocalStorage('prohub-linked-accounts-v1', []);
@@ -133,10 +135,64 @@ function App() {
     const [calendarView, setCalendarView] = useState(() => localStorage.getItem('calendar_view') || 'month');
     const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false);
 
+    // Global Weather State for cross-tab sharing
+    const [globalWeatherData, setGlobalWeatherData] = useState(null);
+    const [weatherSettings, setWeatherSettings] = useLocalStorage('prohub-weather-settings', { showInCalendar: false, showInTasks: false });
+
+    // Fetch Global Weather Data automatically based on settings
+    useEffect(() => {
+        const fetchGlobalWeather = async () => {
+            const saved = localStorage.getItem('weather_coords');
+            if (saved && (weatherSettings.showInCalendar || weatherSettings.showInTasks)) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${parsed.lat}&longitude=${parsed.lon}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`);
+                    const data = await res.json();
+                    if (data.daily) {
+                        setGlobalWeatherData(data.daily);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch global weather", e);
+                }
+            }
+        };
+        fetchGlobalWeather();
+    }, [weatherSettings.showInCalendar, weatherSettings.showInTasks]);
+
     // Save calendar view to localStorage
     useEffect(() => {
         localStorage.setItem('calendar_view', calendarView);
     }, [calendarView]);
+
+    // Migration to ensure weather and automation tabs are included for existing users
+    useEffect(() => {
+        if (menuBarItems) {
+            let updatedItems = [...menuBarItems];
+            let changed = false;
+            if (!updatedItems.includes('weather')) {
+                updatedItems.push('weather');
+                changed = true;
+            }
+            if (!updatedItems.includes('automation')) {
+                updatedItems.push('automation');
+                changed = true;
+            }
+            if (changed) setMenuBarItems(updatedItems);
+        }
+        if (menuBarOrder) {
+            let updatedOrder = [...menuBarOrder];
+            let changed = false;
+            if (!updatedOrder.includes('weather')) {
+                updatedOrder.push('weather');
+                changed = true;
+            }
+            if (!updatedOrder.includes('automation')) {
+                updatedOrder.push('automation');
+                changed = true;
+            }
+            if (changed) setMenuBarOrder(updatedOrder);
+        }
+    }, [menuBarItems, menuBarOrder, setMenuBarItems, setMenuBarOrder]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -149,7 +205,9 @@ function App() {
 
     // Apply accent color globally
     useEffect(() => {
-        const appliedColor = accentColor === '#ffffff' ? '#0f172a' : accentColor;
+        const isDark = accentColor === '#18181b';
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        const appliedColor = (accentColor === '#ffffff' || accentColor === '#18181b') ? (isDark ? '#f1f5f9' : '#0f172a') : accentColor;
         document.documentElement.style.setProperty('--primary', appliedColor);
     }, [accentColor]);
     const [subscriptionStatus, setSubscriptionStatus] = useState(() => {
@@ -362,8 +420,12 @@ function App() {
             }
 
             setUserId(user.id);
-            // Only set from user if we didn't just forced it to trialing
             setSubscriptionStatus(user.subscription_status || 'none');
+
+            // Restore user settings from metadata
+            if (user.metadata?.weather_coords) {
+                localStorage.setItem('weather_coords', JSON.stringify(user.metadata.weather_coords));
+            }
 
             // Load all user data
             const [tasksData, habitsData, goalsData, monthlyGoalsData, layoutData] = await Promise.all([
@@ -1148,11 +1210,11 @@ function App() {
                     padding: '2px 14px',
                     borderRadius: '100px',
                     position: 'relative',
-                    background: 'rgba(255, 255, 255, 0.3)',
+                    background: 'var(--glass-bg)',
                     backdropFilter: 'blur(24px)',
                     WebkitBackdropFilter: 'blur(24px)',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.8)',
+                    border: '1px solid var(--glass-border)',
                     margin: '2px 0',
                     pointerEvents: 'auto'
                 }}>
@@ -1161,7 +1223,9 @@ function App() {
                         { key: 'calendar', label: 'Calendar', icon: <CalendarIcon size={18} /> },
                         { key: 'emails', label: 'Emails', icon: <Mail size={18} /> },
                         { key: 'notes', label: 'Notes', icon: <FileText size={18} /> },
-                        { key: 'timer', label: 'Timer', icon: <Timer size={18} /> }
+                        { key: 'timer', label: 'Timer', icon: <Timer size={18} /> },
+                        { key: 'weather', label: 'Weather', icon: <CloudSun size={18} /> },
+                        { key: 'automation', label: 'Automation', icon: <Bot size={18} /> }
                     ]
                         .filter(tab => menuBarItems?.includes(tab.key))
                         .sort((a, b) => menuBarOrder.indexOf(a.key) - menuBarOrder.indexOf(b.key))
@@ -1179,27 +1243,27 @@ function App() {
                                         height: isActive ? '40px' : '30px',
                                         borderRadius: '50%',
                                         border: isActive ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid transparent',
-                                        background: isActive ? 'rgba(255, 255, 255, 0.6)' : 'transparent',
+                                        background: isActive ? 'var(--glass-bg)' : 'transparent',
                                         backdropFilter: isActive ? 'blur(20px)' : 'none',
                                         WebkitBackdropFilter: isActive ? 'blur(20px)' : 'none',
-                                        color: isActive ? 'var(--text-main)' : 'rgba(0, 0, 0, 0.2)',
+                                        color: isActive ? 'var(--text-main)' : 'var(--text-muted)',
                                         opacity: isActive ? 1 : 0.6,
                                         cursor: 'pointer',
                                         transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                                        boxShadow: isActive ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)' : 'none',
+                                        boxShadow: isActive ? '0 8px 20px rgba(0,0,0,0.06), inset 0 1px 0 var(--border-light)' : 'none',
                                         position: 'relative',
                                         zIndex: isActive ? 2 : 1,
                                     }}
                                     onMouseEnter={e => {
                                         if (!isActive) {
-                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                            e.currentTarget.style.background = 'var(--input-bg)';
                                             e.currentTarget.style.color = 'var(--text-main)';
                                         }
                                     }}
                                     onMouseLeave={e => {
                                         if (!isActive) {
                                             e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                                            e.currentTarget.style.color = 'var(--text-muted)';
                                         }
                                     }}
                                     title={tab.label}
@@ -1217,13 +1281,13 @@ function App() {
                         gap: '0.5rem',
                         flexWrap: 'wrap',
                         pointerEvents: 'auto',
-                        background: 'rgba(255, 255, 255, 0.65)',
+                        background: 'var(--glass-bg)',
                         backdropFilter: 'blur(24px)',
                         WebkitBackdropFilter: 'blur(24px)',
                         padding: '0.5rem 1rem',
                         borderRadius: '24px',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.8)'
+                        border: '1px solid var(--glass-border)'
                     }}>
                         <div style={{
                             display: 'flex',
@@ -1251,7 +1315,9 @@ function App() {
                                             { id: 'calendar', label: 'Calendar', icon: <CalendarIcon size={14} /> },
                                             { id: 'emails', label: 'Emails', icon: <Mail size={14} /> },
                                             { id: 'notes', label: 'Notes', icon: <FileText size={14} /> },
-                                            { id: 'timer', label: 'Timer', icon: <Timer size={14} /> }
+                                            { id: 'timer', label: 'Timer', icon: <Timer size={14} /> },
+                                            { id: 'weather', label: 'Weather', icon: <CloudSun size={14} /> },
+                                            { id: 'automation', label: 'Automation', icon: <Bot size={14} /> }
                                         ].find(t => t.id === tabId);
 
                                         const isVisible = menuBarItems.includes(tabId);
@@ -1414,10 +1480,10 @@ function App() {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         borderRadius: '32px',
-                                        background: 'rgba(255, 255, 255, 0.45)',
+                                        background: 'var(--glass-bg)',
                                         backdropFilter: 'blur(30px) saturate(180%)',
                                         boxShadow: '0 40px 100px -20px rgba(0,0,0,0.1)',
-                                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                                        border: '1px solid var(--glass-border)',
                                         overflow: outerScroll ? 'visible' : (scrollable ? 'auto' : 'hidden'),
                                         position: 'relative',
                                         padding: internalPadding
@@ -1467,6 +1533,8 @@ function App() {
                                 onOpenCalendarPopup={handleOpenCalendarPopup}
                                 isCustomizing={isCustomizing}
                                 setIsCustomizing={setIsCustomizing}
+                                globalWeatherData={globalWeatherData}
+                                weatherSettings={weatherSettings}
                             />, '100%', true, null, '1.25rem', true, false
                         );
                         if (orderedTabId === 'calendar') return renderTabWrapper(
@@ -1488,6 +1556,8 @@ function App() {
                                     onUpdateTask={updateTask}
                                     view={calendarView}
                                     setView={setCalendarView}
+                                    globalWeatherData={globalWeatherData}
+                                    weatherSettings={weatherSettings}
                                 />
                             ), '100%', false, null, '0', false, false
                         );
@@ -1506,6 +1576,16 @@ function App() {
                         );
                         if (orderedTabId === 'timer') return renderTabWrapper(
                             <TimerTab accentColor={accentColor} />, '480px', false, null, '2rem', false, false
+                        );
+                        if (orderedTabId === 'weather') return renderTabWrapper(
+                            <WeatherTab
+                                weatherSettings={weatherSettings}
+                                setWeatherSettings={setWeatherSettings}
+                                setGlobalWeatherData={setGlobalWeatherData}
+                            />, '740px', false, null, '1.5rem', false, false
+                        );
+                        if (orderedTabId === 'automation') return renderTabWrapper(
+                            <AutomationTab />, '740px', false, null, '1.5rem', false, false
                         );
                         return null;
                     })}

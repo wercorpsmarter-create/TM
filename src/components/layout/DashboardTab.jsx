@@ -38,7 +38,9 @@ export default function DashboardTab({
     isCustomizing,
     setIsCustomizing,
     menuBarItems,
-    setMenuBarItems
+    setMenuBarItems,
+    globalWeatherData,
+    weatherSettings
 }) {
     return (
         <div className="dashboard-tab" style={{ paddingBottom: '0.1rem', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -87,6 +89,8 @@ export default function DashboardTab({
                     onOpenCalendarPopup={onOpenCalendarPopup}
                     isCustomizing={isCustomizing}
                     setVisibleDays={setVisibleDays}
+                    globalWeatherData={globalWeatherData}
+                    weatherSettings={weatherSettings}
                 />
             </div>
         </div>

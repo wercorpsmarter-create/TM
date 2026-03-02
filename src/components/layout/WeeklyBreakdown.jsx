@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 
 
 import { Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, Pencil, CheckCircle2, Video, ChevronLeft, ChevronRight, MoreHorizontal, X } from 'lucide-react';
+import { WEATHER_CODES, getWeatherForDate } from '../../utils/weatherIcons';
 import { DndContext, useDraggable, useDroppable, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -263,7 +264,7 @@ const SortableTask = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isEditin
     );
 };
 
-const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUpdateTask, onInteractionStart, onInteractionEnd, offset = 0, onOpenCalendarPopup }) => {
+const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUpdateTask, onInteractionStart, onInteractionEnd, offset = 0, onOpenCalendarPopup, globalWeatherData, weatherSettings }) => {
     const { setNodeRef } = useDroppable({
         id: dayName,
     });
@@ -307,6 +308,10 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
 
     const dayTasks = tasks.filter(t => t.date === columnDateStr);
 
+    const weatherCode = getWeatherForDate(globalWeatherData, columnDateStr);
+    const showWeather = weatherSettings?.showInTasks && weatherCode !== null && weatherCode !== undefined;
+
+
     const completed = dayTasks.filter(t => t.status === 'Completed').length;
     const total = dayTasks.length || 1;
     const progressData = useMemo(() => [
@@ -348,7 +353,16 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
 
     return (
         <div className="day-column">
-            <div className="day-title">{dayName} <span style={{ opacity: 0.5, fontSize: '0.7em', display: 'block' }}>{displayDate}</span></div>
+            <div className="day-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                    {dayName} <span style={{ opacity: 0.5, fontSize: '0.7em', display: 'block' }}>{displayDate}</span>
+                </div>
+                {showWeather && WEATHER_CODES[weatherCode] && (
+                    <div style={{ padding: '4px', background: 'var(--glass-bg)', borderRadius: '8px', display: 'flex', border: '1px solid var(--border-light)' }} title={WEATHER_CODES[weatherCode].label}>
+                        {React.cloneElement(WEATHER_CODES[weatherCode].icon || <div />, { size: 18 })}
+                    </div>
+                )}
+            </div>
             <div className="glass-card" style={{ padding: '1rem', height: '100%', display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
 
                 {/* Daily Progress Donut */}
@@ -440,7 +454,7 @@ const DayColumn = ({ dayName, tasks, onAddTask, onDeleteTask, onToggleTask, onUp
                     className="widget-edit-trigger"
                     onClick={() => setIsEditing(!isEditing)}
                 >
-                    {isEditing ? <CheckCircle2 size={18} color="#22c55e" /> : <Pencil size={14} />}
+                    {isEditing ? <CheckCircle2 size={18} color="var(--primary)" /> : <Pencil size={14} />}
                 </button>
             </div>
         </div >
@@ -464,7 +478,9 @@ export default function WeeklyBreakdown({
     onPrevWeek,
     onOpenCalendarPopup,
     isCustomizing,
-    setVisibleDays
+    setVisibleDays,
+    globalWeatherData,
+    weatherSettings
 }) {
     const [activeTask, setActiveTask] = useState(null);
 
@@ -596,6 +612,8 @@ export default function WeeklyBreakdown({
                             onInteractionEnd={onDragEnd}
                             offset={currentWeekOffset}
                             onOpenCalendarPopup={onOpenCalendarPopup}
+                            globalWeatherData={globalWeatherData}
+                            weatherSettings={weatherSettings}
                         />
                     ))}
                 </div>

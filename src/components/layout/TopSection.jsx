@@ -52,7 +52,7 @@ const SortableWidget = ({ id, children, isCustomizing, onInteractionStart, onInt
     return (
         <div
             ref={setNodeRef}
-            style={{ ...style, ...overlayStyle, cursor: isCustomizing ? (isDragging ? 'grabbing' : 'grab') : 'default', background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+            style={{ ...style, ...overlayStyle, cursor: isCustomizing ? (isDragging ? 'grabbing' : 'grab') : 'default', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
             className={`glass-card widget-item ${isCustomizing ? 'customizing' : ''}`}
             {...handlers}
         >
@@ -510,7 +510,7 @@ export default function TopSection({
                                 className="widget-edit-trigger"
                                 onClick={() => setIsEditingGoals(!isEditingGoals)}
                             >
-                                {isEditingGoals ? <CheckCircle2 size={18} color="#22c55e" /> : <Pencil size={14} />}
+                                {isEditingGoals ? <CheckCircle2 size={18} color="var(--primary)" /> : <Pencil size={14} />}
                             </button>
                         )}
                     </SortableWidget>
@@ -570,7 +570,7 @@ export default function TopSection({
                                 className="widget-edit-trigger"
                                 onClick={() => setIsEditingMonthlyGoals(!isEditingMonthlyGoals)}
                             >
-                                {isEditingMonthlyGoals ? <CheckCircle2 size={18} color="#22c55e" /> : <Pencil size={14} />}
+                                {isEditingMonthlyGoals ? <CheckCircle2 size={18} color="var(--primary)" /> : <Pencil size={14} />}
                             </button>
                         )}
                     </SortableWidget>
@@ -683,7 +683,7 @@ export default function TopSection({
                                 className="widget-edit-trigger"
                                 onClick={() => setIsEditingHabits(!isEditingHabits)}
                             >
-                                {isEditingHabits ? <CheckCircle2 size={18} color="#22c55e" /> : <Pencil size={14} />}
+                                {isEditingHabits ? <CheckCircle2 size={18} color="var(--primary)" /> : <Pencil size={14} />}
                             </button>
                         )}
                     </SortableWidget>
@@ -861,7 +861,7 @@ export default function TopSection({
                     width: '32px',
                     height: '32px',
                     borderRadius: '10px',
-                    background: isCustomizing ? '#22c55e' : 'rgba(0,0,0,0.05)',
+                    background: isCustomizing ? 'var(--primary)' : 'rgba(0,0,0,0.05)',
                     color: isCustomizing ? 'white' : 'var(--text-muted)',
                     zIndex: 100,
                 }}
@@ -878,7 +878,6 @@ export default function TopSection({
                     borderRadius: '12px',
                     border: '1px solid rgba(255, 255, 255, 0.2)'
                 }}>
-                    {/* Color Picker */}
                     <div style={{
                         fontSize: '0.75rem',
                         fontWeight: 600,
@@ -887,28 +886,40 @@ export default function TopSection({
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
                         marginTop: '1rem'
-                    }}>Theme Color</div>
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    }}>Theme & Mode</div>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                         {[
-                            '#64748b', // Slate
-                            '#ffffff', // System White
+                            '#ffffff', // White Mode
+                            '#18181b', // Black Mode
                         ].map(color => (
                             <button
                                 key={color}
                                 onClick={() => setAccentColor && setAccentColor(color)}
                                 style={{
-                                    width: '24px',
-                                    height: '24px',
-                                    borderRadius: '50%',
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '12px',
                                     backgroundColor: color,
-                                    border: accentColor === color ? '2px solid white' : '2px solid transparent',
-                                    boxShadow: accentColor === color ? `0 0 0 2px ${color}` : 'none',
+                                    border: color === '#ffffff' ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.1)',
+                                    outline: accentColor === color ? `2px solid ${color === '#ffffff' ? '#18181b' : '#ffffff'}` : 'none',
+                                    outlineOffset: '2px',
                                     cursor: 'pointer',
-                                    transition: 'all 0.2s'
+                                    transition: 'all 0.2s',
+                                    position: 'relative',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
                                 }}
-                                aria-label={`Select color ${color}`}
-                            />
+                                title={color === '#ffffff' ? "White Mode" : "Black Mode"}
+                            >
+                                {accentColor === color && (
+                                    <Check size={16} color={color === '#ffffff' ? '#18181b' : 'white'} />
+                                )}
+                            </button>
                         ))}
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '0.5rem' }}>
+                            {accentColor === '#ffffff' ? 'WHITE MODE' : 'BLACK MODE'}
+                        </span>
                     </div>
 
 

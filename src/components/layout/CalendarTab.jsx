@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, LogIn, RefreshCcw, ChevronLeft, ChevronRight, LogOut, Video, ExternalLink, Clock, MapPin, AlignLeft, X, Users, Plus, Trash2, CheckCircle, CheckCircle2, Circle, Columns, ChevronDown, MoreHorizontal, Maximize2, FileText, Bell, ArrowRight, Check, Pencil } from 'lucide-react';
+import { WEATHER_CODES, getWeatherForDate } from '../../utils/weatherIcons';
 
 import MiniCalendar from './MiniCalendar';
 
@@ -24,7 +25,7 @@ const toPastel = (hex, mix = 0.6) => {
     }
 };
 
-export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask, view, setView }) {
+export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask, view, setView, globalWeatherData, weatherSettings }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // View transition — column expand/collapse for week <-> day
@@ -250,7 +251,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
 
     const [newTaskText, setNewTaskText] = useState('');
     const [isEditingTasks, setIsEditingTasks] = useState(false);
-    const [newTaskColor, setNewTaskColor] = useState('#b1cdfb');
+    const [newTaskColor, setNewTaskColor] = useState('#18181b');
     const [showTaskColorPicker, setShowTaskColorPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(() => {
         const saved = localStorage.getItem('calendar_show_sidebar');
@@ -878,9 +879,25 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
     };
 
     const monthName = currentDate.toLocaleString('default', { month: 'long' });
-    const weekRange = view === 'week'
-        ? `${getDaysInWeek()[0].dateObj.getDate()} - ${getDaysInWeek()[6].dateObj.getDate()}`
-        : '';
+    const weekDays = getDaysInWeek();
+    const startObj = weekDays[0].dateObj;
+    const endObj = weekDays[6].dateObj;
+
+    const startMonth = startObj.toLocaleString('default', { month: 'short' });
+    const endMonth = endObj.toLocaleString('default', { month: 'short' });
+    const startYear = startObj.getFullYear();
+    const endYear = endObj.getFullYear();
+
+    let weekRange = '';
+    if (view === 'week') {
+        if (startMonth === endMonth) {
+            weekRange = `${startMonth} ${startObj.getDate()} - ${endObj.getDate()}, ${startYear}`;
+        } else if (startYear === endYear) {
+            weekRange = `${startMonth} ${startObj.getDate()} - ${endMonth} ${endObj.getDate()}, ${startYear}`;
+        } else {
+            weekRange = `${startMonth} ${startObj.getDate()}, ${startYear} - ${endMonth} ${endObj.getDate()}, ${endYear}`;
+        }
+    }
 
     // Keyboard navigation
     useEffect(() => {
@@ -979,7 +996,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                         <AlignLeft size={16} color="var(--text-muted)" />
                         <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
                             {view === 'month' && `${monthName} ${currentDate.getFullYear()}`}
-                            {view === 'week' && `${monthName} ${weekRange}`}
+                            {view === 'week' && weekRange}
                             {view === 'day' && currentDate.toDateString()}
                         </span>
                     </div>
@@ -1249,21 +1266,35 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                             background: dayObj.currentMonth ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
                                                         }}
                                                     >
-                                                        <div className="day-number" style={{
-                                                            color: isToday ? 'white' : 'inherit',
-                                                            background: isToday ? '#ef4444' : 'transparent',
-                                                            borderRadius: '4px',
-                                                            padding: isToday ? '2px 4px' : '0',
-                                                            width: 'fit-content',
-                                                            minWidth: isToday ? '20px' : 'auto',
-                                                            textAlign: 'center',
-                                                            alignSelf: 'flex-end',
-                                                            marginBottom: '4px',
-                                                            fontWeight: isToday ? 600 : 400,
-                                                            fontSize: '0.75rem',
-                                                            opacity: isToday ? 1 : 0.6
-                                                        }}>
-                                                            {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'short' })} 1` : dayObj.day}
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '4px' }}>
+                                                            <div style={{ padding: '2px', opacity: 0.7 }}>
+                                                                {(() => {
+                                                                    const dateStr = `${dayObj.year}-${String(dayObj.month + 1).padStart(2, '0')}-${String(dayObj.day).padStart(2, '0')}`;
+                                                                    const code = getWeatherForDate(globalWeatherData, dateStr);
+                                                                    if (weatherSettings?.showInCalendar && code !== null && code !== undefined) {
+                                                                        return (
+                                                                            <div title={WEATHER_CODES[code]?.label}>
+                                                                                {React.cloneElement(WEATHER_CODES[code]?.icon || <div />, { size: 16 })}
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    return null;
+                                                                })()}
+                                                            </div>
+                                                            <div className="day-number" style={{
+                                                                color: isToday ? 'white' : 'inherit',
+                                                                background: isToday ? '#ef4444' : 'transparent',
+                                                                borderRadius: '4px',
+                                                                padding: isToday ? '2px 4px' : '0',
+                                                                width: 'fit-content',
+                                                                minWidth: isToday ? '20px' : 'auto',
+                                                                textAlign: 'center',
+                                                                fontWeight: isToday ? 600 : 400,
+                                                                fontSize: '0.75rem',
+                                                                opacity: isToday ? 1 : 0.6
+                                                            }}>
+                                                                {dayObj.day === 1 ? `${new Date(dayObj.year, dayObj.month).toLocaleString('en-US', { month: 'short' })} 1` : dayObj.day}
+                                                            </div>
                                                         </div>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                                                             {visibleItems.map((item, idx) => {
@@ -1330,6 +1361,9 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             {getDaysInWeek().map((dayObj, i) => {
                                                 const isToday = new Date().toDateString() === dayObj.dateObj.toDateString();
                                                 const dayName = dayObj.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                                                const dateStr = `${dayObj.year}-${String(dayObj.month + 1).padStart(2, '0')}-${String(dayObj.day).padStart(2, '0')}`;
+                                                const weatherCode = getWeatherForDate(globalWeatherData, dateStr);
+                                                const showWeather = weatherSettings?.showInCalendar && weatherCode !== null && weatherCode !== undefined;
                                                 const isCollapsing = weekCollapseIndex >= 0 && weekCollapseIndex !== i;
                                                 const isExpandingOther = weekExpanding && getActiveDayIndex() !== i;
                                                 return (
@@ -1338,10 +1372,20 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         opacity: (isCollapsing || isExpandingOther) ? 0 : (isToday ? 1 : 0.7),
                                                         overflow: 'hidden',
                                                         transition: 'opacity 0.5s ease',
-                                                        whiteSpace: 'nowrap'
+                                                        whiteSpace: 'nowrap',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center'
                                                     }}>
                                                         <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>{dayName}</div>
-                                                        <div style={{ fontSize: '1rem', fontWeight: 400, color: isToday ? 'var(--primary)' : 'var(--text-main)', opacity: isToday ? 1 : 0.8 }}>{dayObj.day}</div>
+                                                        <div style={{ fontSize: '1rem', fontWeight: 400, color: isToday ? 'var(--primary)' : 'var(--text-main)', opacity: isToday ? 1 : 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            {dayObj.day}
+                                                            {showWeather && (
+                                                                <div title={WEATHER_CODES[weatherCode]?.label} style={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}>
+                                                                    {React.cloneElement(WEATHER_CODES[weatherCode]?.icon || <div />, { size: 14 })}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
@@ -1359,7 +1403,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 {Array.from({ length: 24 }).map((_, i) => (
                                                     <div key={i} style={{
                                                         height: '60px',
-                                                        borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                        borderBottom: i < 23 ? '1px dotted var(--border-light)' : 'none',
                                                         borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
                                                         boxSizing: 'border-box'
                                                     }} />
@@ -1577,7 +1621,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                                     {/* Day Date Header */}
                                     <div style={{ display: 'flex', paddingLeft: '40px', marginBottom: '0.5rem', flexShrink: 0 }}>
-                                        <div style={{ flex: 1, textAlign: 'center' }}>
+                                        <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                             <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                                                 {currentDate.toLocaleDateString('en-US', { weekday: 'short' })}
                                             </div>
@@ -1585,9 +1629,24 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 fontSize: '1rem',
                                                 fontWeight: 400,
                                                 color: new Date().toDateString() === currentDate.toDateString() ? 'var(--primary)' : 'var(--text-main)',
-                                                opacity: new Date().toDateString() === currentDate.toDateString() ? 1 : 0.8
+                                                opacity: new Date().toDateString() === currentDate.toDateString() ? 1 : 0.8,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px'
                                             }}>
                                                 {currentDate.getDate()}
+                                                {(() => {
+                                                    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+                                                    const weatherCode = getWeatherForDate(globalWeatherData, dateStr);
+                                                    if (weatherSettings?.showInCalendar && weatherCode !== null && weatherCode !== undefined) {
+                                                        return (
+                                                            <div title={WEATHER_CODES[weatherCode]?.label} style={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}>
+                                                                {React.cloneElement(WEATHER_CODES[weatherCode]?.icon || <div />, { size: 16 })}
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
@@ -1603,7 +1662,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 {Array.from({ length: 24 }).map((_, i) => (
                                                     <div key={i} style={{
                                                         height: '60px',
-                                                        borderBottom: i < 23 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
+                                                        borderBottom: i < 23 ? '1px dotted var(--border-light)' : 'none',
                                                         borderTop: i === 0 ? '1px dotted rgba(0,0,0,0.06)' : 'none',
                                                         boxSizing: 'border-box'
                                                     }} />
@@ -1867,7 +1926,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                     const btn = e.currentTarget.querySelector('.edit-mode-trigger');
                                     if (btn && !isEditingTasks) btn.style.opacity = '0';
                                 }}
-                                style={{ position: 'relative', width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+                                style={{ position: 'relative', width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', borderRadius: '16px', overflow: 'hidden' }}>
                                 <div style={{ padding: '0 0 0.5rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <button
@@ -1903,7 +1962,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             width: '32px',
                                             height: '32px',
                                             borderRadius: '50%',
-                                            backgroundColor: 'white',
+                                            backgroundColor: 'var(--card-bg-solid)',
                                             border: '1px solid rgba(0,0,0,0.05)',
                                             boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                                             display: 'flex',
@@ -2002,7 +2061,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 const isoDate = `${year}-${month}-${day}`;
                                                 onAddTask(isoDate, newTaskText, false, null, 30, '', '', [], false, { color: newTaskColor });
                                                 setNewTaskText('');
-                                                setNewTaskColor('#3b82f6'); // Reset to default
+                                                setNewTaskColor('#18181b'); // Reset to neutral
                                                 setShowTaskColorPicker(false);
                                             }}
                                             style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}
@@ -2019,7 +2078,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         bottom: '100%',
                                                         left: 0,
                                                         marginBottom: '0.5rem',
-                                                        background: 'white',
+                                                        background: 'var(--card-bg-solid)',
                                                         padding: '0.5rem',
                                                         borderRadius: '12px',
                                                         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -2028,7 +2087,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         zIndex: 20,
                                                         border: '1px solid rgba(0,0,0,0.05)'
                                                     }}>
-                                                        {['#3b82f6', '#ef4444', '#64748b', '#ffffff', '#06b6d4', '#10b981'].map(c => (
+                                                        {['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#d4d4d8', '#ffffff'].map(c => (
                                                             <button
                                                                 key={c}
                                                                 type="button"
@@ -2054,8 +2113,8 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     alignItems: 'center',
                                                     padding: '0.5rem 0.75rem',
                                                     borderRadius: '8px',
-                                                    border: '1px solid rgba(0,0,0,0.1)',
-                                                    background: 'white',
+                                                    border: '1px solid var(--border-light)',
+                                                    background: 'var(--card-bg-solid)',
                                                     gap: '0.5rem'
                                                 }}>
                                                     <button
@@ -2129,11 +2188,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                 bottom: '12px',
                                 zIndex: 999,
                                 width: '360px',
-                                background: 'rgba(255, 255, 255, 0.85)',
+                                background: 'var(--glass-bg)',
                                 backdropFilter: 'blur(34px) saturate(180%)',
                                 WebkitBackdropFilter: 'blur(34px) saturate(180%)',
                                 borderRadius: '24px',
-                                border: '1px solid rgba(255, 255, 255, 0.8)',
+                                border: '1px solid var(--glass-border)',
                                 boxShadow: '0 24px 60px rgba(0,0,0,0.15)',
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -2185,14 +2244,14 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 border: 'none',
                                                 outline: 'none',
                                                 width: '100%',
-                                                color: '#202124',
+                                                color: 'var(--text-main)',
                                                 padding: 0,
                                                 background: 'transparent'
                                             }}
                                         />
                                     </div>
 
-                                    <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
+                                    <div style={{ height: '1px', background: 'var(--border-light)', margin: '0' }} />
 
                                     {/* Time Section */}
                                     <style>{`
@@ -2207,7 +2266,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             <Clock size={16} />
                                         </div>
                                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#202124' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: 'var(--text-main)' }}>
                                                 <input
                                                     type="time"
                                                     value={newEventData.timeStr || ''}
@@ -2243,7 +2302,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                     {newEventData.duration >= 60 ? `${Math.floor(newEventData.duration / 60)}h${newEventData.duration % 60 > 0 ? ` ${newEventData.duration % 60}m` : ''}` : `${newEventData.duration}m`}
                                                 </span>
                                             </div>
-                                            <div style={{ fontSize: '14px', color: '#3c4043', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ fontSize: '14px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <input
                                                     type="date"
                                                     value={newEventData.dateStr}
@@ -2265,7 +2324,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         </div>
                                     </div>
 
-                                    <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
+                                    <div style={{ height: '1px', background: 'var(--border-light)', margin: '0' }} />
 
                                     {/* Options and Participants */}
                                     <div style={{ padding: '8px 0' }}>
@@ -2305,16 +2364,16 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             </div>
                                         </div>
 
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer' }}
                                             onClick={() => setNewEventData({ ...newEventData, addMeet: !newEventData.addMeet })}
                                             onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                                            <Video size={18} color={newEventData.addMeet ? '#1a73e8' : 'currentColor'} />
+                                            <Video size={18} color={newEventData.addMeet ? 'var(--primary)' : 'currentColor'} />
                                             <span style={{ color: newEventData.addMeet ? '#202124' : 'inherit' }}>Conferencing</span>
-                                            {newEventData.addMeet && <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#1a73e8' }}>Google Meet</span>}
+                                            {newEventData.addMeet && <span style={{ marginLeft: 'auto', fontSize: '13px', color: 'var(--primary)' }}>Google Meet</span>}
                                         </div>
 
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer' }}
                                             onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2327,7 +2386,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                             <span>AI Meeting Notes and Docs</span>
                                         </div>
 
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: '#5f6368', fontSize: '14px', cursor: 'pointer' }}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 16px', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer' }}
                                             onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2343,7 +2402,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         </div>
                                     </div>
 
-                                    <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
+                                    <div style={{ height: '1px', background: 'var(--border-light)', margin: '0' }} />
 
                                     {/* Description */}
                                     <div style={{ padding: '16px' }}>
@@ -2355,7 +2414,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         />
                                     </div>
 
-                                    <div style={{ height: '1px', background: '#f1f3f4', margin: '0' }} />
+                                    <div style={{ height: '1px', background: 'var(--border-light)', margin: '0' }} />
 
                                     {/* Calendar Selection and Visibility */}
                                     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -2364,7 +2423,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: newEventData.color || '#b1cdfb', border: 'none' }} />
                                             </div>
                                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '4px 0' }}>
-                                                {['#b1cdfb', '#f8b4b4', '#b2f2bb', '#fef08a', '#e9d5ff', '#ffc9c9', '#e2e8f0'].map(c => (
+                                                {['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#d4d4d8', '#ffffff', '#f4f4f5'].map(c => (
                                                     <div
                                                         key={c}
                                                         onClick={() => setNewEventData({ ...newEventData, color: c })}
@@ -2443,11 +2502,11 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                         </div>
                                     </div>
 
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px', borderTop: '1px solid #f1f3f4', background: '#f8f9fa', marginTop: 'auto' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px', borderTop: '1px solid var(--border-light)', background: 'var(--input-bg)', marginTop: 'auto' }}>
                                         <button
                                             onClick={handleSaveEvent}
                                             style={{
-                                                background: '#1a73e8',
+                                                background: 'var(--primary)',
                                                 color: 'white',
                                                 border: 'none',
                                                 borderRadius: '4px',
@@ -2456,10 +2515,10 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 fontWeight: 500,
                                                 cursor: 'pointer',
                                                 transition: 'background 0.2s',
-                                                boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)'
+                                                boxShadow: '0 1px 2px 0 rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15)'
                                             }}
-                                            onMouseEnter={e => { e.currentTarget.style.background = '#1557b0'; }}
-                                            onMouseLeave={e => { e.currentTarget.style.background = '#1a73e8'; }}
+                                            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.9)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
                                         >
                                             Save
                                         </button>

@@ -3,14 +3,32 @@
   --primary-glow: rgba(51, 65, 85, 0.1);
   --bg-silver: #f1f5f9;
   --bg-deep: #e2e8f0;
-  --glass-bg: rgba(255, 255, 255, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-bg: rgba(255, 255, 255, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.5);
   --text-main: #0f172a;
   --text-muted: #64748b;
   --radius-lg: 32px;
   --radius-md: 16px;
   --shadow-soft: 0 24px 48px -12px rgba(0, 0, 0, 0.08);
+  --border-light: rgba(0, 0, 0, 0.05);
+  --input-bg: rgba(0, 0, 0, 0.03);
+  --card-bg-solid: white;
 }
+
+[data-theme="dark"] {
+  --bg-silver: #18181b;
+  --bg-deep: #09090b;
+  --glass-bg: rgba(24, 24, 27, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --shadow-soft: 0 24px 48px -12px rgba(0, 0, 0, 0.5);
+  --border-light: rgba(255, 255, 255, 0.08);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --card-bg-solid: #27272a;
+}
+
+
 
 
 * {
@@ -157,14 +175,14 @@ body {
 }
 
 .customize-toggle:hover {
-  background: rgba(96, 165, 250, 1);
+  background: var(--primary);
   color: white;
-  border-color: #60a5fa;
+  border-color: var(--primary);
 }
 
 .customize-toggle.active {
-  background: #22c55e;
-  border-color: #22c55e;
+  background: var(--primary);
+  border-color: var(--primary);
   color: white;
 }
 
@@ -257,7 +275,7 @@ body {
 }
 
 .goal-item-row:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--glass-bg);
   padding-left: 5px;
 }
 
@@ -290,9 +308,9 @@ body {
   font-weight: 700 !important;
   display: flex !important;
   gap: 0.5rem !important;
-  background: white !important;
+  background: var(--card-bg-solid) !important;
   color: var(--text-main) !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid var(--border-light) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
 }
 
@@ -396,8 +414,8 @@ body {
 }
 
 .glass-input {
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--input-bg);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 0.8rem 1rem;
   color: var(--text-main);
@@ -409,7 +427,7 @@ body {
 .glass-input:focus {
   outline: none;
   border-color: var(--primary);
-  background: white;
+  background: var(--card-bg-solid);
   box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
@@ -456,8 +474,8 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: 0;
   margin-bottom: 0;
   margin-top: -1px;
@@ -480,7 +498,7 @@ body {
 }
 
 .compact-task:hover {
-  background: white;
+  background: var(--card-bg-solid);
   transform: translateX(5px);
   border-color: var(--primary-glow);
 }
@@ -552,7 +570,7 @@ body {
 }
 
 .calendar-day {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--glass-bg);
   min-height: 120px;
   padding: 0.8rem;
   display: flex;
@@ -562,7 +580,7 @@ body {
 }
 
 .calendar-day:hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--glass-bg);
   z-index: 5;
   box-shadow: inset 0 0 0 2px var(--primary-glow);
 }
@@ -776,7 +794,7 @@ body {
 .logo-container {
   width: 100px;
   height: 100px;
-  background: white;
+  background: var(--card-bg-solid);
   border-radius: 30px;
   display: flex;
   align-items: center;
@@ -813,14 +831,14 @@ body {
   display: flex;
   gap: 1.25rem;
   padding: 1.25rem;
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--glass-bg);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--glass-border);
 }
 
 .feature-icon {
   color: var(--primary);
-  background: white;
+  background: var(--card-bg-solid);
   padding: 10px;
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
@@ -876,8 +894,8 @@ body {
   position: absolute;
   bottom: 12px;
   right: 12px;
-  background: white;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--card-bg-solid);
+  border: 1px solid var(--border-light);
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -920,8 +938,8 @@ body {
 }
 
 .trial-details {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--input-bg);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 1.5rem;
   margin: 1.5rem 0;
@@ -937,7 +955,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.05em;
   margin-bottom: 0.75rem;
-  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .primary-gradient {
@@ -947,12 +965,12 @@ body {
 }
 
 .primary-gradient:hover {
-  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .active-icon {
   color: var(--primary);
-  filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.5));
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
 }
 
 @keyframes calendarSidebarIn {

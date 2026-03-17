@@ -382,7 +382,7 @@ export default function TopSection({
                             alignItems: 'center',
                             justifyContent: 'center',
                             overflow: 'visible',
-                            padding: '1rem 0'
+                            padding: '1rem 0 0 0'
                         }}>
                             {ecosystemNodes.length === 0 && !isEditingGoals && (
                                 <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem', fontStyle: 'italic' }}>
@@ -461,7 +461,7 @@ export default function TopSection({
                                                 background: color.bg,
                                                 backdropFilter: 'blur(12px)',
                                                 WebkitBackdropFilter: 'blur(12px)',
-                                                border: `1px solid ${color.border}`,
+                                                border: `4px solid white`,
                                                 borderRadius: '50%',
                                                 display: 'flex',
                                                 flexDirection: 'column',
@@ -470,7 +470,7 @@ export default function TopSection({
                                                 color: 'white',
                                                 padding: '10px',
                                                 zIndex: 10 + importance,
-                                                boxShadow: `0 ${4 + importance}px ${12 + importance * 4}px -${4 + importance}px ${color.shadow}`,
+                                                boxShadow: `0 4px 10px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05)`,
                                                 top: '50%',
                                                 left: '50%',
                                                 transform: 'translate(-50%, -50%)',
@@ -483,7 +483,7 @@ export default function TopSection({
                                                     transition: 'none'
                                                 } : {}),
                                                 ...(isEditingGoals && poppingBubble !== i ? {
-                                                    border: `2px dashed ${color.border}`,
+                                                    border: `2px dashed rgba(255,255,255,0.4)`,
                                                 } : {})
                                             }}>
                                             <div style={{
@@ -609,13 +609,23 @@ export default function TopSection({
                             </form>
                         )}
 
-                        <div className="goals-list" style={{ marginBottom: isEditingMonthlyGoals ? '3rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div className="goals-list" style={{ 
+                            marginBottom: 0, 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '0.5rem',
+                            height: '160px',
+                            overflowY: 'auto',
+                            paddingRight: '4px',
+                            paddingBottom: '2px'
+                        }}>
                             {sortedGoals.map((g) => (
                                 <div key={g.id} style={{
                                     background: g.completed ? 'transparent' : (g.color || 'rgba(255, 255, 255, 0.4)'),
                                     border: `1px solid ${g.completed ? 'rgba(0,0,0,0.05)' : 'rgba(255, 255, 255, 0.4)'}`,
                                     borderRadius: '12px',
-                                    padding: '1rem',
+                                    padding: '0.75rem 1rem',
+                                    minHeight: '70px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '1rem',
@@ -636,7 +646,22 @@ export default function TopSection({
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0, textDecoration: g.completed ? 'line-through' : 'none' }}>
                                         <div style={{ fontWeight: 600, fontSize: '1rem', color: g.completed ? 'var(--text-muted)' : 'rgba(0,0,0,0.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.title}</div>
-                                        {g.deadline && <div style={{ fontSize: '0.75rem', color: g.completed ? 'var(--text-muted)' : 'rgba(0,0,0,0.5)', marginTop: '2px' }}>Due: {new Date(g.deadline).toLocaleDateString()}</div>}
+                                        <div style={{ 
+                                            fontSize: '0.7rem', 
+                                            fontWeight: 700,
+                                            color: g.completed ? 'var(--text-muted)' : 'white', 
+                                            marginTop: '6px',
+                                            background: g.completed ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.15)',
+                                            padding: '2px 8px',
+                                            borderRadius: '6px',
+                                            width: 'fit-content',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}>
+                                            <Trophy size={10} />
+                                            {g.deadline ? `Due: ${new Date(g.deadline).toLocaleDateString()}` : 'No Deadline'}
+                                        </div>
                                     </div>
                                     {isEditingMonthlyGoals && (
                                         <button onClick={(e) => { e.stopPropagation(); onDeleteMonthlyGoal(g.originalIndex); }} className="btn-delete-small" style={{ background: 'white', borderRadius: '50%', padding: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
@@ -668,7 +693,7 @@ export default function TopSection({
                         onInteractionEnd={onDragEnd}
                     >
                         <div className="card-title">Activity Score</div>
-                        <div style={{ height: '150px', display: 'flex', alignItems: 'flex-end', gap: '6px', padding: '10px 0' }}>
+                        <div style={{ height: '150px', display: 'flex', alignItems: 'flex-end', gap: '6px', padding: '10px 0 0 0' }}>
                             {chartData.map((d, i) => (
                                 <div key={d.name} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
                                     <div style={{ flex: 1, width: '100%', position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
@@ -726,7 +751,7 @@ export default function TopSection({
                             </form>
                         )}
 
-                        <div className="habit-tracker-container" style={{ marginBottom: isEditingHabits ? '3rem' : '0' }}>
+                        <div className="habit-tracker-container" style={{ marginBottom: isEditingHabits ? '1rem' : '0' }}>
                             <table>
                                 <thead>
                                     <tr>

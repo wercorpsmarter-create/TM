@@ -79,7 +79,7 @@ body {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  padding: 2rem;
+  padding: 1.5rem;
   box-shadow: var(--shadow-soft);
   position: relative;
   overflow: hidden;
@@ -120,7 +120,7 @@ body {
 .card-title {
   font-size: 1.25rem;
   font-weight: 800;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   color: var(--text-main);
   letter-spacing: -0.02em;
   display: flex;

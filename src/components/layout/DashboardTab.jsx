@@ -15,6 +15,7 @@ export default function DashboardTab({
     monthlyGoals,
     onAddMonthlyGoal,
     onDeleteMonthlyGoal,
+    onUpdateMonthlyGoal,
     onSyncClick,
     layout,
     setLayout,
@@ -30,7 +31,6 @@ export default function DashboardTab({
     setVisibleDays,
     currentWeekOffset = 0,
     onNextWeek,
-
     onPrevWeek,
     onOpenCalendarPopup,
     accentColor,
@@ -57,6 +57,7 @@ export default function DashboardTab({
                 monthlyGoals={monthlyGoals}
                 onAddMonthlyGoal={onAddMonthlyGoal}
                 onDeleteMonthlyGoal={onDeleteMonthlyGoal}
+                onUpdateMonthlyGoal={onUpdateMonthlyGoal}
                 onSyncClick={onSyncClick}
                 layout={layout}
                 setLayout={setLayout}

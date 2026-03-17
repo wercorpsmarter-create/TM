@@ -65,6 +65,10 @@ export default function MiniCalendar({ currentMainDate, onDateSelect }) {
         return d === currentMainDate.getDate() && m === currentMainDate.getMonth() && y === currentMainDate.getFullYear();
     };
 
+    const gridDays = getDaysForGrid();
+    const todayIndex = gridDays.findIndex(d => isToday(d.day, d.month, d.year));
+    const todayRow = todayIndex !== -1 ? Math.floor(todayIndex / 7) : -1;
+
     return (
         <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', padding: '0 4px' }}>
@@ -86,11 +90,12 @@ export default function MiniCalendar({ currentMainDate, onDateSelect }) {
                     <div key={d} style={{ color: 'var(--text-muted)', fontWeight: 500, padding: '4px 0', fontSize: '0.7rem' }}>{d}</div>
                 ))}
 
-                {getDaysForGrid().map((dayObj, idx) => {
+                {gridDays.map((dayObj, idx) => {
                     const date = new Date(dayObj.year, dayObj.month, dayObj.day);
                     const selected = isSelected(dayObj.day, dayObj.month, dayObj.year);
                     const today = isToday(dayObj.day, dayObj.month, dayObj.year);
                     const isCurrentMonth = dayObj.type === 'current';
+                    const isThisWeek = Math.floor(idx / 7) === todayRow;
 
                     return (
                         <div
@@ -100,7 +105,7 @@ export default function MiniCalendar({ currentMainDate, onDateSelect }) {
                                 padding: '6px 0',
                                 cursor: 'pointer',
                                 borderRadius: '6px',
-                                backgroundColor: selected ? 'var(--primary)' : 'transparent',
+                                backgroundColor: selected ? 'var(--primary)' : isThisWeek ? 'rgba(128, 128, 128, 0.15)' : 'transparent',
                                 color: selected ? 'white' : today ? 'var(--primary)' : isCurrentMonth ? 'var(--text-main)' : 'var(--text-muted)',
                                 opacity: isCurrentMonth || selected ? 1 : 0.4,
                                 fontWeight: today || selected ? 700 : 400,

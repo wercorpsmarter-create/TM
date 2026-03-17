@@ -465,6 +465,20 @@ export const api = {
         return { success: true };
     },
 
+    async updateMonthlyGoal(id, updates) {
+        if (supabase) {
+            const { data, error } = await supabase.from('monthly_goals').update(updates).eq('id', id).select().single();
+            if (error) throw error;
+            return { ...data, userId: data.user_id };
+        }
+        await delay(200);
+        let goals = getLocalStore('prohub-data-monthly-goals');
+        const filtered = goals.map(g => g.id === id ? { ...g, ...updates } : g);
+        setLocalStore('prohub-data-monthly-goals', filtered);
+        const updated = filtered.find(g => g.id === id);
+        return updated;
+    },
+
     // Layout operations
     async getLayout(userId) {
         if (supabase) {

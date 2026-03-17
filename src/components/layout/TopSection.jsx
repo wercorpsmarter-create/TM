@@ -118,6 +118,7 @@ export default function TopSection({
     monthlyGoals,
     onAddMonthlyGoal,
     onDeleteMonthlyGoal,
+    onUpdateMonthlyGoal,
     onAddHabit,
     onDeleteHabit,
     onDragStart,
@@ -139,6 +140,8 @@ export default function TopSection({
     const [isEditingHabits, setIsEditingHabits] = useState(false);
     const [newGoalText, setNewGoalText] = useState('');
     const [newMonthlyGoalText, setNewMonthlyGoalText] = useState('');
+    const [newMonthlyGoalColor, setNewMonthlyGoalColor] = useState('#ffcdd2');
+    const [newMonthlyGoalDeadline, setNewMonthlyGoalDeadline] = useState('');
     const [newHabitText, setNewHabitText] = useState('');
     const [newGoalImportance, setNewGoalImportance] = useState(1);
 
@@ -275,8 +278,16 @@ export default function TopSection({
 
     const handleAddMonthlyGoal = (e) => {
         e.preventDefault();
-        onAddMonthlyGoal(newMonthlyGoalText);
+        if (!newMonthlyGoalText.trim()) return;
+        const payload = JSON.stringify({
+            title: newMonthlyGoalText,
+            color: newMonthlyGoalColor,
+            deadline: newMonthlyGoalDeadline,
+            completed: false
+        });
+        onAddMonthlyGoal(payload);
         setNewMonthlyGoalText('');
+        setNewMonthlyGoalDeadline('');
     };
 
     const handleAddHabit = (e) => {
@@ -516,7 +527,22 @@ export default function TopSection({
                     </SortableWidget>
                 );
             }
-            case 'monthly_goals':
+            case 'monthly_goals': {
+                const parseGoal = (g) => {
+                    const text = typeof g === 'string' ? g : (g?.text ?? '');
+                    if (typeof text === 'string' && text.startsWith('{')) {
+                        try { return JSON.parse(text); } catch (e) { }
+                    }
+                    return { title: text, color: '#ffcdd2', deadline: '', completed: false };
+                };
+
+                const parsedGoals = monthlyGoals.map((g, idx) => ({ ...parseGoal(g), id: typeof g === 'object' && g?.id != null ? g.id : idx, originalIndex: idx }));
+                const completedGoals = parsedGoals.filter(g => g.completed);
+                const pendingGoals = parsedGoals.filter(g => !g.completed);
+                const sortedGoals = [...pendingGoals, ...completedGoals];
+
+                const progressPercentage = parsedGoals.length > 0 ? (completedGoals.length / parsedGoals.length) * 100 : 0;
+
                 return (
                     <SortableWidget
                         id="monthly_goals"
@@ -525,45 +551,101 @@ export default function TopSection({
                         onInteractionStart={onDragStart}
                         onInteractionEnd={onDragEnd}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <div className="card-title" style={{ margin: 0 }}>Monthly Goals</div>
                         </div>
 
+                        {parsedGoals.length > 0 && (
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                                    <span>Progress</span>
+                                    <span>{completedGoals.length} / {parsedGoals.length}</span>
+                                </div>
+                                <div style={{ height: '6px', width: '100%', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${progressPercentage}%`, backgroundColor: 'var(--primary)', transition: 'width 0.3s ease' }} />
+                                </div>
+                            </div>
+                        )}
+
                         {isEditingMonthlyGoals && (
-                            <form onSubmit={handleAddMonthlyGoal} className="task-input-container" style={{ marginBottom: '1.5rem' }}>
+                            <form onSubmit={handleAddMonthlyGoal} className="task-input-container" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.4)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.4)' }}>
                                 <input
                                     type="text"
                                     className="glass-input"
                                     placeholder="Add a goal..."
                                     value={newMonthlyGoalText}
                                     onChange={(e) => setNewMonthlyGoalText(e.target.value)}
+                                    style={{ flex: 1, padding: '0.5rem', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '6px', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                                     autoFocus
                                 />
-                                <button type="submit" className="btn-icon">
-                                    <Plus size={18} />
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <input
+                                        type="date"
+                                        value={newMonthlyGoalDeadline}
+                                        onChange={(e) => setNewMonthlyGoalDeadline(e.target.value)}
+                                        style={{ padding: '0.5rem', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '6px', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                    />
+                                    <div style={{ flex: 1, display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>
+                                        {['#ffcdd2', '#f8bbd0', '#e1bee7', '#d1c4e9', '#bbdefb', '#b3e5fc', '#b2dfdb', '#c8e6c9', '#fff9c4', '#ffe082'].map(c => (
+                                            <div
+                                                key={c}
+                                                onClick={() => setNewMonthlyGoalColor(c)}
+                                                style={{
+                                                    minWidth: '20px',
+                                                    height: '20px',
+                                                    borderRadius: '50%',
+                                                    backgroundColor: c,
+                                                    cursor: 'pointer',
+                                                    border: newMonthlyGoalColor === c ? '2px solid var(--text-main)' : '1px solid rgba(0,0,0,0.1)',
+                                                    boxSizing: 'border-box',
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                                <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem', alignSelf: 'flex-end', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Plus size={16} /> Add
                                 </button>
                             </form>
                         )}
 
-                        <ul className="goals-list" style={{ marginBottom: isEditingMonthlyGoals ? '3rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {monthlyGoals.map((g, i) => (
-                                <li key={typeof g === 'object' && g?.id != null ? g.id : i} className="goal-item-row" style={{
-                                    background: 'rgba(255, 255, 255, 0.4)',
-                                    border: '1px solid rgba(255, 255, 255, 0.4)',
-                                    borderRadius: '8px',
-                                    padding: '0.75rem',
-                                    marginBottom: 0
+                        <div className="goals-list" style={{ marginBottom: isEditingMonthlyGoals ? '3rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {sortedGoals.map((g) => (
+                                <div key={g.id} style={{
+                                    background: g.completed ? 'transparent' : (g.color || 'rgba(255, 255, 255, 0.4)'),
+                                    border: `1px solid ${g.completed ? 'rgba(0,0,0,0.05)' : 'rgba(255, 255, 255, 0.4)'}`,
+                                    borderRadius: '12px',
+                                    padding: '1rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '1rem',
+                                    opacity: g.completed ? 0.6 : 1,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    position: 'relative',
+                                    overflow: 'hidden'
                                 }}>
-                                    <span className="goal-num">{i + 1}</span>
-                                    <span style={{ flex: 1 }}>{typeof g === 'string' ? g : (g?.text ?? '')}</span>
+                                    <div onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!onUpdateMonthlyGoal) return;
+                                        const originalG = monthlyGoals[g.originalIndex];
+                                        const updatedPayload = JSON.stringify({ title: g.title, color: g.color, deadline: g.deadline, completed: !g.completed });
+                                        onUpdateMonthlyGoal(g.originalIndex, updatedPayload);
+                                    }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', border: g.completed ? 'none' : '2px solid rgba(0,0,0,0.2)', backgroundColor: g.completed ? 'var(--primary)' : 'transparent', color: 'white', flexShrink: 0 }}>
+                                        {g.completed && <Check size={14} strokeWidth={3} />}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0, textDecoration: g.completed ? 'line-through' : 'none' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '1rem', color: g.completed ? 'var(--text-muted)' : 'rgba(0,0,0,0.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.title}</div>
+                                        {g.deadline && <div style={{ fontSize: '0.75rem', color: g.completed ? 'var(--text-muted)' : 'rgba(0,0,0,0.5)', marginTop: '2px' }}>Due: {new Date(g.deadline).toLocaleDateString()}</div>}
+                                    </div>
                                     {isEditingMonthlyGoals && (
-                                        <button onClick={() => onDeleteMonthlyGoal(i)} className="btn-delete-small">
-                                            <Trash2 size={12} />
+                                        <button onClick={(e) => { e.stopPropagation(); onDeleteMonthlyGoal(g.originalIndex); }} className="btn-delete-small" style={{ background: 'white', borderRadius: '50%', padding: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                                            <Trash2 size={14} color="#ef4444" />
                                         </button>
                                     )}
-                                </li>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
 
                         {!isCustomizing && (
                             <button
@@ -575,6 +657,7 @@ export default function TopSection({
                         )}
                     </SortableWidget>
                 );
+            }
             case 'activity':
                 return (
                     <SortableWidget
@@ -769,7 +852,7 @@ export default function TopSection({
                         <div className="card-title">
                             <Video size={20} /> Upcoming Meetings
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
                             {(!upcomingEvents || upcomingEvents.filter(event => {
                                 if (!event.hangoutLink) return false;
                                 const now = new Date();

@@ -25,6 +25,27 @@ const toPastel = (hex, mix = 0.6) => {
     }
 };
 
+const getContrastYIQ = (hexcolor) => {
+    if (!hexcolor || typeof hexcolor !== 'string') return '#ffffff';
+    let r, g, b;
+    if (hexcolor.startsWith('#')) {
+        let hex = hexcolor.replace('#', '');
+        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+        r = parseInt(hex.substr(0, 2), 16);
+        g = parseInt(hex.substr(2, 2), 16);
+        b = parseInt(hex.substr(4, 2), 16);
+    } else if (hexcolor.startsWith('rgb')) {
+        const rgb = hexcolor.match(/\d+/g);
+        if (!rgb) return '#ffffff';
+        r = parseInt(rgb[0], 10);
+        g = parseInt(rgb[1], 10);
+        b = parseInt(rgb[2], 10);
+    } else {
+        return '#ffffff';
+    }
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 150) ? '#000000' : '#ffffff';
+};
 export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTask, onLogin, linkedAccounts = [], onAddLinkedAccount, externalPopupTrigger, isActive, onDeleteTask, onToggleTask, onUpdateTask, view, setView, globalWeatherData, weatherSettings }) {
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -1334,7 +1355,17 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                             cursor: 'pointer'
                                                                         }}
                                                                     >
-                                                                        {item.summary || item.title}
+                                                                        {(() => {
+                                                                            let timeStr = '';
+                                                                            if (item.type === 'google' && item.start?.dateTime) {
+                                                                                const d = new Date(item.start.dateTime);
+                                                                                timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')} `;
+                                                                            } else if (item.type === 'task' && item.metadata?.time) {
+                                                                                const [h, m] = item.metadata.time.split(':');
+                                                                                timeStr = `${parseInt(h, 10)}:${String(m).padStart(2, '0')} `;
+                                                                            }
+                                                                            return `${timeStr}${item.summary || item.title}`;
+                                                                        })()}
                                                                     </div>
                                                                 );
                                                             })}
@@ -1441,25 +1472,41 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 const now = new Date();
                                                 const minutes = now.getHours() * 60 + now.getMinutes();
                                                 const topOffset = (minutes / 60) * 60;
+                                                const hours12 = now.getHours() % 12 || 12;
+                                                const minsStr = String(now.getMinutes()).padStart(2, '0');
+                                                const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
                                                 return (
                                                     <div style={{
                                                         position: 'absolute',
                                                         top: `${topOffset}px`,
-                                                        left: '66px',
+                                                        left: '60px',
                                                         right: 0,
                                                         height: '2px',
-                                                        backgroundColor: 'red',
+                                                        backgroundColor: '#ea4335',
                                                         zIndex: 50,
                                                         pointerEvents: 'none'
                                                     }}>
                                                         <div style={{
                                                             position: 'absolute',
-                                                            left: '-2px',
-                                                            top: '-6px',
-                                                            width: '4px',
-                                                            height: '14px',
-                                                            backgroundColor: 'red',
-                                                            borderRadius: '2px'
+                                                            left: '-52px',
+                                                            top: '-8px',
+                                                            backgroundColor: '#ea4335',
+                                                            color: 'white',
+                                                            padding: '2px 4px',
+                                                            borderRadius: '4px',
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: 'bold',
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
+                                                            {hours12}:{minsStr} {ampm}
+                                                        </div>
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            left: '0px',
+                                                            top: '-3px',
+                                                            width: '2px',
+                                                            height: '8px',
+                                                            backgroundColor: '#ea4335',
                                                         }} />
                                                     </div>
                                                 );
@@ -1593,14 +1640,14 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                             flexDirection: 'column',
                                                                             backgroundColor: color || undefined,
                                                                             border: '1px solid white',
-                                                                            color: '#fff',
+                                                                            color: getContrastYIQ(color || '#3b82f6'),
                                                                             borderRadius: '4px',
                                                                             cursor: 'pointer'
                                                                         }}>
                                                                         <div style={{ fontWeight: 300, fontSize: '0.7rem' }}>{item.title}</div>
                                                                         {height > 30 && (
                                                                             <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>
-                                                                                {Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}
+                                                                                {Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')} - {Math.floor((item.startMinutes + item.duration) / 60)}:{String((item.startMinutes + item.duration) % 60).padStart(2, '0')}
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -1700,25 +1747,41 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 const now = new Date();
                                                 const minutes = now.getHours() * 60 + now.getMinutes();
                                                 const topOffset = (minutes / 60) * 60;
+                                                const hours12 = now.getHours() % 12 || 12;
+                                                const minsStr = String(now.getMinutes()).padStart(2, '0');
+                                                const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
                                                 return (
                                                     <div style={{
                                                         position: 'absolute',
                                                         top: `${topOffset}px`,
-                                                        left: '66px',
+                                                        left: '60px',
                                                         right: 0,
                                                         height: '2px',
-                                                        backgroundColor: 'red',
+                                                        backgroundColor: '#ea4335',
                                                         zIndex: 50,
                                                         pointerEvents: 'none'
                                                     }}>
                                                         <div style={{
                                                             position: 'absolute',
-                                                            left: '-2px',
-                                                            top: '-6px',
-                                                            width: '4px',
-                                                            height: '14px',
-                                                            backgroundColor: 'red',
-                                                            borderRadius: '2px'
+                                                            left: '-52px',
+                                                            top: '-8px',
+                                                            backgroundColor: '#ea4335',
+                                                            color: 'white',
+                                                            padding: '2px 4px',
+                                                            borderRadius: '4px',
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: 'bold',
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
+                                                            {hours12}:{minsStr} {ampm}
+                                                        </div>
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            left: '0px',
+                                                            top: '-3px',
+                                                            width: '2px',
+                                                            height: '8px',
+                                                            backgroundColor: '#ea4335',
                                                         }} />
                                                     </div>
                                                 );
@@ -1846,14 +1909,14 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                                             cursor: 'pointer',
                                                                             backgroundColor: color || undefined,
                                                                             border: '1px solid white',
-                                                                            color: '#fff',
+                                                                            color: getContrastYIQ(color || '#3b82f6'),
                                                                             borderRadius: '6px'
                                                                         }}
                                                                         onClick={(e) => handleEventClick(e, item, currentDate)}
                                                                     >
                                                                         <div style={{ fontWeight: 300, fontSize: '0.9rem', marginBottom: '2px' }}>{item.title}</div>
                                                                         <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', gap: '0.5rem' }}>
-                                                                            <span>{Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')}</span>
+                                                                            <span>{Math.floor(item.startMinutes / 60)}:{String(item.startMinutes % 60).padStart(2, '0')} - {Math.floor((item.startMinutes + item.duration) / 60)}:{String((item.startMinutes + item.duration) % 60).padStart(2, '0')}</span>
                                                                             {item.type === 'google' && item.hangoutLink && <Video size={12} />}
                                                                         </div>
                                                                         {isExpanded && item.hangoutLink && (
@@ -2087,7 +2150,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                         zIndex: 20,
                                                         border: '1px solid rgba(0,0,0,0.05)'
                                                     }}>
-                                                        {['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#d4d4d8', '#ffffff'].map(c => (
+                                                        {['#ffcdd2', '#f8bbd0', '#e1bee7', '#d1c4e9', '#bbdefb', '#b3e5fc', '#b2dfdb', '#c8e6c9', '#fff9c4', '#ffe082'].map(c => (
                                                             <button
                                                                 key={c}
                                                                 type="button"
@@ -2423,7 +2486,7 @@ export default function CalendarTab({ user, setUser, tasks, onSyncClick, onAddTa
                                                 <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: newEventData.color || '#b1cdfb', border: 'none' }} />
                                             </div>
                                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '4px 0' }}>
-                                                {['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#d4d4d8', '#ffffff', '#f4f4f5'].map(c => (
+                                                {['#ffcdd2', '#f8bbd0', '#e1bee7', '#d1c4e9', '#bbdefb', '#b3e5fc', '#b2dfdb', '#c8e6c9', '#fff9c4', '#ffe082'].map(c => (
                                                     <div
                                                         key={c}
                                                         onClick={() => setNewEventData({ ...newEventData, color: c })}

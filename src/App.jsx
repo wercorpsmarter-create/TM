@@ -468,6 +468,9 @@ function App() {
             setDashboardLayout(layoutData || ['goals', 'activity']);
         } catch (error) {
             console.error('Error loading user data:', error);
+            if (subscriptionStatus === 'restoring') {
+                setSubscriptionStatus('none');
+            }
         } finally {
             setDataLoading(false);
         }
@@ -1046,6 +1049,21 @@ function App() {
         }
     };
 
+    const updateMonthlyGoal = async (idx, newText) => {
+        if (!userId) return;
+        const goal = monthlyGoals[idx];
+        if (!goal) return;
+        const goalId = typeof goal === 'object' && goal.id != null ? goal.id : null;
+        try {
+            if (goalId) {
+                await api.updateMonthlyGoal(goalId, { text: newText });
+            }
+            setMonthlyGoals(monthlyGoals.map((g, i) => i === idx ? { ...g, text: newText } : g));
+        } catch (error) {
+            console.error('Error updating monthly goal:', error);
+        }
+    };
+
     const addHabit = async (name) => {
         if (!name.trim() || !userId) return;
 
@@ -1508,6 +1526,7 @@ function App() {
                                 monthlyGoals={monthlyGoals}
                                 onAddMonthlyGoal={addMonthlyGoal}
                                 onDeleteMonthlyGoal={deleteMonthlyGoal}
+                                onUpdateMonthlyGoal={updateMonthlyGoal}
                                 onSyncClick={handleSyncClick}
                                 layout={dashboardLayout}
                                 setLayout={setDashboardLayout}

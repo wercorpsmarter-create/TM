@@ -1303,7 +1303,7 @@ function App() {
                         backdropFilter: 'blur(24px)',
                         WebkitBackdropFilter: 'blur(24px)',
                         padding: '0.5rem 1rem',
-                        borderRadius: '24px',
+                        borderRadius: '16px',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
                         border: '1px solid var(--glass-border)'
                     }}>
@@ -1497,7 +1497,7 @@ function App() {
                                         minHeight: outerScroll ? 'auto' : 'calc(100vh - 8.5rem)',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        borderRadius: '32px',
+                                        borderRadius: '16px',
                                         background: 'var(--glass-bg)',
                                         backdropFilter: 'blur(30px) saturate(180%)',
                                         boxShadow: '0 40px 100px -20px rgba(0,0,0,0.1)',

@@ -86,7 +86,7 @@ export default function TaskList({ tasks, setTasks }) {
     };
 
     return (
-        <div className="card" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.3)', borderRadius: '32px', padding: '2rem' }}>
+        <div className="card" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.3)', borderRadius: '16px', padding: '2rem' }}>
             <style>{taskListAnimationStyles}</style>
             <h3 className="card-title"><CheckCircle size={20} /> Tasks</h3>
             <form onSubmit={addTask} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>

@@ -175,7 +175,7 @@ export default function WeatherTab({ weatherSettings, setWeatherSettings, setGlo
                             justifyContent: 'space-between',
                             padding: '1rem',
                             background: 'var(--input-bg)',
-                            borderRadius: '24px',
+                            borderRadius: '16px',
                             border: '1px solid var(--border-light)'
                         }}>
                             <div>
